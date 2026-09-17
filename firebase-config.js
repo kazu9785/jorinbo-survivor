@@ -1,7 +1,7 @@
 // Firebaseコンソールの「プロジェクトの設定」→「マイアプリ」に表示される値へ置き換えてください。
 // この設定値はWebアプリに公開される前提の識別情報です。パスワードや秘密鍵は絶対に書かないでください。
 var firebaseConfig = {
-    apiKey: "AIzaSyBZipURnVGn4aUGou0zAXWjLsqs8kJCQPY",
+   apiKey: "AIzaSyBZipURnVGn4aUGou0zAXWjLsqs8kJCQPY",
   authDomain: "jorinbo-survivor-ba261.firebaseapp.com",
   projectId: "jorinbo-survivor-ba261",
   storageBucket: "jorinbo-survivor-ba261.firebasestorage.app",

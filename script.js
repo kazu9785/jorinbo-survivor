@@ -83,12 +83,13 @@ const btnAuthRanking = document.getElementById('btn-auth-ranking');
 const btnBackRanking = document.getElementById('btn-back-ranking');
 
 // Audio (ダミー)
-function playSound(el, vol=0.5) {}
+function playSound(el = "confirm", vol = 0.5) { window.GameAudio?.effect(el, vol); }
 
 // ■■■ セーブデータ管理 ■■■
 function getDefaultData() {
     return {
         coins: 0,
+        endlessUnlocked: false,
         name: "HERO",
         character: "balance",
         upgrade: { damage: 1, fireRate: 1, count: 1, bulletSize: 1, speed: 1, maxHp: 1 },
@@ -102,9 +103,13 @@ function getDefaultData() {
 
 let gameData = getDefaultData();
 let currentUsername = '';
+let isDeveloper = false;
 let pendingRegistrationName = '';
 let rankingReturnScreen = 'auth';
 let waveResultSaved = false;
+let gameMode = 'normal';
+let clearReturnTimer = null;
+let startingRun = false;
 
 // キャラクター選択はアカウント別にこのブラウザへ保存する。
 const CHARACTERS = {
@@ -194,7 +199,7 @@ function updateRunUpgradeSummary() {
 }
 
 function openWaveReward() {
-    if (currentWave >= 20 || currentWave <= lastRewardWave || rewardPending) return;
+    if ((gameMode === 'normal' && currentWave >= 20) || currentWave <= lastRewardWave || rewardPending) return;
     rewardPending = true;
     document.body.style.cursor = 'default';
     const pool = [...RUN_REWARDS];
@@ -270,6 +275,7 @@ function prepareWaveEvent() {
 }
 
 function stopWaveEvent() {
+    stopTouchMovement();
     waveEventActive = false;
     clearTimeout(waveIntroTimer);
     // ボーナス敵は通常敵の残数に含めない。消えてもWAVE進行を止めない。
@@ -321,7 +327,7 @@ function updateWaveEvent(now) {
 
 function getSaveKey() {
     if (typeof auth !== 'undefined' && auth && auth.currentUser) {
-        return `neonSurvivorData_${auth.currentUser.uid}`;
+        return `neonSurvivorData_${auth.currentUser.uid}${isDeveloper ? '_developer' : ''}`;
     }
     return 'neonSurvivorData';
 }
@@ -330,6 +336,7 @@ function repairGameData(saved) {
     if (!saved || !saved.upgrade) return getDefaultData();
 
     const repaired = saved;
+    repaired.endlessUnlocked = repaired.endlessUnlocked === true;
     if (!Object.hasOwn(CHARACTERS, repaired.character)) repaired.character = "balance";
     if(!repaired.upgrade.count) repaired.upgrade.count = 1;
     if(!repaired.upgrade.maxHp) repaired.upgrade.maxHp = 1;
@@ -343,12 +350,23 @@ function repairGameData(saved) {
     return repaired;
 }
 
+// 上限なしの育成に対する、負荷を抑えた開発テスト用プリセット。
+function applyDeveloperPreset() {
+    if (!isDeveloper) return;
+    gameData.coins = Math.max(gameData.coins, 1000000);
+    gameData.endlessUnlocked = true;
+    gameData.upgrade = { damage: 100, fireRate: 11, count: 10, bulletSize: 6, speed: 93, maxHp: 100 };
+    gameData.skills.owned = ['sphere', 'bomb', 'energy', 'satellite'];
+    gameData.skills.levels = { sphere: 20, bomb: 20, energy: 20, satellite: 20 };
+    if (!gameData.skills.owned.includes(gameData.skills.equipped)) gameData.skills.equipped = 'sphere';
+}
+
 function loadData() {
     const saveKey = getSaveKey();
     let json = localStorage.getItem(saveKey);
 
     // 初回ログイン時だけ、以前のセーブデータをこのアカウントへ引き継ぐ
-    if (!json && saveKey !== 'neonSurvivorData') {
+    if (!json && !isDeveloper && saveKey !== 'neonSurvivorData') {
         const oldJson = localStorage.getItem('neonSurvivorData');
         if (oldJson) {
             json = oldJson;
@@ -363,6 +381,7 @@ function loadData() {
         gameData = getDefaultData();
     }
 
+    if (isDeveloper) applyDeveloperPreset();
     if (currentUsername) gameData.name = currentUsername;
     updateCoinDisplays();
     if(usernameInput) usernameInput.value = gameData.name;
@@ -454,6 +473,7 @@ function setAuthButtonsDisabled(disabled) {
 }
 
 function showAuthScreen() {
+    window.GameAudio?.scene("menu");
     document.getElementById('character-modal').classList.add('hidden');
     authScreen.classList.remove('hidden');
     homeScreen.classList.add('hidden');
@@ -462,7 +482,9 @@ function showAuthScreen() {
 }
 
 function showHomeScreen() {
+    window.GameAudio?.scene("menu");
     updateCharacterDisplay();
+    document.getElementById('btn-endless').classList.toggle('hidden', !gameData.endlessUnlocked);
     authScreen.classList.add('hidden');
     rankingScreen.classList.add('hidden');
     homeScreen.classList.remove('hidden');
@@ -553,6 +575,7 @@ async function loadRanking() {
         const players = [];
         snapshot.forEach(doc => {
             const data = doc.data();
+            if (data.isDeveloper === true) return;
             players.push({
                 uid: doc.id,
                 username: data.username || 'NO NAME',
@@ -589,6 +612,7 @@ async function loadRanking() {
 }
 
 async function registerAttempt() {
+    if (isDeveloper && auth?.currentUser) return true;
     if (!auth || !auth.currentUser || !db) {
         alert('ログインしてから戦闘を開始してください。');
         return false;
@@ -607,9 +631,9 @@ async function registerAttempt() {
 }
 
 async function saveWaveResult(wave) {
-    if (waveResultSaved || !auth || !auth.currentUser || !db) return;
+    if (isDeveloper || waveResultSaved || !auth || !auth.currentUser || !db) return;
     waveResultSaved = true;
-    const reachedWave = Math.max(1, Math.min(20, Math.floor(Number(wave) || 1)));
+    const reachedWave = Math.max(1, Math.floor(Number(wave) || 1));
     const playerRef = db.collection('players').doc(auth.currentUser.uid);
 
     try {
@@ -735,6 +759,7 @@ if (btnBackRanking) btnBackRanking.addEventListener('click', () => {
 
 if (isFirebaseConfigured && auth && db) {
     auth.onAuthStateChanged(async user => {
+        isDeveloper = false;
         if (!user) {
             currentUsername = '';
             showAuthScreen();
@@ -752,9 +777,10 @@ if (isFirebaseConfigured && auth && db) {
                 throw new Error('ランキング用のプレイヤーデータが見つかりません。新規登録から作り直してください。');
             }
 
+            isDeveloper = snapshot.data().isDeveloper === true;
             currentUsername = snapshot.data().username;
             pendingRegistrationName = '';
-            if(currentUserName) currentUserName.textContent = currentUsername;
+            if(currentUserName) currentUserName.textContent = currentUsername + (isDeveloper ? '（開発者・ランキング対象外）' : '');
             loadData();
             showHomeScreen();
             setStatus(authStatus, '');
@@ -819,18 +845,75 @@ let bossAttackTimers = [];
 updateCoinDisplays();
 if(gameData.name && usernameInput) usernameInput.value = gameData.name;
 
-document.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
+function getArenaSize() {
+    return { width: gameArea.clientWidth || window.innerWidth, height: gameArea.clientHeight || window.innerHeight };
+}
+function clampPlayerPosition() {
+    const { width, height } = getArenaSize();
+    const margin = Math.min(30, width / 2, height / 2);
+    playerX = Math.max(margin, Math.min(width - margin, playerX));
+    playerY = Math.max(margin, Math.min(height - margin, playerY));
+    mouseX = Math.max(margin, Math.min(width - margin, mouseX));
+    mouseY = Math.max(margin, Math.min(height - margin, mouseY));
+}
+let movementPointerId = null;
+let lastTouchX = 0;
+let lastTouchY = 0;
+function stopTouchMovement() {
+    if (movementPointerId !== null && gameArea.hasPointerCapture(movementPointerId)) gameArea.releasePointerCapture(movementPointerId);
+    movementPointerId = null;
+    mouseX = playerX;
+    mouseY = playerY;
+}
+gameArea.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || movementPointerId !== null || !waveEventActive || isGameOver) return;
+    document.body.classList.add('touch-controls');
+    movementPointerId = e.pointerId;
+    lastTouchX = e.clientX;
+    lastTouchY = e.clientY;
+    mouseX = playerX;
+    mouseY = playerY;
+    gameArea.setPointerCapture(e.pointerId);
+    e.preventDefault();
 });
-
-// スキル発動 (Spaceキー)
-document.addEventListener('keydown', (e) => {
-    if (isGameOver) return;
-    if (e.code === 'Space') {
-        attemptSkill();
+gameArea.addEventListener('pointermove', e => {
+    if (!waveEventActive || isGameOver) return;
+    if (e.pointerType === 'mouse') {
+        const rect = gameArea.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+    } else if (e.pointerId === movementPointerId) {
+        // 相対移動なので指でキャラを隠さず、どこからでもドラッグできる。
+        mouseX += e.clientX - lastTouchX;
+        mouseY += e.clientY - lastTouchY;
+        lastTouchX = e.clientX;
+        lastTouchY = e.clientY;
+        e.preventDefault();
+    } else return;
+    clampPlayerPosition();
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => gameArea.addEventListener(type, e => {
+    if (e.pointerId === movementPointerId) {
+        movementPointerId = null;
+        mouseX = playerX;
+        mouseY = playerY;
     }
-});
+}));
+window.addEventListener('blur', stopTouchMovement);
+window.addEventListener('resize', () => { stopTouchMovement(); clampPlayerPosition(); });
+document.getElementById('btn-touch-skill').addEventListener('click', () => attemptSkill());
+
+// 戦闘中のSpaceは音量UIより先に処理し、ボタンの既定操作を止める。
+// キャプチャ段階なら、音量パネル内で伝播を止めてもスキルを発動できる。
+document.addEventListener('keydown', (e) => {
+    if (isGameOver || !waveEventActive || e.code !== 'Space') return;
+    e.preventDefault();
+    if (!e.repeat) attemptSkill();
+}, true);
+// checkbox等のSpaceキーを離した際の既定操作も抑止する。
+document.addEventListener('keyup', (e) => {
+    if (!isGameOver && waveEventActive && e.code === 'Space') e.preventDefault();
+}, true);
 
 function attemptSkill() {
     if (!waveEventActive || isGameOver) return;
@@ -850,10 +933,18 @@ function attemptSkill() {
 }
 
 // ■■■ メニュー操作 ■■■
-btnBattle.addEventListener('click', async () => {
+async function startNewRun(mode = 'normal') {
+    if (startingRun || homeScreen.classList.contains('hidden')) return;
+    if (isDeveloper) applyDeveloperPreset();
+    if (mode === 'endless' && !gameData.endlessUnlocked) return;
+    startingRun = true;
+    const endlessButton = document.getElementById('btn-endless');
+    endlessButton.disabled = true;
     btnBattle.disabled = true;
     const attemptSaved = await registerAttempt();
     btnBattle.disabled = false;
+    endlessButton.disabled = false;
+    startingRun = false;
     if (!attemptSaved) return;
 
     if(usernameInput) gameData.name = usernameInput.value;
@@ -865,7 +956,8 @@ btnBattle.addEventListener('click', async () => {
     gameClearScreen.classList.add('hidden');
     document.body.style.cursor = 'none';
 
-    currentWave = 1;
+    gameMode = mode;
+    currentWave = gameMode === 'endless' ? 21 : 1;
     sessionCoins = 0;
     resetRunUpgrades();
     lastWaveEvent = null;
@@ -882,7 +974,9 @@ btnBattle.addEventListener('click', async () => {
     updateHpDisplay();
 
     startWaveSequence();
-});
+}
+btnBattle.addEventListener('click', () => startNewRun('normal'));
+document.getElementById('btn-endless').addEventListener('click', () => startNewRun('endless'));
 
 btnWeapon.addEventListener('click', () => openWeaponShop());
 btnPlayer.addEventListener('click', () => openPlayerShop());
@@ -893,7 +987,7 @@ btnBackPlayer.addEventListener('click', () => { playerShopScreen.classList.add('
 btnBackSkill.addEventListener('click', () => { skillShopScreen.classList.add('hidden'); homeScreen.classList.remove('hidden'); });
 
 btnReset.addEventListener('click', async () => {
-    if(!confirm("【警告】\n強化・コイン・最高WAVE・直近WAVE・挑戦回数を全て0に戻しますか？")) return;
+    if(!confirm("【警告】\n強化・コイン・最高WAVE・直近WAVE・挑戦回数を全て0に戻し、エンドレス解放もリセットしますか？")) return;
 
     btnReset.disabled = true;
     try {
@@ -912,8 +1006,9 @@ btnRetry.addEventListener('click', async () => {
     btnRetry.disabled = false;
     if (!attemptSaved) return;
 
+    if (isDeveloper) applyDeveloperPreset();
     gameOverScreen.classList.add('hidden');
-    currentWave = 1;
+    currentWave = gameMode === 'endless' ? 21 : 1;
     sessionCoins = 0;
     resetRunUpgrades();
     lastWaveEvent = null;
@@ -930,11 +1025,20 @@ btnRetry.addEventListener('click', async () => {
 });
 
 btnReturnHome.addEventListener('click', () => location.reload());
-btnClearHome.addEventListener('click', () => location.reload());
+function returnFromClear() {
+    clearTimeout(clearReturnTimer);
+    clearReturnTimer = null;
+    gameClearScreen.classList.add('hidden');
+    gameScreen.classList.add('hidden');
+    waveShopScreen.classList.add('hidden');
+    showHomeScreen();
+}
+btnClearHome.addEventListener('click', returnFromClear);
 
 btnNextWave.addEventListener('click', () => {
-    if (rewardPending || lastRewardWave !== currentWave) return;
+    if (rewardPending || lastRewardWave !== currentWave || waveShopScreen.classList.contains('hidden')) return;
     waveShopScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
     document.body.style.cursor = 'none';
     currentWave++;
     startWaveSequence();
@@ -1067,6 +1171,7 @@ function openSkillShop() {
 }
 
 function openWaveShop() {
+    gameScreen.classList.add('hidden');
     document.body.style.cursor = 'default';
     waveShopScreen.classList.remove('hidden');
     nextWaveNum.textContent = currentWave + 1;
@@ -1169,6 +1274,7 @@ function getPlayerStats() {
 
 // ■■■ ゲームループ関連 ■■■
 function startWaveSequence() {
+    window.GameAudio?.scene("battle");
     stopWaveEvent();
     isGameOver = true;
     prepareWaveEvent();
@@ -1202,10 +1308,14 @@ function startWaveSequence() {
 }
 
 function startBattle() {
+    const arena = getArenaSize();
+    playerX = mouseX = arena.width / 2;
+    playerY = mouseY = arena.height / 2;
+    clampPlayerPosition();
     isGameOver = false;
     waveEventActive = true;
     nextBarrageTime = Date.now() + 2500;
-    playSound();
+    playSound("start");
     spawnWaveEnemies();
     if (currentWaveEvent === 'treasure') spawnEnemy('treasure');
 
@@ -1230,6 +1340,7 @@ function gameLoop() {
         playerX += (mouseX - playerX) * stats.moveSpeed;
         playerY += (mouseY - playerY) * stats.moveSpeed;
     }
+    clampPlayerPosition();
     player.style.left = playerX + 'px';
     player.style.top = playerY + 'px';
 
@@ -1253,7 +1364,7 @@ function gameLoop() {
 }
 
 function triggerInvoluteSphere() {
-    playSound();
+    playSound("skill");
     const level = gameData.skills.levels.sphere;
     const sphereCount = 6 + (level - 1) * 2;
     
@@ -1269,7 +1380,7 @@ function triggerInvoluteSphere() {
 }
 
 function triggerBomb() {
-    playSound();
+    playSound("skill");
     const effect = document.createElement('div');
     effect.classList.add('bomb-effect');
     gameArea.appendChild(effect);
@@ -1287,10 +1398,10 @@ function triggerBomb() {
 
 // ★ハイエナジーサークル (画面全体)
 function triggerHighEnergyCircle() {
-    playSound();
+    playSound("skill");
     const level = gameData.skills.levels.energy;
     // 画面全体を覆うほど大きな半径にする
-    const maxDim = Math.max(window.innerWidth, window.innerHeight);
+    const maxDim = Math.max(getArenaSize().width, getArenaSize().height);
     const radius = maxDim; 
     const damage = 20 + (level - 1) * 10;
 
@@ -1312,19 +1423,20 @@ function triggerHighEnergyCircle() {
 }
 
 function triggerSatellite() {
-    playSound();
+    playSound("skill");
     const level = gameData.skills.levels.satellite;
     const beamCount = 2 + Math.floor(level / 2); 
     const damage = 30 + (level - 1) * 15;
 
     if (enemies.length > 0) {
         for (let i = 0; i < beamCount; i++) {
+            if (enemies.length === 0) break;
             const target = enemies[Math.floor(Math.random() * enemies.length)];
             
             const el = document.createElement('div');
             el.classList.add('satellite-beam');
             el.style.left = (target.x + 30) + 'px';
-            el.style.bottom = (window.innerHeight - target.y) + 'px'; 
+            el.style.bottom = (getArenaSize().height - target.y) + 'px'; 
             
             gameArea.appendChild(el);
             setTimeout(() => el.remove(), 500);
@@ -1380,6 +1492,10 @@ function updateInvoluteBullets() {
 }
 
 function updateBombGauge(now) {
+    const button = document.getElementById('btn-touch-skill');
+    const seconds = Math.max(0, Math.ceil((bombCooldown - (now - lastBombTime)) / 1000));
+    button.disabled = isGameOver || !waveEventActive || seconds > 0;
+    button.textContent = seconds > 0 ? 'あと ' + seconds + '秒' : 'スキル発動';
     const elapsed = now - lastBombTime;
     let percentage = (elapsed / bombCooldown) * 100;
     if (percentage > 100) percentage = 100;
@@ -1418,11 +1534,11 @@ function spawnEnemy(type) {
 
     let ex, ey;
     if (Math.random() < 0.5) {
-        ex = Math.random() < 0.5 ? -50 : window.innerWidth + 50;
-        ey = Math.random() * window.innerHeight;
+        ex = Math.random() < 0.5 ? -50 : getArenaSize().width + 50;
+        ey = Math.random() * getArenaSize().height;
     } else {
-        ex = Math.random() * window.innerWidth;
-        ey = Math.random() < 0.5 ? -50 : window.innerHeight + 50;
+        ex = Math.random() * getArenaSize().width;
+        ey = Math.random() < 0.5 ? -50 : getArenaSize().height + 50;
     }
 
     let hp, speed, coinDrop, jumpOffset;
@@ -1458,8 +1574,8 @@ function spawnEnemy(type) {
         speed = 1.4;
         coinDrop = 30 + currentWave * 5;
         jumpOffset = 0;
-        const width = gameArea.clientWidth || window.innerWidth;
-        const height = gameArea.clientHeight || window.innerHeight;
+        const width = gameArea.clientWidth || getArenaSize().width;
+        const height = gameArea.clientHeight || getArenaSize().height;
         ex = width * 0.5;
         ey = height * 0.3;
     } else { // boss
@@ -1529,7 +1645,7 @@ function fireBullet(damage, count, size) {
                 vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, damage: damage 
             });
         }
-        playSound();
+        playSound("shot");
     }
 }
 
@@ -1727,6 +1843,8 @@ function beginBossSecondPhase(boss) {
     enemyBullets.forEach(b => b.element.remove());
     enemyBullets = [];
     boss.bossPhase = 2;
+    window.GameAudio?.scene("awakened");
+    playSound("warning");
     boss.phase2Type = getBossType(boss).id;
     boss.transformingUntil = Date.now() + 1500;
     boss.lastAttackTime = boss.transformingUntil;
@@ -1834,6 +1952,9 @@ function bossFireAttack(boss) {
     const selected = patterns[Math.floor(Math.random() * patterns.length)];
     boss.lastBossPattern = selected.id;
     showBossAttackName(selected.name);
+    // 一発ごとではなく攻撃パターンの開始時に鳴らす。
+    playSound('boss_' + selected.id, 0.65);
+    if (boss.bossPhase === 2) playSound('boss_power', 0.3);
     selected.run(boss);
 }
 
@@ -1844,7 +1965,7 @@ function updateBullets() {
         b.element.style.left = b.x + 'px';
         b.element.style.top = b.y + 'px';
 
-        if (b.x<0 || b.x>window.innerWidth || b.y<0 || b.y>window.innerHeight) {
+        if (b.x<0 || b.x>getArenaSize().width || b.y<0 || b.y>getArenaSize().height) {
             b.element.remove(); bullets.splice(i, 1); continue;
         }
 
@@ -1886,7 +2007,7 @@ function updateEnemyBullets() {
         b.element.style.top = b.y + 'px';
 
         const expired = b.createdAt && now - b.createdAt > b.lifetime;
-        if (expired || b.x < -80 || b.x > window.innerWidth + 80 || b.y < -80 || b.y > window.innerHeight + 80) {
+        if (expired || b.x < -80 || b.x > getArenaSize().width + 80 || b.y < -80 || b.y > getArenaSize().height + 80) {
             b.element.remove();
             enemyBullets.splice(i, 1);
             continue;
@@ -1911,8 +2032,8 @@ function updateEnemies() {
         if (!waveEventActive || isGameOver) break;
         if (e.type === 'treasure') {
             const angle = Math.atan2(e.y - playerY, e.x - playerX);
-            const width = gameArea.clientWidth || window.innerWidth;
-            const height = gameArea.clientHeight || window.innerHeight;
+            const width = gameArea.clientWidth || getArenaSize().width;
+            const height = gameArea.clientHeight || getArenaSize().height;
             e.x = Math.max(35, Math.min(width - 35, e.x + Math.cos(angle) * e.speed));
             e.y = Math.max(35, Math.min(height - 35, e.y + Math.sin(angle) * e.speed));
             e.element.style.left = e.x + 'px';
@@ -1986,7 +2107,7 @@ function takePlayerDamage(dmg) {
     if (currentWaveEvent === 'rage') dmg = Math.ceil(dmg * 1.5);
     playerCurrentHp -= dmg;
     updateHpDisplay();
-    playSound();
+    playSound("hurt");
     
     gameArea.classList.remove('screen-shake');
     void gameArea.offsetWidth;
@@ -2010,7 +2131,7 @@ function damageEnemy(e, dmg) {
         beginBossSecondPhase(e);
     }
     showDamageText(e.x, e.y, dmg);
-    playSound();
+    playSound("hit");
     
     if (e.hpFill) {
         let p = (e.hp / e.maxHp) * 100;
@@ -2024,7 +2145,7 @@ function damageEnemy(e, dmg) {
 
 function killEnemy(e) {
     if (!enemies.includes(e)) return;
-    playSound();
+    playSound("coin");
     const reward = e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1);
     
     sessionCoins += reward;
@@ -2072,7 +2193,7 @@ function updateHearts() {
         if (dist < 40) {
             playerCurrentHp = Math.min(playerCurrentHp + 3, playerMaxHp);
             updateHpDisplay();
-            playSound();
+            playSound("heal");
             showDamageText(playerX, playerY - 30, "♥");
             
             h.element.remove();
@@ -2082,6 +2203,7 @@ function updateHearts() {
 }
 
 function spawnBoss() {
+    window.GameAudio?.scene("boss");
     isBossPhase = true;
     if (bossHud) {
         bossHud.classList.remove('boss-hud-phase2');
@@ -2089,7 +2211,7 @@ function spawnBoss() {
     }
     if(bossHud) bossHud.classList.remove('hidden');
     if(bossAttackName) bossAttackName.textContent = '攻撃準備中...';
-    playSound();
+    playSound("warning");
     spawnEnemy('boss');
     if(enemyCountText) enemyCountText.textContent = "BOSS";
 }
@@ -2099,23 +2221,27 @@ function waveClear() {
     stopWaveEvent();
     isGameOver = true;
     clearBossAttackTimers();
-    if (currentWave >= 20) {
+    if (gameMode === 'normal' && currentWave >= 20) {
         gameClear();
         return;
     }
 
-    playSound();
+    window.GameAudio?.scene("menu");
+    playSound("clear");
     clearInterval(windowTimerInterval);
     cancelAnimationFrame(animationFrameId);
     openWaveReward();
 }
 
 function gameClear() {
+    window.GameAudio?.scene("menu");
     stopWaveEvent();
     isGameOver = true;
+    gameData.endlessUnlocked = true;
+    saveData();
     saveWaveResult(20);
     clearBossAttackTimers();
-    playSound();
+    playSound("victory");
     clearInterval(windowTimerInterval);
     cancelAnimationFrame(animationFrameId);
     document.body.style.cursor = 'default';
@@ -2123,6 +2249,8 @@ function gameClear() {
     if(gameClearScreen) {
         gameClearScreen.classList.remove('hidden');
         if(clearCoins) clearCoins.textContent = sessionCoins;
+        clearTimeout(clearReturnTimer);
+        clearReturnTimer = setTimeout(returnFromClear, 4000);
     } else {
         alert("GAME CLEAR!! CONGRATULATIONS!!");
         location.reload();
@@ -2130,6 +2258,8 @@ function gameClear() {
 }
 
 function gameOver(reason) {
+    window.GameAudio?.scene("silent");
+    playSound("over");
     stopWaveEvent();
     isGameOver = true;
     saveWaveResult(currentWave);
@@ -2173,4 +2303,4 @@ function updateBossHpBar(hp) {
     bossHpBar.style.width = `${p}%`;
 }
 
-function playSound(el, vol=0.5) {}
+

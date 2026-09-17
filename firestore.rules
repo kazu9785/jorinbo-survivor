@@ -24,10 +24,8 @@ service cloud.firestore {
         && request.resource.data.usernameKey.size() <= 64
         && request.resource.data.highestWave is int
         && request.resource.data.highestWave >= 0
-        && request.resource.data.highestWave <= 20
         && request.resource.data.latestWave is int
         && request.resource.data.latestWave >= 0
-        && request.resource.data.latestWave <= 20
         && request.resource.data.highestWave >= request.resource.data.latestWave
         && request.resource.data.attempts is int
         && request.resource.data.attempts >= 0

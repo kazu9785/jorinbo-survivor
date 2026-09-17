@@ -367,3 +367,100 @@ button:disabled { cursor: wait; opacity: 0.6; }
 .boss-fire.boss-bullet-forest { background: radial-gradient(circle, #ffffbe, #70d847, #25812d); box-shadow: 0 0 12px #70d847; }
 .boss-fire.boss-bullet-dark { background: radial-gradient(circle, #fff, #c85aff, #5425a0); box-shadow: 0 0 12px #bd55ff; }
 .boss-name { line-height: 1.6; }
+
+/* PCとスマホに合わせた画面。戦闘エリア内のみスクロールを抑止。 */
+body { height: 100dvh; }
+#game-screen { position: relative; height: 100dvh; min-height: 0; flex: 0 0 100%; padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+#game-area { min-height: 0; flex: 1 1 0; touch-action: none; }
+.info-bar { flex-shrink: 0; }
+#boss-hud, #wave-event-hud, #bomb-hud { pointer-events: none; }
+#touch-control-bar { display: none; }
+#home-screen, #auth-screen, #ranking-screen, #weapon-shop-screen, #player-shop-screen, #skill-shop-screen, #wave-shop-screen {
+    min-height: 0; overflow: auto; padding: 16px; box-sizing: border-box;
+}
+.home-container, .auth-container, .ranking-container, .shop-container { box-sizing: border-box; max-width: 100%; margin: auto; flex-shrink: 0; }
+.shop-container { max-width: 100%; }
+.account-modal { overflow-y: auto; }
+.account-modal-card { margin: auto; max-height: 90dvh; overflow: auto; }
+#game-over-screen, #game-clear-screen { box-sizing: border-box; padding: 20px; overflow: auto; }
+button { touch-action: manipulation; }
+@media (any-pointer: coarse) {
+    #touch-control-bar { display: flex; }
+    #bomb-hud { bottom: calc(90px + env(safe-area-inset-bottom)); }
+    .bomb-label { font-size: 0; }
+    .bomb-label::after { content: 'SKILL'; font-size: 11px; }
+}
+body.touch-controls #touch-control-bar { display: flex; }
+body.touch-controls #bomb-hud { bottom: calc(90px + env(safe-area-inset-bottom)); }
+body.touch-controls .bomb-label { font-size: 0; }
+body.touch-controls .bomb-label::after { content: 'SKILL'; font-size: 11px; }
+#touch-control-bar {
+    flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 8px max(16px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: #10182b; border-top: 1px solid #5475a5; z-index: 110; cursor: default;
+}
+#touch-control-bar span { font-size: 12px; line-height: 1.5; color: #bccfe4; }
+#btn-touch-skill { min-width: 128px; min-height: 48px; border: 1px solid #71ebff; border-radius: 12px; background: #115675; color: white; font-size: 16px; font-weight: bold; }
+@media (max-width: 700px) {
+    #home-screen, #auth-screen, #ranking-screen, #weapon-shop-screen, #player-shop-screen, #skill-shop-screen, #wave-shop-screen { padding: 12px; }
+    .home-container, .auth-container, .ranking-container, .shop-container { width: 100% !important; padding: 20px 14px; }
+    .game-title { font-size: 24px; margin-top: 0; }
+    .home-container .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .menu-btn { font-size: 12px; min-height: 48px; padding: 12px 8px; line-height: 1.5; }
+    .battle-btn { font-size: 14px; }
+    .shop-items-grid { gap: 10px; padding-right: 0; max-height: none; }
+    .shop-item { min-width: 0; padding: 10px; }
+    .buy-btn { padding: 10px 4px; font-size: 11px; min-height: 44px; }
+    .back-btn, .equip-btn, .item-reset-btn, .reset-btn, .logout-btn, .delete-account-btn { min-height: 44px; }
+    .info-bar { gap: 6px; padding: 10px 8px; font-size: 10px; flex-wrap: wrap; }
+    .hud-item { white-space: nowrap; line-height: 1.6; }
+    #boss-hud { top: calc(55px + env(safe-area-inset-top)); width: 94%; }
+    .boss-name { font-size: 10px; }
+    .boss-attack-name { font-size: 11px; margin-top: 4px; }
+    .hp-bar-frame { height: 12px; }
+    #wave-event-hud { top: calc(135px + env(safe-area-inset-top)); font-size: 11px; padding: 4px 8px; }
+    #bomb-hud { left: 10px; }
+    .bomb-gauge-frame { width: 110px; height: 10px; }
+    #wave-modal h2 { font-size: 28px; }
+    #wave-event-title { font-size: 22px; }
+    #wave-modal p { font-size: 15px; }
+    .dead-title, .clear-title { font-size: clamp(18px, 5vw, 30px); text-align: center; line-height: 1.7; }
+    .result-box p { font-size: 12px; line-height: 1.7; }
+    .character-panel { width: 100%; padding: 14px; max-height: 90dvh; }
+    .character-card { padding: 8px; font-size: 13px; }
+    #reward-screen { padding: 12px; }
+    .ranking-table { min-width: 480px; }
+    .ranking-table th, .ranking-table td { padding: 10px 6px; font-size: 11px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+    #boss-hud { top: 45px; width: 65%; }
+    #wave-event-hud { top: 105px; }
+    #touch-control-bar { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+    #btn-touch-skill { min-height: 44px; }
+    #reward-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .reward-card { min-height: 90px; padding: 10px; gap: 8px; }
+    .reward-card strong { font-size: 16px; }
+}
+
+/* Small sound controls available on every screen. */
+#audio-settings { position: fixed; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 20000; color: #fff; font: 14px sans-serif; cursor: auto; }
+#audio-settings summary { padding: 7px 12px; border: 1px solid #7786b4; border-radius: 18px; background: #171c32ee; cursor: pointer; list-style: none; }
+#audio-settings[open] { background: #171c32f5; border: 1px solid #7786b4; border-radius: 12px; padding: 8px; }
+#audio-settings .audio-options { width: min(245px, 75vw); padding: 8px; }
+#audio-settings label { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+#audio-settings input[type=range] { width: 150px; accent-color: #8bf6ff; }
+#audio-settings small { color: #c0c9e0; font-size: 11px; }
+@media (any-pointer: coarse) { #audio-settings { bottom: calc(84px + env(safe-area-inset-bottom)); } }
+body.touch-controls #audio-settings { bottom: calc(84px + env(safe-area-inset-bottom)); }
+
+/* WAVE間ショップは戦闘画面の高さに影響されない独立画面にする。 */
+#wave-shop-screen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+#wave-shop-screen .shop-container { flex-shrink: 0; margin: auto; }

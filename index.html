@@ -1,0 +1,216 @@
+4<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>常林暴サバイバー</title>
+    <link rel="stylesheet" href="style.css?v=dragons-1">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-container">
+            <h1 class="game-title">常林暴<br>サバイバー</h1>
+            <h2 class="auth-title">PLAYER LOGIN</h2>
+            <p class="auth-help">名前とパスワードでログインしてください。<br>初めて遊ぶ人は「新規登録」を押します。</p>
+            <form id="auth-form" autocomplete="on">
+                <label class="auth-label" for="login-username">名前</label>
+                <input type="text" id="login-username" class="auth-input" maxlength="16" autocomplete="username" placeholder="2～16文字" required>
+                <label class="auth-label" for="login-password">パスワード</label>
+                <input type="password" id="login-password" class="auth-input" minlength="6" maxlength="64" autocomplete="current-password" placeholder="6文字以上" required>
+                <div class="auth-buttons">
+                    <button type="submit" id="btn-login" class="menu-btn battle-btn">ログイン</button>
+                    <button type="button" id="btn-register" class="menu-btn shop-btn">新規登録</button>
+                </div>
+            </form>
+            <p id="auth-status" class="status-message" aria-live="polite"></p>
+            <button id="btn-auth-ranking" class="ranking-open-btn">ランキングを見る</button>
+        </div>
+    </div>
+
+    <div id="home-screen" class="hidden">
+        <div class="home-container">
+            <h1 class="game-title">常林暴<br>サバイバー</h1>
+            <div class="login-user-card">
+                ログイン中: <span id="current-user-name">-</span>
+            </div>
+            <div class="coin-display">所持金: <span id="total-coins">0</span> G</div>
+            <div class="selected-character"><img id="selected-character-image" src="player_balance.png" alt="冒険者"><span id="selected-character-name">冒険者（バランス型）</span></div>
+            <div class="menu-grid">
+                <button id="btn-character" class="menu-btn shop-btn">キャラクター選択</button>
+                <button id="btn-battle" class="menu-btn battle-btn">戦闘開始</button>
+                <button id="btn-skill-shop" class="menu-btn shop-btn" style="background: linear-gradient(45deg, #ff9f43, #ff5252);">スキル選択</button>
+                <button id="btn-weapon" class="menu-btn shop-btn">武器強化</button>
+                <button id="btn-player" class="menu-btn shop-btn">能力強化</button>
+                <button id="btn-ranking" class="menu-btn ranking-btn">ランキング</button>
+            </div>
+            <input type="text" id="username-input" class="name-input" readonly aria-label="ランキングに表示する名前">
+            <div class="account-actions">
+                <button id="btn-reset" class="reset-btn">データリセット</button>
+                <button id="btn-logout" class="logout-btn">ログアウト</button>
+                <button id="btn-delete-account" class="delete-account-btn">アカウント削除</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="character-modal" class="account-modal hidden" role="dialog" aria-modal="true" aria-labelledby="character-title">
+        <div class="character-panel">
+            <h2 id="character-title">キャラクター選択</h2>
+            <p>全キャラ無料！ 強化とスキルは共通です。キャラ変更はホームで行えます。</p>
+            <div id="character-cards"></div>
+            <button id="btn-close-character" class="back-btn">決定して戻る</button>
+        </div>
+    </div>
+    <div id="delete-account-modal" class="account-modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+        <div class="account-modal-card">
+            <h2 id="delete-account-title">アカウント削除</h2>
+            <p class="delete-warning">
+                ログイン情報、ランキング、挑戦回数、コイン、強化データをすべて削除します。<br>
+                この操作は取り消せません。
+            </p>
+            <label class="auth-label" for="delete-account-password">確認のためパスワードを入力</label>
+            <input type="password" id="delete-account-password" class="auth-input" maxlength="64" autocomplete="current-password" placeholder="現在のパスワード">
+            <p id="delete-account-status" class="status-message" aria-live="polite"></p>
+            <div class="delete-account-actions">
+                <button id="btn-cancel-delete-account" class="back-btn">キャンセル</button>
+                <button id="btn-confirm-delete-account" class="delete-confirm-btn">完全に削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ranking-screen" class="hidden">
+        <div class="ranking-container">
+            <h2 class="ranking-title">SHARED RANKING</h2>
+            <p class="ranking-help">全プレイヤーの共有ランキング</p>
+            <div class="ranking-table-wrap">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>順位</th>
+                            <th>名前</th>
+                            <th>最高WAVE</th>
+                            <th>直近WAVE</th>
+                            <th>挑戦回数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-body"></tbody>
+                </table>
+            </div>
+            <p id="ranking-status" class="status-message" aria-live="polite"></p>
+            <button id="btn-back-ranking" class="back-btn">戻る</button>
+        </div>
+    </div>
+
+    <div id="skill-shop-screen" class="hidden">
+        <div class="shop-container" style="width: 700px;">
+            <h2 style="color: #ff9f43;">スキル選択</h2>
+            <div class="coin-display-mini">所持金: <span id="skill-shop-coins">0</span> G</div>
+            
+            <div class="skill-info-text">装備中: <span id="current-equip-name" style="color:#00ffff;">なし</span></div>
+
+            <div id="skill-items-container" class="shop-items-grid"></div>
+
+            <button id="btn-back-skill" class="back-btn">戻る</button>
+        </div>
+    </div>
+
+    <div id="weapon-shop-screen" class="hidden">
+        <div class="shop-container">
+            <h2 id="weapon-shop-title">武器強化</h2>
+            <div class="coin-display-mini">所持金: <span id="weapon-shop-coins">0</span> G</div>
+            <div id="weapon-shop-items" class="shop-items-grid"></div>
+            <button id="btn-back-weapon" class="back-btn">戻る</button>
+        </div>
+    </div>
+
+    <div id="player-shop-screen" class="hidden">
+        <div class="shop-container">
+            <h2 id="player-shop-title">能力強化</h2>
+            <div class="coin-display-mini">所持金: <span id="player-shop-coins">0</span> G</div>
+            <div id="player-shop-items" class="shop-items-grid"></div>
+            <button id="btn-back-player" class="back-btn">戻る</button>
+        </div>
+    </div>
+
+    <div id="reward-screen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
+        <div class="reward-panel">
+            <p>WAVE <span id="reward-wave">1</span> CLEAR!</p>
+            <h2 id="reward-title">強化を1つ選択</h2>
+            <p>無料で獲得！ 効果は今回の挑戦が終わるまで続きます。</p>
+            <div id="reward-cards"></div>
+            <p>選択後はコインで強化できるショップへ進みます。</p>
+        </div>
+    </div>
+    <div id="wave-shop-screen" class="hidden">
+        <div class="shop-container">
+            <h2 style="color:#00ff00;">WAVE CLEAR!</h2>
+            <p id="run-upgrade-summary">今回の挑戦の強化：なし</p>
+            <p>次は WAVE <span id="next-wave-num">2</span></p>
+            <div class="coin-display-mini">所持金: <span id="wave-shop-coins">0</span> G</div>
+            <div id="wave-shop-items" class="shop-items-grid"></div>
+            <button id="btn-next-wave" class="menu-btn battle-btn">次へ進む </button>
+        </div>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div class="info-bar">
+            <div class="hud-item hp-box">HP: <span id="hp-display">10/10</span></div>
+            <div class="hud-item">WAVE: <span id="wave-display">1</span></div>
+            <div class="hud-item timer-box">TIME: <span id="timer">60</span></div>
+            <div class="hud-item">COIN: <span id="game-coins">0</span></div>
+        </div>
+
+        <div id="boss-hud" class="hidden">
+            <div class="boss-name">WARNING: GIANT BOSS</div>
+            <div class="hp-bar-frame"><div id="boss-hp-bar"></div></div>
+            <div id="boss-attack-name" class="boss-attack-name">攻撃準備中...</div>
+        </div>
+
+        <div id="bomb-hud">
+            <div class="bomb-label">SKILL [SPACE]</div>
+            <div class="bomb-gauge-frame"><div id="bomb-gauge-bar"></div></div>
+            <div id="game-skill-name" style="font-size:10px; color:#aaa; margin-top:5px;">SKILL</div>
+        </div>
+        
+        <div id="wave-event-hud" class="hidden" aria-live="polite"></div>
+        <div id="game-area">
+            <div id="player"></div>
+        </div>
+
+        <div id="wave-modal" class="hidden">
+            <h2 id="wave-title">WAVE 1</h2>
+            <h3 id="wave-event-title"></h3>
+            <p id="wave-event-description">生き残れ...</p>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1 class="dead-title">YOU DIED</h1>
+        <div class="result-box">
+            <p>到達 WAVE: <span id="result-wave"></span></p>
+            <p>獲得コイン: <span id="result-coins" class="gold-text"></span> G</p>
+        </div>
+        <div class="menu-grid">
+            <button id="btn-retry" class="menu-btn battle-btn">もう一度</button>
+            <button id="btn-return-home" class="menu-btn back-btn">ホームへ</button>
+        </div>
+    </div>
+
+    <div id="game-clear-screen" class="hidden">
+        <h1 class="clear-title">MISSION COMPLETE!</h1>
+        <div class="result-box">
+            <p>おめでとうございます！</p>
+            <p>獲得コイン: <span id="clear-coins" class="gold-text"></span> G</p>
+        </div>
+        <div class="menu-grid">
+            <button id="btn-clear-home" class="menu-btn back-btn">ホームへ</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="script.js?v=dragons-1"></script>
+</body>
+</html>

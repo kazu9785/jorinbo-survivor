@@ -1,0 +1,89 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function hasValidPlayerFields() {
+      return request.resource.data.keys().hasOnly([
+          'username',
+          'usernameKey',
+          'highestWave',
+          'latestWave',
+          'attempts',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 2
+        && request.resource.data.username.size() <= 64
+        && request.resource.data.usernameKey is string
+        && request.resource.data.usernameKey.size() >= 2
+        && request.resource.data.usernameKey.size() <= 64
+        && request.resource.data.highestWave is int
+        && request.resource.data.highestWave >= 0
+        && request.resource.data.highestWave <= 20
+        && request.resource.data.latestWave is int
+        && request.resource.data.latestWave >= 0
+        && request.resource.data.latestWave <= 20
+        && request.resource.data.highestWave >= request.resource.data.latestWave
+        && request.resource.data.attempts is int
+        && request.resource.data.attempts >= 0
+        && request.resource.data.attempts <= 1000000
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isNewPlayer() {
+      return request.resource.data.highestWave == 0
+        && request.resource.data.latestWave == 0
+        && request.resource.data.attempts == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isAttemptIncrement() {
+      return request.resource.data.attempts == resource.data.attempts + 1
+        && request.resource.data.highestWave == resource.data.highestWave
+        && request.resource.data.latestWave == resource.data.latestWave;
+    }
+
+    function isWaveUpdate() {
+      return request.resource.data.attempts == resource.data.attempts
+        && request.resource.data.highestWave >= resource.data.highestWave;
+    }
+
+    function isFullReset() {
+      return request.resource.data.highestWave == 0
+        && request.resource.data.latestWave == 0
+        && request.resource.data.attempts == 0;
+    }
+
+    match /players/{userId} {
+      // ランキングはログイン前を含め、誰でも閲覧可能
+      allow read: if true;
+
+      // 自分のプレイヤーデータだけ作成・更新可能
+      allow create: if signedInAs(userId)
+        && hasValidPlayerFields()
+        && isNewPlayer();
+      allow update: if signedInAs(userId)
+        && hasValidPlayerFields()
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.usernameKey == resource.data.usernameKey
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (isAttemptIncrement() || isWaveUpdate() || isFullReset());
+
+      // アカウント削除時は、ログイン中の本人だけ自分の記録を削除可能
+      allow delete: if signedInAs(userId);
+    }
+
+    // players以外のデータはすべて拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

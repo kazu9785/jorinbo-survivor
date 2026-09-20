@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <link rel="stylesheet" href="style.css?v=pause-codex-1">
+    <link rel="stylesheet" href="style.css?v=desktop-home-1">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -30,26 +30,47 @@
     </div>
 
     <div id="home-screen" class="hidden">
-        <div class="home-container">
-            <h1 class="game-title">常林暴<br>サバイバー</h1>
-            <div class="login-user-card">
-                ログイン中: <span id="current-user-name">-</span>
+        <div class="home-container home-dashboard">
+            <header class="home-header">
+                <h1 class="game-title">常林暴<span>サバイバー</span></h1>
+                <div class="home-account-summary">
+                    <div class="login-user-card">ログイン中: <span id="current-user-name">-</span></div>
+                    <div class="coin-display">所持金: <span id="total-coins">0</span> G</div>
+                </div>
+            </header>
+            <div class="home-main">
+                <section class="home-character-panel" aria-label="選択中のキャラクター">
+                    <p class="home-section-label">選択中のキャラクター</p>
+                    <div class="selected-character"><img id="selected-character-image" src="player_balance.png" alt="冒険者"><span id="selected-character-name">冒険者（バランス型）</span></div>
+                    <button id="btn-character" class="menu-btn shop-btn">キャラクター選択</button>
+                </section>
+                <section class="home-play-panel" aria-label="モード選択とメニュー">
+                    <h2 class="home-section-label">モード選択</h2>
+                    <div class="home-mode-grid">
+                        <button id="btn-battle" class="menu-btn battle-btn">戦闘開始<small>WAVE1からWAVE20のクリアを目指す</small></button>
+                        <button id="btn-endless" class="menu-btn battle-btn hidden">エンドレスモードへ挑戦<small>WAVE21から開始</small></button>
+                    </div>
+                    <h2 class="home-section-label">強化・記録</h2>
+                    <div class="menu-grid home-tools-grid">
+                        <button id="btn-weapon" class="menu-btn shop-btn">武器強化</button>
+                        <button id="btn-player" class="menu-btn shop-btn">能力強化</button>
+                        <button id="btn-skill-shop" class="menu-btn shop-btn">スキル選択</button>
+                        <button id="btn-codex" class="menu-btn shop-btn">敵・ボス図鑑</button>
+                        <button id="btn-last-result" class="menu-btn shop-btn">前回の戦闘結果</button>
+                        <button id="btn-ranking" class="menu-btn ranking-btn">ランキング</button>
+                    </div>
+                </section>
             </div>
-            <div class="coin-display">所持金: <span id="total-coins">0</span> G</div>
-            <div class="selected-character"><img id="selected-character-image" src="player_balance.png" alt="冒険者"><span id="selected-character-name">冒険者（バランス型）</span></div>
-            <div class="menu-grid">
-                <button id="btn-character" class="menu-btn shop-btn">キャラクター選択</button>
-                <button id="btn-battle" class="menu-btn battle-btn">戦闘開始</button>
-                <button id="btn-endless" class="menu-btn battle-btn hidden">エンドレスモードへ挑戦<br><small>WAVE21から開始</small></button>
-                <button id="btn-skill-shop" class="menu-btn shop-btn" style="background: linear-gradient(45deg, #ff9f43, #ff5252);">スキル選択</button>
-                <button id="btn-weapon" class="menu-btn shop-btn">武器強化</button>
-                <button id="btn-player" class="menu-btn shop-btn">能力強化</button>
-                <button id="btn-codex" class="menu-btn shop-btn">敵・ボス図鑑</button>
-                <button id="btn-last-result" class="menu-btn shop-btn">前回の戦闘結果</button>
-                <button id="btn-ranking" class="menu-btn ranking-btn">ランキング</button>
+            <footer class="home-footer">
+                <div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span><button id="btn-cloud-sync" type="button">同期</button></div>
+            <input type="text" id="username-input" class="name-input" readonly aria-label="ランキングに表示する名前">
+            <div class="account-actions">
+                <button id="btn-reset" class="reset-btn">データリセット</button>
+                <button id="btn-logout" class="logout-btn">ログアウト</button>
+                <button id="btn-delete-account" class="delete-account-btn">アカウント削除</button>
             </div>
-            <div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span>
-                <button id="btn-cloud-sync" type="button">同期</button></div>
+            </footer>
+            <div class="home-developer-area">
             <button id="btn-developer" class="menu-btn hidden" type="button">開発者テスト</button>
             <div id="developer-panel" class="hidden">
                 <h2>開発者テスト（ランキング対象外）</h2>
@@ -61,11 +82,6 @@
                 <p>指定したボス・イベントは次のWAVEにも適用。通常の戦闘開始で解除されます。</p>
                 <button id="btn-dev-start" class="menu-btn battle-btn" type="button">指定条件でテスト開始</button>
             </div>
-            <input type="text" id="username-input" class="name-input" readonly aria-label="ランキングに表示する名前">
-            <div class="account-actions">
-                <button id="btn-reset" class="reset-btn">データリセット</button>
-                <button id="btn-logout" class="logout-btn">ログアウト</button>
-                <button id="btn-delete-account" class="delete-account-btn">アカウント削除</button>
             </div>
         </div>
     </div>
@@ -247,7 +263,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="audio.js?v=pause-codex-1"></script>
-    <script src="script.js?v=pause-codex-1"></script>
+    <script src="audio.js?v=desktop-home-1"></script>
+    <script src="script.js?v=desktop-home-1"></script>
 </body>
 </html>

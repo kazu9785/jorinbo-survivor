@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <link rel="stylesheet" href="style.css?v=cloud-dev-1">
+    <link rel="stylesheet" href="style.css?v=pause-codex-1">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -44,6 +44,8 @@
                 <button id="btn-skill-shop" class="menu-btn shop-btn" style="background: linear-gradient(45deg, #ff9f43, #ff5252);">スキル選択</button>
                 <button id="btn-weapon" class="menu-btn shop-btn">武器強化</button>
                 <button id="btn-player" class="menu-btn shop-btn">能力強化</button>
+                <button id="btn-codex" class="menu-btn shop-btn">敵・ボス図鑑</button>
+                <button id="btn-last-result" class="menu-btn shop-btn">前回の戦闘結果</button>
                 <button id="btn-ranking" class="menu-btn ranking-btn">ランキング</button>
             </div>
             <div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span>
@@ -169,6 +171,7 @@
 
     <div id="game-screen" class="hidden">
         <div class="info-bar">
+            <button id="btn-pause" type="button">一時停止</button>
             <div class="hud-item hp-box">HP: <span id="hp-display">10/10</span></div>
             <div class="hud-item">WAVE: <span id="wave-display">1</span></div>
             <div class="hud-item timer-box">TIME: <span id="timer">60</span></div>
@@ -204,12 +207,22 @@
         </div>
     </div>
 
+    <div id="pause-modal" class="feature-modal hidden" role="dialog" aria-modal="true" aria-labelledby="pause-message">
+        <div class="feature-panel"><h2 id="pause-message">一時停止中</h2><p>敵・弾・制限時間・スキルの待ち時間を停止しています。</p><button id="btn-resume" class="menu-btn battle-btn">3秒後に再開</button><p>PC：Escキーでも停止・再開</p></div>
+    </div>
+    <div id="codex-modal" class="feature-modal hidden" role="dialog" aria-modal="true" aria-labelledby="codex-title">
+        <div class="feature-panel codex-panel"><div class="feature-heading"><h2 id="codex-title">敵・ボス図鑑</h2><button id="btn-close-codex">閉じる</button></div><p id="codex-progress"></p><div id="codex-list"></div></div>
+    </div>
+    <div id="last-result-modal" class="feature-modal hidden" role="dialog" aria-modal="true" aria-labelledby="last-result-title">
+        <div class="feature-panel"><h2 id="last-result-title">前回の戦闘結果</h2><p id="last-result-content" class="run-details"></p><button id="btn-close-result" class="menu-btn">閉じる</button></div>
+    </div>
     <div id="game-over-screen" class="hidden">
         <h1 class="dead-title">YOU DIED</h1>
         <div class="result-box">
             <p>到達 WAVE: <span id="result-wave"></span></p>
             <p>獲得コイン: <span id="result-coins" class="gold-text"></span> G</p>
         </div>
+        <p id="result-details" class="run-details"></p>
         <div class="menu-grid">
             <button id="btn-retry" class="menu-btn battle-btn">もう一度</button>
             <button id="btn-return-home" class="menu-btn back-btn">ホームへ</button>
@@ -224,6 +237,7 @@
             <p>約4秒後にホームへ戻ります。</p>
             <p>獲得コイン: <span id="clear-coins" class="gold-text"></span> G</p>
         </div>
+        <p id="clear-details" class="run-details"></p>
         <div class="menu-grid">
             <button id="btn-clear-home" class="menu-btn back-btn">ホームへ</button>
         </div>
@@ -233,7 +247,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="audio.js?v=cloud-dev-1"></script>
-    <script src="script.js?v=cloud-dev-1"></script>
+    <script src="audio.js?v=pause-codex-1"></script>
+    <script src="script.js?v=pause-codex-1"></script>
 </body>
 </html>

@@ -88,6 +88,9 @@ function playSound(el = "confirm", vol = 0.5) { window.GameAudio?.effect(el, vol
 // ■■■ セーブデータ管理 ■■■
 function getDefaultData() {
     return {
+        codex: {},
+        records: { normal: 0, endless: 0 },
+        lastResult: null,
         coins: 0,
         endlessUnlocked: false,
         name: "HERO",
@@ -278,9 +281,12 @@ function prepareWaveEvent() {
 }
 
 function stopWaveEvent() {
+    finishCombatSegment();
+    combatSessionActive = false;
+    clearPause();
     stopTouchMovement();
     waveEventActive = false;
-    clearTimeout(waveIntroTimer);
+    cancelGameTimer(waveIntroTimer);
     // ボーナス敵は通常敵の残数に含めない。消えてもWAVE進行を止めない。
     for (let i = enemies.length - 1; i >= 0; i--) {
         if (enemies[i].type === 'treasure') {
@@ -293,7 +299,7 @@ function stopWaveEvent() {
 }
 
 function updateWaveEvent(now) {
-    if (!waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver || isPaused) return;
     if (currentWaveEvent === 'treasure') {
         const treasure = enemies.find(e => e.type === 'treasure');
         if (treasure) {
@@ -323,7 +329,7 @@ function updateWaveEvent(now) {
         gameArea.appendChild(element);
         enemyBullets.push({
             element, x, y: -20, vx: 0, vy: 2.5,
-            damage: 1, hitRadius: 16, createdAt: performance.now(), lifetime: 10000
+            damage: 1, hitRadius: 16, createdAt: gameNow(), lifetime: 10000
         });
     }
 }
@@ -339,6 +345,9 @@ function repairGameData(saved) {
     if (!saved || !saved.upgrade) return getDefaultData();
 
     const repaired = saved;
+    repaired.codex = repaired.codex && typeof repaired.codex === 'object' ? repaired.codex : {};
+    repaired.records ||= { normal: 0, endless: 0 };
+    repaired.lastResult ||= null;
     repaired.endlessUnlocked = repaired.endlessUnlocked === true;
     if (!Object.hasOwn(CHARACTERS, repaired.character)) repaired.character = "balance";
     if(!repaired.upgrade.count) repaired.upgrade.count = 1;
@@ -388,6 +397,189 @@ function loadData() {
     if (currentUsername) gameData.name = currentUsername;
     updateCoinDisplays();
     if(usernameInput) usernameInput.value = gameData.name;
+}
+
+// 一時停止中も実時間は進むため、戦闘専用の時計で管理する。
+let isPaused = false, pauseStarted = 0, pausedTotal = 0;
+let combatSessionActive = false, resumeTimer = null, resumeCount = 0;
+let waveDeadline = 0;
+function gameNow() { return (isPaused ? pauseStarted : Date.now()) - pausedTotal; }
+function gameSetTimeout(callback, delay) {
+    const task = { due: gameNow() + delay, cancelled: false, timer: null };
+    const tick = () => {
+        if (task.cancelled) return;
+        if (!isPaused && gameNow() >= task.due) { callback(); return; }
+        task.timer = setTimeout(tick, Math.max(10, Math.min(50, task.due - gameNow())));
+    };
+    task.timer = setTimeout(tick, Math.min(50, delay));
+    return task;
+}
+function cancelGameTimer(task) {
+    if (!task) return;
+    task.cancelled = true;
+    clearTimeout(task.timer);
+}
+function clearPause() {
+    clearTimeout(resumeTimer); resumeTimer = null;
+    if (isPaused) pausedTotal += Date.now() - pauseStarted;
+    isPaused = false; resumeCount = 0;
+    document.body.classList.remove('battle-paused');
+    document.getElementById('pause-modal').classList.add('hidden');
+}
+function pauseGame() {
+    if (!combatSessionActive) return;
+    clearTimeout(resumeTimer); resumeTimer = null; resumeCount = 0;
+    if (!isPaused) { pauseStarted = Date.now(); isPaused = true; }
+    stopTouchMovement();
+    document.body.classList.add('battle-paused');
+    document.body.style.cursor = 'default';
+    document.getElementById('pause-modal').classList.remove('hidden');
+    document.getElementById('pause-message').textContent = '一時停止中';
+    document.getElementById('btn-resume').disabled = false;
+    window.GameAudio?.scene('silent');
+}
+function resumeGame() {
+    if (!isPaused || resumeCount || document.hidden) return;
+    resumeCount = 3;
+    document.getElementById('btn-resume').disabled = true;
+    const tick = () => {
+        if (document.hidden) { pauseGame(); return; }
+        document.getElementById('pause-message').textContent = resumeCount + '秒後に再開';
+        resumeTimer = setTimeout(() => {
+            resumeCount--;
+            if (resumeCount) tick();
+            else {
+                clearPause(); stopTouchMovement();
+                document.body.style.cursor = 'none';
+                const boss = enemies.find(e => e.type === 'boss');
+                window.GameAudio?.scene(boss ? (boss.bossPhase === 2 ? 'awakened' : 'boss') : 'battle');
+            }
+        }, 1000);
+    };
+    tick();
+}
+document.getElementById('btn-pause').addEventListener('click', pauseGame);
+document.getElementById('btn-resume').addEventListener('click', resumeGame);
+document.addEventListener('keydown', e => {
+    if (e.code !== 'Escape' || !combatSessionActive || e.repeat) return;
+    e.preventDefault();
+    if (isPaused && !resumeCount) resumeGame(); else pauseGame();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+window.addEventListener('blur', pauseGame);
+
+let runRecord = null, combatSegmentStart = null;
+function beginRunRecord() {
+    runRecord = { kills: 0, bosses: 0, elapsed: 0, character: gameData.character,
+        mode: gameMode, finalized: false };
+    combatSegmentStart = null;
+}
+function finishCombatSegment() {
+    if (runRecord && combatSegmentStart !== null) runRecord.elapsed += Math.max(0, gameNow() - combatSegmentStart);
+    combatSegmentStart = null;
+}
+function enemyCodexKey(enemy) {
+    return enemy.type === 'boss' ? 'boss_' + getBossType(enemy).id + (enemy.bossPhase === 2 ? '_phase2' : '') : enemy.type;
+}
+function recordEncounter(enemy) {
+    gameData.codex ||= {};
+    const key = enemyCodexKey(enemy);
+    if (!Object.hasOwn(gameData.codex, key)) { gameData.codex[key] = 0; saveData(); }
+}
+function recordDefeat(enemy) {
+    gameData.codex ||= {};
+    const key = enemyCodexKey(enemy);
+    gameData.codex[key] = (gameData.codex[key] || 0) + 1;
+    if (runRecord && !runRecord.finalized) {
+        runRecord.kills++;
+        if (enemy.type === 'boss') runRecord.bosses++;
+    }
+}
+function finalizeRun(reason) {
+    if (!runRecord || runRecord.finalized) return;
+    finishCombatSegment();
+    runRecord.finalized = true;
+    gameData.records ||= { normal: 0, endless: 0 };
+    const mode = runRecord.mode;
+    const ranked = mode === 'normal' || mode === 'endless';
+    const best = ranked ? gameData.records[mode] || 0 : 0;
+    const result = {
+        wave: currentWave, coins: sessionCoins, kills: runRecord.kills, bosses: runRecord.bosses,
+        seconds: Math.floor(runRecord.elapsed / 1000), character: runRecord.character,
+        mode, reason, newBest: ranked && currentWave > best
+    };
+    if (ranked) gameData.records[mode] = Math.max(best, currentWave);
+    gameData.lastResult = result;
+    saveData();
+}
+function resultText(result) {
+    if (!result) return 'まだ戦闘結果はありません。';
+    const mode = { normal: '通常', endless: 'エンドレス', test: '開発者テスト' }[result.mode] || '通常';
+    const character = CHARACTERS[result.character]?.name || '冒険者';
+    return `${result.newBest ? '★ 自己ベスト更新！\n' : ''}${mode} ／ ${character}\n${result.reason}\n到達 WAVE：${result.wave}\n獲得コイン：${result.coins} G\n討伐数：${result.kills}体（ボス ${result.bosses}体）\n戦闘時間：${Math.floor(result.seconds / 60)}分${result.seconds % 60}秒`;
+}
+function renderRunResult(id) { document.getElementById(id).textContent = resultText(gameData.lastResult); }
+function openLastResult() {
+    renderRunResult('last-result-content');
+    document.getElementById('last-result-modal').classList.remove('hidden');
+}
+document.getElementById('btn-last-result').addEventListener('click', openLastResult);
+document.getElementById('btn-close-result').addEventListener('click', () => document.getElementById('last-result-modal').classList.add('hidden'));
+function getCodexEntries() {
+    const entries = [
+        { id:'minion', name:'スライム', image:'slime.png', detail:'跳ねる瞬間に急加速。接触するとダメージ。' },
+        { id:'shooter', name:'遠距離兵', image:'のび太.png', detail:'離れた位置からプレイヤーを狙って射撃する。' },
+        { id:'golem', name:'ゴーレム', image:'ゴーレム.png', detail:'高HP・低速。大きな弾を発射する。' },
+        { id:'rusher', name:'常林暴', image:'常林暴.png', detail:'HPは低めだが足が速く、接触ダメージが高い。' },
+        { id:'treasure', name:'黄金スライム', image:'slime.png', detail:'最速で逃げ回る。攻撃はしない。15秒以内の撃破で大量コイン！' }
+    ];
+    BOSS_TYPES.forEach((boss, i) => {
+        entries.push({ id:'boss_'+boss.id, name:boss.name, image:`boss${i+1}.png`, detail:boss.detail+'。HP半分で第2形態へ。第1形態の撃破数は0のままです。' });
+        entries.push({ id:'boss_'+boss.id+'_phase2', name:boss.awakened, image:`boss${i+1}_phase2.png`, detail:boss.detail+'がさらに強化された姿。攻撃間隔と移動速度が変化する。' });
+    });
+    return entries;
+}
+function openCodex() {
+    const container = document.getElementById('codex-list');
+    container.replaceChildren();
+    const entries = getCodexEntries();
+    gameData.codex ||= {};
+    document.getElementById('codex-progress').textContent = `発見 ${entries.filter(e => Object.hasOwn(gameData.codex,e.id)).length} / ${entries.length}`;
+    entries.forEach(entry => {
+        const seen = Object.hasOwn(gameData.codex, entry.id);
+        const card = document.createElement('article');
+        card.classList.add('codex-card');
+        const image = document.createElement('img'); image.src = entry.image;
+        image.alt = seen ? entry.name : '未遭遇の敵';
+        if (!seen) image.classList.add('undiscovered');
+        if (entry.id === 'treasure' && seen) image.classList.add('gold-slime');
+        const title = document.createElement('h3'); title.textContent = seen ? entry.name : '？？？';
+        const detail = document.createElement('p'); detail.textContent = seen ? entry.detail : '遭遇すると情報が解放されます。';
+        const count = document.createElement('p'); count.textContent = seen ? `撃破数：${gameData.codex[entry.id]}体` : '未発見';
+        [image,title,detail,count].forEach(el => card.appendChild(el)); container.appendChild(card);
+    });
+    document.getElementById('codex-modal').classList.remove('hidden');
+}
+document.getElementById('btn-codex').addEventListener('click', openCodex);
+document.getElementById('btn-close-codex').addEventListener('click', () => document.getElementById('codex-modal').classList.add('hidden'));
+
+function upgradeComparison(key, includeRun = true) {
+    const originalRun = runUpgrades;
+    if (!includeRun) runUpgrades = {};
+    const capture = () => ({ ...getPlayerStats(), maxHp: getPlayerMaxHp() });
+    const before = capture();
+    const level = gameData.upgrade[key];
+    let after;
+    try { gameData.upgrade[key] = level + 1; after = capture(); }
+    finally { gameData.upgrade[key] = level; runUpgrades = originalRun; }
+    const format = stats => {
+        const n = value => Number(value.toFixed(2));
+        return { damage:`${n(stats.damage)}`, fireRate:`${n(1000 / stats.shotInterval)}発/秒`,
+            speed:`追従率 ${n(stats.moveSpeed * 100)}％`, count:`${stats.bulletCount}発`,
+            bulletSize:`${n(stats.bulletSize)}px`, maxHp:`${stats.maxHp}` }[key];
+    };
+    const a = format(before), b = format(after);
+    return `${a} → ${b}${a === b ? '（効果上限）' : ''}`;
 }
 
 // 非公開の育成データ。ランキングと分離し、世代番号で古い端末からの上書きを防ぐ。
@@ -1046,7 +1238,7 @@ function stopTouchMovement() {
     mouseY = playerY;
 }
 gameArea.addEventListener('pointerdown', e => {
-    if (!waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver || isPaused) return;
     if (e.pointerType === 'mouse') {
         if (e.button === 2) {
             e.preventDefault();
@@ -1065,7 +1257,7 @@ gameArea.addEventListener('pointerdown', e => {
     e.preventDefault();
 });
 gameArea.addEventListener('pointermove', e => {
-    if (!waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver || isPaused) return;
     if (e.pointerType === 'mouse') {
         const rect = gameArea.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
@@ -1098,8 +1290,8 @@ gameArea.addEventListener('contextmenu', e => {
 });
 
 function attemptSkill() {
-    if (!waveEventActive || isGameOver) return;
-    const now = Date.now();
+    if (!waveEventActive || isGameOver || isPaused) return;
+    const now = gameNow();
     if (now - lastBombTime >= bombCooldown) {
         if (gameData.skills.equipped === 'sphere') {
             triggerInvoluteSphere();
@@ -1144,6 +1336,7 @@ async function startNewRun(mode = 'normal') {
     document.getElementById('btn-dev-stop').classList.toggle('hidden', !isDeveloper || mode !== 'test');
     currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? 21 : 1;
     sessionCoins = 0;
+    beginRunRecord();
     resetRunUpgrades();
     lastWaveEvent = null;
     waveResultSaved = false;
@@ -1195,6 +1388,7 @@ btnRetry.addEventListener('click', async () => {
     gameOverScreen.classList.add('hidden');
     currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? 21 : 1;
     sessionCoins = 0;
+    beginRunRecord();
     resetRunUpgrades();
     lastWaveEvent = null;
     waveResultSaved = false;
@@ -1381,7 +1575,7 @@ function createShopItem(container, name, desc, key, shopType) {
     const itemDiv = document.createElement('div');
     itemDiv.classList.add('shop-item');
     itemDiv.innerHTML = `
-        <h3>${name}</h3><p>${desc}</p><div class="lvl-display">Lv.${level}</div>
+        <h3>${name}</h3><p>${desc}</p><p class="upgrade-comparison">${upgradeComparison(key, shopType === 'wave')}</p><small>${shopType === 'wave' ? '選択キャラ・今回の3択強化を反映' : '選択キャラを反映（次の挑戦の能力）'}</small><div class="lvl-display">Lv.${level}</div>
         <button class="buy-btn" id="buy-${key}-${shopType}">強化 (${cost}G)</button>
         <button class="item-reset-btn" id="reset-${key}-${shopType}">Lvリセット</button>
     `;
@@ -1465,6 +1659,8 @@ function startWaveSequence() {
     resetBossArena();
     window.GameAudio?.scene("battle");
     stopWaveEvent();
+    combatSessionActive = true;
+    if (document.hidden) pauseGame();
     isGameOver = true;
     prepareWaveEvent();
     isBossPhase = false;
@@ -1490,7 +1686,7 @@ function startWaveSequence() {
     waveModal.classList.remove('hidden');
     waveTitle.textContent = `WAVE ${currentWave}`;
     
-    waveIntroTimer = setTimeout(() => {
+    waveIntroTimer = gameSetTimeout(() => {
         waveModal.classList.add('hidden');
         startBattle();
     }, 2000);
@@ -1503,7 +1699,9 @@ function startBattle() {
     clampPlayerPosition();
     isGameOver = false;
     waveEventActive = true;
-    nextBarrageTime = Date.now() + 2500;
+    combatSegmentStart = gameNow();
+    waveDeadline = gameNow() + waveTimeLeft * 1000;
+    nextBarrageTime = gameNow() + 2500;
     playSound("start");
     if (isDeveloper && gameMode === 'test' && developerTest?.bossOnly) {
         enemiesRemaining = 0;
@@ -1517,8 +1715,8 @@ function startBattle() {
     
     clearInterval(windowTimerInterval);
     windowTimerInterval = setInterval(() => {
-        if(isGameOver) return;
-        waveTimeLeft--;
+        if(isGameOver || isPaused) return;
+        waveTimeLeft = Math.max(0, Math.ceil((waveDeadline - gameNow()) / 1000));
         timerText.textContent = waveTimeLeft;
         if (waveTimeLeft <= 0) gameOver("時間切れ");
     }, 1000);
@@ -1526,6 +1724,7 @@ function startBattle() {
 
 function gameLoop() {
     if (isGameOver) return;
+    if (isPaused) { animationFrameId = requestAnimationFrame(gameLoop); return; }
 
     const stats = getPlayerStats();
 
@@ -1537,7 +1736,7 @@ function gameLoop() {
     player.style.left = playerX + 'px';
     player.style.top = playerY + 'px';
 
-    const now = Date.now();
+    const now = gameNow();
     updateWaveEvent(now);
     if (now - lastShotTime > stats.shotInterval) {
         fireBullet(stats.damage, stats.bulletCount, stats.bulletSize);
@@ -1546,11 +1745,11 @@ function gameLoop() {
 
     updateBombGauge(now);
     updateBullets();
-    if (!waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver || isPaused) return;
     updateInvoluteBullets();
-    if (!waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver || isPaused) return;
     updateEnemyBullets();
-    if (!waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver || isPaused) return;
     updateEnemies();
     updateHearts();
     animationFrameId = requestAnimationFrame(gameLoop);
@@ -1577,7 +1776,7 @@ function triggerBomb() {
     const effect = document.createElement('div');
     effect.classList.add('bomb-effect');
     gameArea.appendChild(effect);
-    setTimeout(() => effect.remove(), 1000);
+    gameSetTimeout(() => effect.remove(), 1000);
 
     const level = gameData.skills.levels.bomb;
     const damage = 100 + (level - 1) * 50;
@@ -1606,7 +1805,7 @@ function triggerHighEnergyCircle() {
     el.style.top = playerY + 'px';
     gameArea.appendChild(el);
 
-    setTimeout(() => el.remove(), 600);
+    gameSetTimeout(() => el.remove(), 600);
 
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
@@ -1632,7 +1831,7 @@ function triggerSatellite() {
             el.style.bottom = (getArenaSize().height - target.y) + 'px'; 
             
             gameArea.appendChild(el);
-            setTimeout(() => el.remove(), 500);
+            gameSetTimeout(() => el.remove(), 500);
 
             damageEnemy(target, damage);
         }
@@ -1678,7 +1877,7 @@ function updateInvoluteBullets() {
                 hitEffect.style.zIndex = '99';
                 hitEffect.style.pointerEvents = 'none';
                 gameArea.appendChild(hitEffect);
-                setTimeout(() => hitEffect.remove(), 100);
+                gameSetTimeout(() => hitEffect.remove(), 100);
             }
         }
     }
@@ -1881,14 +2080,15 @@ function spawnEnemy(type) {
         element: el, hpFill: hpFill,
         x: ex, y: ey, hp: hp, maxHp: hp, type: type, speed: speed, coinDrop: coinDrop,
         jumpTimer: jumpOffset,
-        lastAttackTime: type === 'boss' ? Date.now() : 0,
+        lastAttackTime: type === 'boss' ? gameNow() : 0,
         lastBossPattern: null,
         bossImageIndex: bossImageIndex,
         bossPhase: 1,
         phase2Type: null,
         transformingUntil: 0,
-        expiresAt: type === 'treasure' ? Date.now() + 15000 : null
+        expiresAt: type === 'treasure' ? gameNow() + 15000 : null
     });
+    recordEncounter(enemies[enemies.length - 1]);
     if (type === 'boss') updateBossIdentity(enemies[enemies.length - 1]);
 }
 
@@ -1974,15 +2174,15 @@ function isBossAlive(boss) {
 }
 
 function clearBossAttackTimers() {
-    bossAttackTimers.forEach(timerId => clearTimeout(timerId));
+    bossAttackTimers.forEach(timerId => cancelGameTimer(timerId));
     bossAttackTimers = [];
 }
 
 function scheduleBossAttack(boss, callback, delay) {
     const phase = boss.bossPhase;
-    const timerId = setTimeout(() => {
+    const timerId = gameSetTimeout(() => {
         bossAttackTimers = bossAttackTimers.filter(id => id !== timerId);
-        if (isBossAlive(boss) && boss.bossPhase === phase && Date.now() >= boss.transformingUntil) callback();
+        if (isBossAlive(boss) && boss.bossPhase === phase && gameNow() >= boss.transformingUntil) callback();
     }, delay);
     bossAttackTimers.push(timerId);
 }
@@ -1996,7 +2196,7 @@ function showBossAttackName(name) {
 }
 
 function createBossBullet(boss, angle, speed, damage, options = {}) {
-    if (!isBossAlive(boss) || Date.now() < boss.transformingUntil) return;
+    if (!isBossAlive(boss) || gameNow() < boss.transformingUntil) return;
 
     const el = document.createElement('div');
     const size = options.size || 24;
@@ -2018,7 +2218,7 @@ function createBossBullet(boss, angle, speed, damage, options = {}) {
         damage: damage,
         curve: options.curve || 0,
         hitRadius: size * 0.45,
-        createdAt: performance.now(),
+        createdAt: gameNow(),
         lifetime: options.lifetime || 7000
     });
 }
@@ -2121,10 +2321,11 @@ function beginBossSecondPhase(boss) {
     enemyBullets.forEach(b => b.element.remove());
     enemyBullets = [];
     boss.bossPhase = 2;
+    recordEncounter(boss);
     window.GameAudio?.scene("awakened");
     playSound("warning");
     boss.phase2Type = getBossType(boss).id;
-    boss.transformingUntil = Date.now() + 1500;
+    boss.transformingUntil = gameNow() + 1500;
     boss.lastAttackTime = boss.transformingUntil;
     boss.lastBossPattern = null;
     boss.speed *= getBossType(boss).phaseSpeed;
@@ -2225,7 +2426,7 @@ function getBossPatterns(boss) {
         .map(([id, name, run]) => ({ id, name: (phase2 ? '覚醒・' : '') + name, run }));
 }
 function bossFireAttack(boss) {
-    if (!isBossAlive(boss) || Date.now() < boss.transformingUntil) return;
+    if (!isBossAlive(boss) || gameNow() < boss.transformingUntil) return;
     const patterns = getBossPatterns(boss).filter(pattern => pattern.id !== boss.lastBossPattern);
     const selected = patterns[Math.floor(Math.random() * patterns.length)];
     boss.lastBossPattern = selected.id;
@@ -2264,7 +2465,7 @@ function updateBullets() {
 }
 
 function updateEnemyBullets() {
-    const now = performance.now();
+    const now = gameNow();
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         if (!waveEventActive || isGameOver) break;
         const b = enemyBullets[i];
@@ -2304,7 +2505,7 @@ function updateEnemyBullets() {
 }
 
 function updateEnemies() {
-    const now = Date.now();
+    const now = gameNow();
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (!waveEventActive || isGameOver) break;
@@ -2395,8 +2596,8 @@ function updateHpDisplay() {
 }
 
 function damageEnemy(e, dmg) {
-    if (!waveEventActive || isGameOver || !enemies.includes(e)) return;
-    if (e.type === 'boss' && Date.now() < e.transformingUntil) return;
+    if (!waveEventActive || isGameOver || isPaused || !enemies.includes(e)) return;
+    if (e.type === 'boss' && gameNow() < e.transformingUntil) return;
     e.hp -= dmg;
     if (e.type === 'boss' && e.bossPhase === 1 && e.hp <= e.maxHp * 0.5) {
         e.hp = e.maxHp * 0.5;
@@ -2417,6 +2618,7 @@ function damageEnemy(e, dmg) {
 
 function killEnemy(e) {
     if (!enemies.includes(e)) return;
+    recordDefeat(e);
     playSound("coin");
     const reward = e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1);
     
@@ -2506,6 +2708,8 @@ function waveClear() {
 }
 
 function gameClear() {
+    finalizeRun('WAVE20クリア');
+    renderRunResult('clear-details');
     window.GameAudio?.scene("menu");
     stopWaveEvent();
     isGameOver = true;
@@ -2530,6 +2734,8 @@ function gameClear() {
 }
 
 function gameOver(reason) {
+    finalizeRun(reason || 'HPがなくなった');
+    renderRunResult('result-details');
     window.GameAudio?.scene("silent");
     playSound("over");
     stopWaveEvent();
@@ -2557,7 +2763,7 @@ function showDamageText(x, y, txt) {
     el.textContent = txt;
     el.style.left = x + 'px'; el.style.top = y + 'px';
     gameArea.appendChild(el);
-    setTimeout(() => el.remove(), 800);
+    gameSetTimeout(() => el.remove(), 800);
 }
 
 function showCoinText(x, y, txt) {
@@ -2566,7 +2772,7 @@ function showCoinText(x, y, txt) {
     el.style.color = '#ffd700'; el.textContent = `+${txt}G`;
     el.style.left = x + 'px'; el.style.top = (y-20) + 'px'; el.style.zIndex = 101;
     gameArea.appendChild(el);
-    setTimeout(() => el.remove(), 800);
+    gameSetTimeout(() => el.remove(), 800);
 }
 
 function updateBossHpBar(hp) {

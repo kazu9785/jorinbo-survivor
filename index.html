@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <link rel="stylesheet" href="style.css?v=developer-1">
+    <link rel="stylesheet" href="style.css?v=cloud-dev-1">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -45,6 +45,19 @@
                 <button id="btn-weapon" class="menu-btn shop-btn">武器強化</button>
                 <button id="btn-player" class="menu-btn shop-btn">能力強化</button>
                 <button id="btn-ranking" class="menu-btn ranking-btn">ランキング</button>
+            </div>
+            <div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span>
+                <button id="btn-cloud-sync" type="button">同期</button></div>
+            <button id="btn-developer" class="menu-btn hidden" type="button">開発者テスト</button>
+            <div id="developer-panel" class="hidden">
+                <h2>開発者テスト（ランキング対象外）</h2>
+                <label>開始WAVE <input id="dev-wave" type="number" min="1" max="999" value="1"></label>
+                <label>開始場面 <select id="dev-scene"><option value="wave">通常の敵から</option><option value="boss">ボス戦から</option></select></label>
+                <label>ボス <select id="dev-boss"><option value="random">ランダム</option><option value="fire">炎竜</option><option value="ice">氷竜</option><option value="forest">森竜</option><option value="dark">闇竜</option></select></label>
+                <label>ボス戦から開始する形態 <select id="dev-phase"><option value="1">第1形態</option><option value="2">第2形態</option></select></label>
+                <label>イベント <select id="dev-event"><option value="auto">通常の抽選</option><option value="none">なし</option><option value="coin">コインラッシュ</option><option value="rage">暴走WAVE</option><option value="treasure">宝物スライム</option><option value="barrage">弾幕地獄</option></select></label>
+                <p>指定したボス・イベントは次のWAVEにも適用。通常の戦闘開始で解除されます。</p>
+                <button id="btn-dev-start" class="menu-btn battle-btn" type="button">指定条件でテスト開始</button>
             </div>
             <input type="text" id="username-input" class="name-input" readonly aria-label="ランキングに表示する名前">
             <div class="account-actions">
@@ -169,7 +182,8 @@
         </div>
 
         <div id="bomb-hud">
-            <div class="bomb-label">SKILL [SPACE]</div>
+            <button id="btn-dev-stop" type="button" class="hidden">テスト終了</button>
+            <div class="bomb-label">SKILL [右クリック]</div>
             <div class="bomb-gauge-frame"><div id="bomb-gauge-bar"></div></div>
             <div id="game-skill-name" style="font-size:10px; color:#aaa; margin-top:5px;">SKILL</div>
         </div>
@@ -219,7 +233,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="audio.js?v=developer-1"></script>
-    <script src="script.js?v=developer-1"></script>
+    <script src="audio.js?v=cloud-dev-1"></script>
+    <script src="script.js?v=cloud-dev-1"></script>
 </body>
 </html>

@@ -464,3 +464,44 @@ body.touch-controls #audio-settings { bottom: calc(84px + env(safe-area-inset-bo
     padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 #wave-shop-screen .shop-container { flex-shrink: 0; margin: auto; }
+
+/* Boss arenas: all artwork is decorative and never intercepts input. */
+#game-area {
+    isolation: isolate;
+    background: radial-gradient(ellipse at center, #202537, #10131e 75%);
+    --arena-image: none;
+    --arena-glow: rgba(0, 0, 0, 0);
+}
+#game-area::before {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(6, 9, 18, .25), rgba(6, 9, 18, .38)), var(--arena-image);
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity .6s ease;
+}
+#game-area::after {
+    content: ''; position: absolute; inset: 0; z-index: 1;
+    pointer-events: none;
+    box-shadow: inset 0 0 70px 10px var(--arena-glow);
+    transition: box-shadow .8s ease;
+}
+#game-area.arena-fire { --arena-image: url('arena_fire.png'); --arena-glow: rgba(220, 58, 8, .30); }
+#game-area.arena-ice { --arena-image: url('arena_ice.png'); --arena-glow: rgba(34, 146, 228, .30); }
+#game-area.arena-forest { --arena-image: url('arena_forest.png'); --arena-glow: rgba(30, 130, 67, .30); }
+#game-area.arena-dark { --arena-image: url('arena_dark.png'); --arena-glow: rgba(129, 36, 190, .35); }
+#game-area.arena-fire::before, #game-area.arena-ice::before,
+#game-area.arena-forest::before, #game-area.arena-dark::before { opacity: 1; }
+#game-area.arena-awakened::after { box-shadow: inset 0 0 110px 32px var(--arena-glow); }
+@media (prefers-reduced-motion: reduce) {
+    #game-area::before, #game-area::after { transition: none; }
+}
+
+.cloud-controls { margin: 14px 0; display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap; font-size:13px; }
+.cloud-controls button { padding:8px 16px; cursor:pointer; }
+#developer-panel { margin:16px auto; padding:18px; border:1px solid #b896ff; border-radius:12px; background:#211933; max-width:520px; }
+#developer-panel label { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:12px 0; flex-wrap:wrap; }
+#developer-panel input, #developer-panel select { padding:8px; max-width:100%; font-size:16px; }
+#developer-panel p { font-size:12px; line-height:1.6; }
+#home-screen { overflow-y:auto; }
+
+#btn-dev-stop { pointer-events:auto; cursor:pointer; padding:8px 12px; margin-bottom:8px; }

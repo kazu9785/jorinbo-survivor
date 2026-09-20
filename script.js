@@ -266,6 +266,9 @@ function prepareWaveEvent() {
         currentWaveEvent = choices[Math.floor(Math.random() * choices.length)];
         lastWaveEvent = currentWaveEvent;
     }
+    if (isDeveloper && gameMode === 'test' && developerTest && developerTest.event !== 'auto') {
+        currentWaveEvent = developerTest.event === 'none' ? null : developerTest.event;
+    }
     const event = WAVE_EVENTS[currentWaveEvent];
     document.getElementById('wave-event-title').textContent = event ? event.name : '';
     document.getElementById('wave-event-description').textContent = event ? event.description : '生き残れ…';
@@ -387,8 +390,156 @@ function loadData() {
     if(usernameInput) usernameInput.value = gameData.name;
 }
 
+// 非公開の育成データ。ランキングと分離し、世代番号で古い端末からの上書きを防ぐ。
+let cloudReady = false, cloudRevision = 0, cloudDirty = false;
+let cloudTimer = null, cloudWriting = null, cloudConflict = false;
+let cloudRef = null;
+let developerTest = null;
+function cloudStatus(message) {
+    const el = document.getElementById('cloud-status');
+    if (el) el.textContent = message;
+}
+function pendingSaveKey() { return getSaveKey() + '_pending'; }
+function cloudDocument(data, revision) {
+    return { data, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+}
+async function loadCloudData(user) {
+    cloudReady = false;
+    cloudConflict = false;
+    cloudDirty = false;
+    clearTimeout(cloudTimer); cloudTimer = null;
+    cloudRef = db.collection(isDeveloper ? 'developerSaves' : 'gameSaves').doc(user.uid);
+    cloudStatus('クラウド読み込み中…');
+    let pending = null;
+    try { pending = JSON.parse(localStorage.getItem(pendingSaveKey())); } catch (_) {}
+    const local = JSON.parse(JSON.stringify(gameData));
+    const result = await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(cloudRef);
+        if (!snapshot.exists) {
+            transaction.set(cloudRef, cloudDocument(local, 1));
+            return { data: local, revision: 1 };
+        }
+        const remote = snapshot.data();
+        if (pending && pending.revision === remote.revision) {
+            transaction.set(cloudRef, cloudDocument(local, remote.revision + 1));
+            return { data: local, revision: remote.revision + 1 };
+        }
+        return remote;
+    });
+    if (pending && pending.revision !== result.revision - 1) {
+        localStorage.setItem(getSaveKey() + '_conflictBackup', JSON.stringify(local));
+    }
+    if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
+    gameData = repairGameData(result.data);
+    cloudRevision = result.revision;
+    gameData.name = currentUsername;
+    if (isDeveloper) applyDeveloperPreset();
+    localStorage.setItem(getSaveKey(), JSON.stringify(gameData));
+    localStorage.removeItem(pendingSaveKey());
+    cloudReady = true;
+    updateCoinDisplays();
+    updateCharacterDisplay();
+    cloudStatus('クラウド同期済み');
+}
+function scheduleCloudSave() {
+    if (!cloudReady) return;
+    cloudDirty = true;
+    localStorage.setItem(pendingSaveKey(), JSON.stringify({ revision: cloudRevision }));
+    cloudStatus(cloudConflict ? '別の端末で更新されています。「同期」を押してください。' : '端末に保存済み・クラウド保存待ち');
+    if (!cloudTimer && !cloudConflict) cloudTimer = setTimeout(() => {
+        cloudTimer = null;
+        flushCloudSave().catch(() => {});
+    }, 2000);
+}
+async function flushCloudSave() {
+    if (!cloudReady) return;
+    if (cloudConflict) throw new Error('別の端末でデータが更新されました。ホームの「同期」で最新データを読み込んでください。');
+    if (cloudWriting) { await cloudWriting; return flushCloudSave(); }
+    if (!cloudDirty) return;
+    clearTimeout(cloudTimer); cloudTimer = null;
+    const data = JSON.parse(JSON.stringify(gameData));
+    const revision = cloudRevision;
+    const ref = cloudRef;
+    cloudDirty = false;
+    cloudStatus('クラウド保存中…');
+    cloudWriting = db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists || snapshot.data().revision !== revision) {
+            const error = new Error('別の端末で更新されました。同期ボタンから最新データを読み込んでください。');
+            error.code = 'save-conflict'; throw error;
+        }
+        transaction.set(ref, cloudDocument(data, revision + 1));
+    });
+    try {
+        await cloudWriting;
+        cloudRevision = revision + 1;
+        if (cloudDirty) localStorage.setItem(pendingSaveKey(), JSON.stringify({ revision: cloudRevision }));
+        else localStorage.removeItem(pendingSaveKey());
+        cloudStatus(cloudDirty ? '追加の変更を保存待ち' : 'クラウド同期済み');
+    } catch (error) {
+        cloudDirty = true;
+        cloudConflict = error.code === 'save-conflict';
+        cloudStatus(cloudConflict ? '別の端末で更新あり。「同期」で読み直してください。' : 'クラウド保存失敗・端末には保存済み。「同期」で再試行');
+        throw error;
+    } finally { cloudWriting = null; }
+}
+async function syncCloudManually() {
+    if (!cloudReady || !auth?.currentUser || startingRun) return;
+    homeScreen.inert = true;
+    startingRun = true;
+    try {
+        if (cloudConflict) {
+            if (!confirm('別端末の最新データを読み込みます。この端末の未同期分は反映されません。続けますか？')) return;
+            localStorage.setItem(getSaveKey() + '_conflictBackup', JSON.stringify(gameData));
+            localStorage.removeItem(pendingSaveKey());
+            cloudDirty = false;
+        } else await flushCloudSave();
+        await loadCloudData(auth.currentUser);
+        showHomeScreen();
+    } catch (error) { alert('同期できませんでした。通信とFirestoreルールを確認してください。\n' + error.message); }
+    finally { homeScreen.inert = false; startingRun = false; }
+}
+window.addEventListener('online', () => { flushCloudSave().catch(() => {}); });
+window.addEventListener('beforeunload', e => {
+    if (cloudDirty || cloudWriting) { e.preventDefault(); e.returnValue = ''; }
+});
+document.getElementById('btn-cloud-sync').addEventListener('click', syncCloudManually);
+
+function openDeveloperPanel() {
+    if (!isDeveloper) return;
+    document.getElementById('developer-panel').classList.toggle('hidden');
+}
+document.getElementById('btn-developer').addEventListener('click', openDeveloperPanel);
+document.getElementById('btn-dev-stop').addEventListener('click', () => {
+    if (!isDeveloper || gameMode !== 'test') return;
+    clearTimeout(clearReturnTimer);
+    gameOver('テスト終了');
+    gameScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    gameClearScreen.classList.add('hidden');
+    waveModal.classList.add('hidden');
+    waveShopScreen.classList.add('hidden');
+    document.getElementById('reward-screen').classList.add('hidden');
+    showHomeScreen();
+});
+document.getElementById('btn-dev-start').addEventListener('click', async () => {
+    if (!isDeveloper || startingRun) return;
+    const wave = Number(document.getElementById('dev-wave').value);
+    if (!Number.isInteger(wave) || wave < 1 || wave > 999) {
+        alert('WAVEは1〜999の整数を入力してください。'); return;
+    }
+    const boss = document.getElementById('dev-boss').value;
+    const event = document.getElementById('dev-event').value;
+    const phase = Number(document.getElementById('dev-phase').value);
+    developerTest = { wave, boss: ['random','fire','ice','forest','dark'].includes(boss) ? boss : 'random',
+        event: event === 'none' || Object.hasOwn(WAVE_EVENTS, event) ? event : 'auto',
+        phase: phase === 2 ? 2 : 1, bossOnly: document.getElementById('dev-scene').value === 'boss' };
+    await startNewRun('test');
+});
+
 function saveData() {
     localStorage.setItem(getSaveKey(), JSON.stringify(gameData));
+    scheduleCloudSave();
     updateCoinDisplays();
 }
 
@@ -483,6 +634,8 @@ function showAuthScreen() {
 
 function showHomeScreen() {
     window.GameAudio?.scene("menu");
+    document.getElementById('btn-developer').classList.toggle('hidden', !isDeveloper);
+    document.getElementById('developer-panel').classList.add('hidden');
     updateCharacterDisplay();
     document.getElementById('btn-endless').classList.toggle('hidden', !gameData.endlessUnlocked);
     authScreen.classList.add('hidden');
@@ -655,12 +808,17 @@ async function saveWaveResult(wave) {
 
 async function resetAllData() {
     if (!auth || !auth.currentUser || !db) throw new Error('ログイン情報を確認できません。');
-    await db.collection('players').doc(auth.currentUser.uid).update({
-        highestWave: 0,
-        latestWave: 0,
-        attempts: 0,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    await flushCloudSave();
+    const player = db.collection('players').doc(auth.currentUser.uid);
+    await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(cloudRef);
+        if (!snapshot.exists || snapshot.data().revision !== cloudRevision) throw new Error('別端末で更新されています。先に同期してください。');
+        transaction.set(cloudRef, cloudDocument(getDefaultData(), cloudRevision + 1));
+        transaction.update(player, { highestWave: 0, latestWave: 0, attempts: 0,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     });
+    cloudReady = false;
+    localStorage.removeItem(pendingSaveKey());
     localStorage.removeItem(getSaveKey());
     localStorage.removeItem('neonSurvivorData');
 }
@@ -709,7 +867,14 @@ async function deleteCurrentAccount() {
         await user.reauthenticateWithCredential(credential);
 
         // ログイン中でないとFirestoreを削除できないため、ランキングを先に削除する
-        await playerRef.delete();
+        await flushCloudSave();
+        const batch = db.batch();
+        batch.delete(db.collection('gameSaves').doc(user.uid));
+        batch.delete(db.collection('developerSaves').doc(user.uid));
+        batch.delete(playerRef);
+        await batch.commit();
+        cloudReady = false;
+        localStorage.removeItem(pendingSaveKey());
         playerDocumentDeleted = true;
         await user.delete();
 
@@ -741,7 +906,10 @@ if (authForm) authForm.addEventListener('submit', event => {
 });
 if (btnRegister) btnRegister.addEventListener('click', registerPlayer);
 if (btnLogout) btnLogout.addEventListener('click', async () => {
-    if (auth) await auth.signOut();
+    try {
+        await flushCloudSave();
+        if (auth) await auth.signOut();
+    } catch (error) { alert('保存が完了していません。同期してからログアウトしてください。'); }
 });
 if (btnDeleteAccount) btnDeleteAccount.addEventListener('click', openDeleteAccountModal);
 if (btnCancelDeleteAccount) btnCancelDeleteAccount.addEventListener('click', closeDeleteAccountModal);
@@ -759,6 +927,8 @@ if (btnBackRanking) btnBackRanking.addEventListener('click', () => {
 
 if (isFirebaseConfigured && auth && db) {
     auth.onAuthStateChanged(async user => {
+        cloudReady = false;
+        clearTimeout(cloudTimer); cloudTimer = null;
         isDeveloper = false;
         if (!user) {
             currentUsername = '';
@@ -782,6 +952,7 @@ if (isFirebaseConfigured && auth && db) {
             pendingRegistrationName = '';
             if(currentUserName) currentUserName.textContent = currentUsername + (isDeveloper ? '（開発者・ランキング対象外）' : '');
             loadData();
+            await loadCloudData(user);
             showHomeScreen();
             setStatus(authStatus, '');
         } catch (error) {
@@ -828,8 +999,17 @@ const BOSS_TYPES = [
     { id: 'dark', name: '闇竜', awakened: '深淵竜', hp: 0.85, speed: 1.05, bulletSpeed: 1.1, damage: 1, interval: 0.95, phaseSpeed: 1.25, detail: '低HP・高速移動・らせん弾', reward: 8 }
 ];
 function getBossType(boss) { return BOSS_TYPES[boss.bossImageIndex] || BOSS_TYPES[0]; }
+function resetBossArena() {
+    gameArea.classList.remove('arena-fire', 'arena-ice', 'arena-forest', 'arena-dark', 'arena-awakened');
+}
+function updateBossArena(boss) {
+    resetBossArena();
+    gameArea.classList.add('arena-' + getBossType(boss).id);
+    if (boss.bossPhase === 2) gameArea.classList.add('arena-awakened');
+}
 function updateBossIdentity(boss) {
     const info = getBossType(boss);
+    updateBossArena(boss);
     if (bossHud) bossHud.querySelector('.boss-name').textContent =
         (boss.bossPhase === 2 ? '第2形態：' + info.awakened : info.name) + ' ／ ' + info.detail;
 }
@@ -866,7 +1046,15 @@ function stopTouchMovement() {
     mouseY = playerY;
 }
 gameArea.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'mouse' || movementPointerId !== null || !waveEventActive || isGameOver) return;
+    if (!waveEventActive || isGameOver) return;
+    if (e.pointerType === 'mouse') {
+        if (e.button === 2) {
+            e.preventDefault();
+            attemptSkill();
+        }
+        return;
+    }
+    if (movementPointerId !== null) return;
     document.body.classList.add('touch-controls');
     movementPointerId = e.pointerId;
     lastTouchX = e.clientX;
@@ -903,17 +1091,11 @@ window.addEventListener('blur', stopTouchMovement);
 window.addEventListener('resize', () => { stopTouchMovement(); clampPlayerPosition(); });
 document.getElementById('btn-touch-skill').addEventListener('click', () => attemptSkill());
 
-// 戦闘中のSpaceは音量UIより先に処理し、ボタンの既定操作を止める。
-// キャプチャ段階なら、音量パネル内で伝播を止めてもスキルを発動できる。
-document.addEventListener('keydown', (e) => {
-    if (isGameOver || !waveEventActive || e.code !== 'Space') return;
-    e.preventDefault();
-    if (!e.repeat) attemptSkill();
-}, true);
-// checkbox等のSpaceキーを離した際の既定操作も抑止する。
-document.addEventListener('keyup', (e) => {
-    if (!isGameOver && waveEventActive && e.code === 'Space') e.preventDefault();
-}, true);
+// 戦闘中のゲーム領域では右クリックメニューを表示しない。
+// 発動はpointerdownだけで行い、contextmenuでの二重発動を防ぐ。
+gameArea.addEventListener('contextmenu', e => {
+    if (!isGameOver && waveEventActive) e.preventDefault();
+});
 
 function attemptSkill() {
     if (!waveEventActive || isGameOver) return;
@@ -935,6 +1117,8 @@ function attemptSkill() {
 // ■■■ メニュー操作 ■■■
 async function startNewRun(mode = 'normal') {
     if (startingRun || homeScreen.classList.contains('hidden')) return;
+    if (mode === 'test' && (!isDeveloper || !developerTest)) return;
+    if (cloudConflict) { alert('ホームの「同期」で最新データを読み込んでください。'); return; }
     if (isDeveloper) applyDeveloperPreset();
     if (mode === 'endless' && !gameData.endlessUnlocked) return;
     startingRun = true;
@@ -957,7 +1141,8 @@ async function startNewRun(mode = 'normal') {
     document.body.style.cursor = 'none';
 
     gameMode = mode;
-    currentWave = gameMode === 'endless' ? 21 : 1;
+    document.getElementById('btn-dev-stop').classList.toggle('hidden', !isDeveloper || mode !== 'test');
+    currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? 21 : 1;
     sessionCoins = 0;
     resetRunUpgrades();
     lastWaveEvent = null;
@@ -1008,7 +1193,7 @@ btnRetry.addEventListener('click', async () => {
 
     if (isDeveloper) applyDeveloperPreset();
     gameOverScreen.classList.add('hidden');
-    currentWave = gameMode === 'endless' ? 21 : 1;
+    currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? 21 : 1;
     sessionCoins = 0;
     resetRunUpgrades();
     lastWaveEvent = null;
@@ -1024,7 +1209,10 @@ btnRetry.addEventListener('click', async () => {
     startWaveSequence();
 });
 
-btnReturnHome.addEventListener('click', () => location.reload());
+btnReturnHome.addEventListener('click', async () => {
+    try { await flushCloudSave(); location.reload(); }
+    catch (_) { gameOverScreen.classList.add('hidden'); gameScreen.classList.add('hidden'); showHomeScreen(); }
+});
 function returnFromClear() {
     clearTimeout(clearReturnTimer);
     clearReturnTimer = null;
@@ -1274,6 +1462,7 @@ function getPlayerStats() {
 
 // ■■■ ゲームループ関連 ■■■
 function startWaveSequence() {
+    resetBossArena();
     window.GameAudio?.scene("battle");
     stopWaveEvent();
     isGameOver = true;
@@ -1316,7 +1505,11 @@ function startBattle() {
     waveEventActive = true;
     nextBarrageTime = Date.now() + 2500;
     playSound("start");
-    spawnWaveEnemies();
+    if (isDeveloper && gameMode === 'test' && developerTest?.bossOnly) {
+        enemiesRemaining = 0;
+        spawnBoss();
+        if (developerTest.phase === 2) beginBossSecondPhase(enemies.find(e => e.type === 'boss'));
+    } else spawnWaveEnemies();
     if (currentWaveEvent === 'treasure') spawnEnemy('treasure');
 
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -1521,6 +1714,88 @@ function spawnWaveEnemies() {
     }
 }
 
+// 黄金スライム：画面内で距離を確保して出現し、周回しながら逃げる。
+function getTreasureBounds() {
+    const { width, height } = getArenaSize();
+    const marginX = Math.min(35, width / 4);
+    const marginY = Math.min(35, height / 4);
+    return { left: marginX, right: width - marginX, top: marginY, bottom: height - marginY };
+}
+
+function getTreasureSpawnPosition() {
+    const b = getTreasureBounds();
+    const corners = [
+        { x: b.left, y: b.top }, { x: b.right, y: b.top },
+        { x: b.right, y: b.bottom }, { x: b.left, y: b.bottom }
+    ];
+    const distance = p => Math.hypot(p.x - playerX, p.y - playerY);
+    const farthest = corners.reduce((a, c) => distance(a) > distance(c) ? a : c);
+    const minimumDistance = Math.min(320, distance(farthest) * 0.75);
+    for (let i = 0; i < 80; i++) {
+        const point = {
+            x: b.left + Math.random() * (b.right - b.left),
+            y: b.top + Math.random() * (b.bottom - b.top)
+        };
+        if (distance(point) >= minimumDistance) return point;
+    }
+    return farthest; // 狭い画面でも無限ループせず、最も遠い位置を選ぶ。
+}
+
+function getTreasureSpeed() {
+    // 通常スライムのジャンプ中の3倍速・暴走倍率も含めて上回る。
+    const fastest = Math.max((1.5 + currentWave * 0.1) * 3,
+        (2.8 + currentWave * 0.12) * 1.2,
+        ...BOSS_TYPES.map(info => info.speed * info.phaseSpeed));
+    return fastest * 1.3 * 1.15;
+}
+
+function moveTreasure(e) {
+    const b = getTreasureBounds();
+    e.x = Math.max(b.left, Math.min(b.right, e.x));
+    e.y = Math.max(b.top, Math.min(b.bottom, e.y));
+    const insetX = (b.right - b.left) * 0.12;
+    const insetY = (b.bottom - b.top) * 0.12;
+    const points = [
+        { x: b.left + insetX, y: b.top + insetY },
+        { x: b.right - insetX, y: b.top + insetY },
+        { x: b.right - insetX, y: b.bottom - insetY },
+        { x: b.left + insetX, y: b.bottom - insetY }
+    ];
+    if (e.patrolIndex == null) {
+        e.patrolIndex = Math.floor(Math.random() * points.length);
+        e.patrolDirection = Math.random() < 0.5 ? -1 : 1;
+        e.escapeAngle = Math.random() * Math.PI * 2;
+    }
+    let target = points[e.patrolIndex];
+    if (Math.hypot(target.x - e.x, target.y - e.y) < Math.max(30, e.speed * 2)) {
+        e.patrolIndex = (e.patrolIndex + e.patrolDirection + points.length) % points.length;
+        target = points[e.patrolIndex];
+    }
+    const distance = Math.hypot(e.x - playerX, e.y - playerY);
+    const dangerRadius = Math.min(240, Math.min(b.right - b.left, b.bottom - b.top) * 0.65);
+    const fleeWeight = Math.max(0, 1 - distance / dangerRadius) * 4;
+    // 壁の外へ向かう候補を除外するため、角でも停止せず横へ逃げられる。
+    const step = Math.min(e.speed, (b.right - b.left) / 8, (b.bottom - b.top) / 8);
+    let best = null;
+    for (let i = 0; i < 32; i++) {
+        const angle = i * Math.PI * 2 / 32;
+        const x = e.x + Math.cos(angle) * step;
+        const y = e.y + Math.sin(angle) * step;
+        if (x < b.left || x > b.right || y < b.top || y > b.bottom) continue;
+        const score = -Math.hypot(target.x - x, target.y - y)
+            + fleeWeight * Math.hypot(x - playerX, y - playerY)
+            + Math.cos(angle - e.escapeAngle) * step * 0.6;
+        if (!best || score > best.score) best = { x, y, angle, score };
+    }
+    if (best) {
+        e.x = best.x;
+        e.y = best.y;
+        e.escapeAngle = best.angle;
+    }
+    e.element.style.left = e.x + 'px';
+    e.element.style.top = e.y + 'px';
+}
+
 function spawnEnemy(type) {
     const el = document.createElement('div');
     el.classList.add('enemy');
@@ -1565,22 +1840,25 @@ function spawnEnemy(type) {
     } else if (type === 'rusher') {
         el.classList.add('enemy-rusher');
         hp = Math.max(1, Math.floor((2 + currentWave * 1.5) * 0.7));
-        speed = 2.8 + currentWave * 0.12;
+        speed = (2.8 + currentWave * 0.12) * 1.2;
         coinDrop = 3;
         jumpOffset = 0;
     } else if (type === 'treasure') {
         el.classList.add('enemy-minion', 'enemy-treasure');
         hp = 5 + currentWave * 2;
-        speed = 1.4;
+        speed = getTreasureSpeed();
         coinDrop = 30 + currentWave * 5;
         jumpOffset = 0;
-        const width = gameArea.clientWidth || getArenaSize().width;
-        const height = gameArea.clientHeight || getArenaSize().height;
-        ex = width * 0.5;
-        ey = height * 0.3;
+        const position = getTreasureSpawnPosition();
+        ex = position.x;
+        ey = position.y;
     } else { // boss
         el.classList.add('enemy-boss');
         let imgIndex = Math.floor(Math.random() * bossImages.length);
+        if (isDeveloper && gameMode === 'test' && developerTest?.boss !== 'random') {
+            const selected = BOSS_TYPES.findIndex(info => info.id === developerTest?.boss);
+            if (selected >= 0) imgIndex = selected;
+        }
         bossImageIndex = imgIndex;
         const info = BOSS_TYPES[imgIndex];
         el.style.backgroundImage = `url('${bossImages[imgIndex]}?v=dragons-1')`;
@@ -2031,14 +2309,8 @@ function updateEnemies() {
         const e = enemies[i];
         if (!waveEventActive || isGameOver) break;
         if (e.type === 'treasure') {
-            const angle = Math.atan2(e.y - playerY, e.x - playerX);
-            const width = gameArea.clientWidth || getArenaSize().width;
-            const height = gameArea.clientHeight || getArenaSize().height;
-            e.x = Math.max(35, Math.min(width - 35, e.x + Math.cos(angle) * e.speed));
-            e.y = Math.max(35, Math.min(height - 35, e.y + Math.sin(angle) * e.speed));
-            e.element.style.left = e.x + 'px';
-            e.element.style.top = e.y + 'px';
-            continue;
+            moveTreasure(e);
+            continue; // 接触ダメージや攻撃処理を行わない。
         }
         
         let moveSpeed = e.speed;
@@ -2262,6 +2534,7 @@ function gameOver(reason) {
     playSound("over");
     stopWaveEvent();
     isGameOver = true;
+    flushCloudSave().catch(() => {});
     saveWaveResult(currentWave);
     clearBossAttackTimers();
     clearInterval(windowTimerInterval);

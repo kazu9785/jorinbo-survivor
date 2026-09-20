@@ -439,6 +439,7 @@ function pauseGame() {
     window.GameAudio?.scene('silent');
 }
 function resumeGame() {
+    void window.GameAudio?.unlock?.();
     if (!isPaused || resumeCount || document.hidden) return;
     resumeCount = 3;
     document.getElementById('btn-resume').disabled = true;
@@ -1308,6 +1309,7 @@ function attemptSkill() {
 
 // ■■■ メニュー操作 ■■■
 async function startNewRun(mode = 'normal') {
+    void window.GameAudio?.unlock?.();
     if (startingRun || homeScreen.classList.contains('hidden')) return;
     if (mode === 'test' && (!isDeveloper || !developerTest)) return;
     if (cloudConflict) { alert('ホームの「同期」で最新データを読み込んでください。'); return; }

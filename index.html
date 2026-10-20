@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <link rel="stylesheet" href="style.css?v=mobile-audio-recovery-3">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#101827">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="常林暴">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="stylesheet" href="style.css?v=resume-controls-1">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -25,6 +32,7 @@
                 </div>
             </form>
             <p id="auth-status" class="status-message" aria-live="polite"></p>
+            <button type="button" class="install-game-button">ホーム画面に追加</button>
             <button id="btn-auth-ranking" class="ranking-open-btn">ランキングを見る</button>
         </div>
     </div>
@@ -62,6 +70,14 @@
                 </section>
             </div>
             <footer class="home-footer">
+<button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
+<details class="control-settings"><summary>スマホ操作設定</summary>
+<label>スキルボタンの位置 <select id="control-side"><option value="right">右</option><option value="left">左</option></select></label>
+<label>ボタンの大きさ <select id="control-size"><option value="normal">標準</option><option value="large">大きめ</option></select></label>
+<label>移動感度 <input id="control-sensitivity" type="range" min="0.5" max="2" step="0.1" value="1"><output id="control-sensitivity-value">1.0倍</output></label>
+<small>この端末に保存されます。移動速度の上限は変わりません。</small></details>
+                <button type="button" class="install-game-button">ホーム画面に追加</button>
+                <label class="lite-option"><input id="lite-mode" type="checkbox"> 軽量モード <small>発光・数字・画面揺れを軽減</small></label>
                 <div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span><button id="btn-cloud-sync" type="button">同期</button></div>
             <input type="text" id="username-input" class="name-input" readonly aria-label="ランキングに表示する名前">
             <div class="account-actions">
@@ -181,6 +197,8 @@
             <p>次は WAVE <span id="next-wave-num">2</span></p>
             <div class="coin-display-mini">所持金: <span id="wave-shop-coins">0</span> G</div>
             <div id="wave-shop-items" class="shop-items-grid"></div>
+            <button id="btn-suspend-run" class="menu-btn">中断保存してホームへ</button>
+            <p>同じ端末・ブラウザ・アカウントで再開できます。</p>
             <button id="btn-next-wave" class="menu-btn battle-btn">次へ進む </button>
         </div>
     </div>
@@ -263,7 +281,14 @@
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="audio.js?v=mobile-audio-recovery-3"></script>
-    <script src="script.js?v=mobile-audio-recovery-3"></script>
+    <script src="audio.js?v=audio-lite-1"></script>
+    <script src="script.js?v=resume-controls-1"></script>
+    <dialog id="install-guide" aria-labelledby="install-guide-title">
+        <h2 id="install-guide-title">ホーム画面に追加</h2>
+        <p id="install-guide-text"></p>
+        <p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
+        <form method="dialog"><button type="submit">閉じる</button></form>
+    </dialog>
+    <script src="install.js?v=resume-controls-1"></script>
 </body>
 </html>

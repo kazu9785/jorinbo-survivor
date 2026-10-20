@@ -578,3 +578,37 @@ body.touch-controls #audio-settings { bottom: calc(84px + env(safe-area-inset-bo
     .home-developer-area #developer-panel { grid-template-columns:1fr; padding:14px; }
     .home-footer .account-actions button { min-height:44px; }
 }
+
+.lite-option { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 0; font-size:14px; cursor:pointer; }
+.lite-option input { width:20px; height:20px; }
+.lite-option small { color:#acbddc; }
+body.lite-mode #game-area .enemy, body.lite-mode #game-area .bullet, body.lite-mode #game-area .enemy-bullet, body.lite-mode #game-area .boss-fire, body.lite-mode #game-area .involute-bullet { box-shadow:none !important; filter:none !important; }
+body.lite-mode #game-area::after { box-shadow:none !important; }
+body.lite-mode #game-area::before { transition:none; }
+body.lite-mode #game-area.screen-shake { animation:none !important; }
+.audio-start-modal { position:fixed; inset:0; z-index:7000; background:rgba(5,8,22,.92); display:flex; padding:20px; box-sizing:border-box; overflow:auto; cursor:default; }
+.audio-start-card { margin:auto; width:min(420px,100%); background:#192139; border:1px solid #6ccfe9; border-radius:20px; padding:24px; text-align:center; box-sizing:border-box; }
+.audio-start-card p { font-size:14px; line-height:1.7; color:#c1cde2; }
+.audio-start-card button { width:100%; margin-top:12px; min-height:48px; padding:12px; border-radius:10px; cursor:pointer; }
+#audio-start-on { background:#74e7ee; color:#122132; font-weight:bold; }
+#audio-recovery { position:fixed; bottom:calc(12px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:5500; max-width:calc(100% - 24px); width:420px; padding:12px; box-sizing:border-box; border:1px solid #8edfe9; background:#15273a; color:white; border-radius:12px; cursor:pointer; }
+body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bottom)); }
+#audio-status { display:block; line-height:1.5; margin:8px 0; }
+
+/* Home-screen installation */
+.install-game-button { min-height:44px; padding:10px 16px; border:1px solid #dfb45d; border-radius:10px; background:#172c44; color:#ffe59a; cursor:pointer; font:inherit; }
+.install-game-button[hidden] { display:none!important; }
+#auth-screen .install-game-button { display:block; margin:14px auto; }
+#install-guide { box-sizing:border-box; width:min(440px,calc(100% - 32px)); max-height:85dvh; overflow:auto; border:1px solid #dfb45d; border-radius:16px; padding:24px; background:#101827; color:#fff; line-height:1.8; }
+#install-guide::backdrop { background:rgba(0,0,0,.75); }
+#install-guide h2 { margin-top:0; font-size:1.25rem; }
+#install-guide button { min-height:44px; width:100%; padding:10px; border:0; border-radius:8px; background:#ffe59a; color:#101827; font:inherit; cursor:pointer; }
+.control-settings { padding:12px; border:1px solid #5475a5; border-radius:10px; text-align:left; }
+.control-settings summary { cursor:pointer; min-height:32px; }
+.control-settings label { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0; }
+.control-settings select { min-height:44px; font:inherit; }
+.skill-left #touch-control-bar { flex-direction:row-reverse; }
+.skill-large #btn-touch-skill { min-width:156px; min-height:64px; font-size:18px; }
+.boss-warning { position:absolute; pointer-events:none; z-index:5; }
+.boss-warning-cone { width:650px; height:650px; margin-top:-325px; transform-origin:0 50%; clip-path:polygon(0 50%,100% 0,100% 100%); background:rgba(255,180,45,.22); border-right:3px dashed #ffe082; }
+.boss-warning-ring { width:180px; height:180px; transform:translate(-50%,-50%); border:4px dashed #ffe082; border-radius:50%; background:rgba(255,180,45,.20); }

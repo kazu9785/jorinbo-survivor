@@ -399,6 +399,54 @@ function loadData() {
     if(usernameInput) usernameInput.value = gameData.name;
 }
 
+// 表示設定は端末ごとに保存。ゲームバランスやクラウドの育成データとは分離。
+let liteMode = false;
+try { liteMode = localStorage.getItem('jorinbo-lite-v1') === 'true'; } catch (_) {}
+function applyLiteMode() {
+    document.body.classList.toggle('lite-mode', liteMode);
+    document.getElementById('lite-mode').checked = liteMode;
+}
+applyLiteMode();
+document.getElementById('lite-mode').addEventListener('change', e => {
+    liteMode = e.target.checked;
+    applyLiteMode();
+    try { localStorage.setItem('jorinbo-lite-v1', String(liteMode)); } catch (_) {}
+});
+const bulletElementPool = [];
+function acquireBulletElement() {
+    const el = bulletElementPool.pop() || document.createElement('div');
+    el.className = 'bullet';
+    return el;
+}
+function releaseBulletElement(el) {
+    el.remove();
+    if (bulletElementPool.length < 256) bulletElementPool.push(el);
+}
+// 通常弾の当たり判定を周辺セルだけに限定。判定半径・判定順は維持する。
+let enemySpatialVersion = 0;
+function buildEnemyGrid() {
+    const cells = new Map();
+    enemies.forEach((enemy, order) => {
+        const key = Math.floor(enemy.x / 96) + ',' + Math.floor(enemy.y / 96);
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push({ enemy, order });
+    });
+    return cells;
+}
+function nearbyBulletTargets(cells, x, y) {
+    const candidates = [];
+    for (let cx = Math.floor((x - 70) / 96); cx <= Math.floor((x + 70) / 96); cx++) {
+        for (let cy = Math.floor((y - 70) / 96); cy <= Math.floor((y + 70) / 96); cy++) {
+            const cell = cells.get(cx + ',' + cy);
+            if (cell) candidates.push(...cell);
+        }
+    }
+    candidates.sort((a, b) => b.order - a.order);
+    return candidates;
+}
+let frameLastTime = null, frameAccumulator = 0;
+function resetFrameClock() { frameLastTime = null; frameAccumulator = 0; }
+
 // 一時停止中も実時間は進むため、戦闘専用の時計で管理する。
 let isPaused = false, pauseStarted = 0, pausedTotal = 0;
 let combatSessionActive = false, resumeTimer = null, resumeCount = 0;
@@ -423,6 +471,7 @@ function clearPause() {
     clearTimeout(resumeTimer); resumeTimer = null;
     if (isPaused) pausedTotal += Date.now() - pauseStarted;
     isPaused = false; resumeCount = 0;
+    resetFrameClock();
     document.body.classList.remove('battle-paused');
     document.getElementById('pause-modal').classList.add('hidden');
 }
@@ -826,6 +875,7 @@ function showAuthScreen() {
 }
 
 function showHomeScreen() {
+    updateContinueButton();
     window.GameAudio?.scene("menu");
     document.getElementById('btn-developer').classList.toggle('hidden', !isDeveloper);
     document.getElementById('developer-panel').classList.add('hidden');
@@ -1014,6 +1064,7 @@ async function resetAllData() {
     localStorage.removeItem(pendingSaveKey());
     localStorage.removeItem(getSaveKey());
     localStorage.removeItem('neonSurvivorData');
+    localStorage.removeItem(getSaveKey() + '_checkpoint');
 }
 
 function openDeleteAccountModal() {
@@ -1073,6 +1124,7 @@ async function deleteCurrentAccount() {
 
         localStorage.removeItem(accountSaveKey);
         localStorage.removeItem('neonSurvivorData');
+    localStorage.removeItem(getSaveKey() + '_checkpoint');
         alert('アカウントとすべてのゲームデータを削除しました。');
         location.reload();
     } catch (error) {
@@ -1265,8 +1317,8 @@ gameArea.addEventListener('pointermove', e => {
         mouseY = e.clientY - rect.top;
     } else if (e.pointerId === movementPointerId) {
         // 相対移動なので指でキャラを隠さず、どこからでもドラッグできる。
-        mouseX += e.clientX - lastTouchX;
-        mouseY += e.clientY - lastTouchY;
+        mouseX += (e.clientX - lastTouchX) * controlSettings.sensitivity;
+        mouseY += (e.clientY - lastTouchY) * controlSettings.sensitivity;
         lastTouchX = e.clientX;
         lastTouchY = e.clientY;
         e.preventDefault();
@@ -1311,6 +1363,7 @@ function attemptSkill() {
 async function startNewRun(mode = 'normal') {
     void window.GameAudio?.unlock?.();
     if (startingRun || homeScreen.classList.contains('hidden')) return;
+    if (readCheckpoint() && !confirm('新しい挑戦を始めると中断データが消えます。始めますか？')) return;
     if (mode === 'test' && (!isDeveloper || !developerTest)) return;
     if (cloudConflict) { alert('ホームの「同期」で最新データを読み込んでください。'); return; }
     if (isDeveloper) applyDeveloperPreset();
@@ -1324,6 +1377,7 @@ async function startNewRun(mode = 'normal') {
     endlessButton.disabled = false;
     startingRun = false;
     if (!attemptSaved) return;
+    localStorage.removeItem(getSaveKey() + '_checkpoint');
 
     if(usernameInput) gameData.name = usernameInput.value;
     saveData();
@@ -1671,7 +1725,7 @@ function startWaveSequence() {
     if(bossAttackName) bossAttackName.textContent = '攻撃準備中...';
     
     enemies.forEach(e => e.element.remove());
-    bullets.forEach(b => b.element.remove());
+    bullets.forEach(b => releaseBulletElement(b.element));
     enemyBullets.forEach(b => b.element.remove());
     involuteBullets.forEach(b => b.element.remove());
     hearts.forEach(h => h.element.remove());
@@ -1695,6 +1749,7 @@ function startWaveSequence() {
 }
 
 function startBattle() {
+    resetFrameClock();
     const arena = getArenaSize();
     playerX = mouseX = arena.width / 2;
     playerY = mouseY = arena.height / 2;
@@ -1726,7 +1781,26 @@ function startBattle() {
 
 function gameLoop() {
     if (isGameOver) return;
-    if (isPaused) { animationFrameId = requestAnimationFrame(gameLoop); return; }
+    const now = gameNow();
+    if (isPaused) { resetFrameClock(); animationFrameId = requestAnimationFrame(gameLoop); return; }
+    const step = 1000 / 60;
+    if (frameLastTime === null) frameAccumulator = step;
+    else frameAccumulator += Math.max(0, Math.min(100, now - frameLastTime));
+    frameLastTime = now;
+    // 120Hz画面でも移動が倍速にならない。低FPSでは最大6ステップまで追いつく。
+    let steps = 0;
+    while (frameAccumulator + 0.0001 >= step && steps < 6) {
+        frameAccumulator -= step;
+        simulateCombatStep();
+        steps++;
+        if (isGameOver || !waveEventActive || isPaused) break;
+    }
+    if (!isGameOver) animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function simulateCombatStep() {
+    if (isGameOver) return;
+    if (isPaused) return;
 
     const stats = getPlayerStats();
 
@@ -1754,7 +1828,7 @@ function gameLoop() {
     if (!waveEventActive || isGameOver || isPaused) return;
     updateEnemies();
     updateHearts();
-    animationFrameId = requestAnimationFrame(gameLoop);
+
 }
 
 function triggerInvoluteSphere() {
@@ -1868,6 +1942,7 @@ function updateInvoluteBullets() {
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < 60) {
                 damageEnemy(e, 5); 
+                if (liteMode) continue;
                 const hitEffect = document.createElement('div');
                 hitEffect.style.position = 'absolute';
                 hitEffect.style.left = e.x + 'px';
@@ -2078,6 +2153,7 @@ function spawnEnemy(type) {
     
     if(gameArea) gameArea.appendChild(el);
 
+    enemySpatialVersion++;
     enemies.push({ 
         element: el, hpFill: hpFill,
         x: ex, y: ey, hp: hp, maxHp: hp, type: type, speed: speed, coinDrop: coinDrop,
@@ -2098,14 +2174,14 @@ function fireBullet(damage, count, size) {
     if (enemies.length === 0) return;
     let closest = null, minDist = Infinity;
     enemies.forEach(e => {
-        const d = Math.sqrt((e.x - playerX)**2 + (e.y - playerY)**2);
+        const d = (e.x - playerX)**2 + (e.y - playerY)**2;
         if (d < minDist) { minDist = d; closest = e; }
     });
 
-    if (closest && minDist < 600) {
+    if (closest && minDist < 600 * 600) {
         const baseAngle = Math.atan2(closest.y - playerY, closest.x - playerX);
         for(let i=0; i<count; i++) {
-            const el = document.createElement('div');
+            const el = acquireBulletElement();
             el.classList.add('bullet');
             el.style.width = size + 'px';
             el.style.height = size + 'px';
@@ -2176,6 +2252,7 @@ function isBossAlive(boss) {
 }
 
 function clearBossAttackTimers() {
+    clearBossWarnings();
     bossAttackTimers.forEach(timerId => cancelGameTimer(timerId));
     bossAttackTimers = [];
 }
@@ -2228,7 +2305,7 @@ function createBossBullet(boss, angle, speed, damage, options = {}) {
 // 1. プレイヤー方向を中心に広げる扇状攻撃
 function bossAttackFan(boss) {
     const stats = getBossAttackStats(boss);
-    const baseAngle = Math.atan2(playerY - boss.y, playerX - boss.x);
+    const baseAngle = (boss.telegraphAngle ?? Math.atan2(playerY - boss.y, playerX - boss.x));
     const count = Math.min(13, 7 + Math.floor(currentWave / 3));
     const spread = 1.45;
 
@@ -2305,7 +2382,7 @@ function bossAttackTripleAim(boss) {
 
     for (let volley = 0; volley < 3; volley++) {
         scheduleBossAttack(boss, () => {
-            const baseAngle = Math.atan2(playerY - boss.y, playerX - boss.x);
+            const baseAngle = (boss.telegraphAngle ?? Math.atan2(playerY - boss.y, playerX - boss.x));
             [-0.16, 0, 0.16].forEach(offset => {
                 createBossBullet(boss, baseAngle + offset, stats.speed * 1.15, stats.damage, {
                     className: 'boss-fire-aim',
@@ -2374,7 +2451,7 @@ function bossAttackAwakenedSpiral(boss) {
 // 属性専用攻撃。時間差発射は既存のタイマー管理で中断できる。
 function bossAttackFlameBreath(boss) {
     const stats = getBossAttackStats(boss);
-    const angle = Math.atan2(playerY - boss.y, playerX - boss.x);
+    const angle = (boss.telegraphAngle ?? Math.atan2(playerY - boss.y, playerX - boss.x));
     const volleys = boss.bossPhase === 2 ? 5 : 3;
     for (let i = 0; i < volleys; i++) scheduleBossAttack(boss, () => {
         for (let j = -2; j <= 2; j++) createBossBullet(boss, angle + j * 0.15,
@@ -2384,7 +2461,7 @@ function bossAttackFlameBreath(boss) {
 function bossAttackIceLances(boss) {
     const stats = getBossAttackStats(boss);
     // 初弾の狙いを固定。弾の間に逃げ道を残す。
-    const angle = Math.atan2(playerY - boss.y, playerX - boss.x);
+    const angle = (boss.telegraphAngle ?? Math.atan2(playerY - boss.y, playerX - boss.x));
     const volleys = boss.bossPhase === 2 ? 4 : 2;
     for (let i = 0; i < volleys; i++) scheduleBossAttack(boss, () => {
         [-0.42, 0, 0.42].forEach(offset => createBossBullet(boss, angle + offset,
@@ -2428,7 +2505,7 @@ function getBossPatterns(boss) {
         .map(([id, name, run]) => ({ id, name: (phase2 ? '覚醒・' : '') + name, run }));
 }
 function bossFireAttack(boss) {
-    if (!isBossAlive(boss) || gameNow() < boss.transformingUntil) return;
+    if (!isBossAlive(boss) || gameNow() < boss.transformingUntil || gameNow() < (boss.warningUntil || 0)) return;
     const patterns = getBossPatterns(boss).filter(pattern => pattern.id !== boss.lastBossPattern);
     const selected = patterns[Math.floor(Math.random() * patterns.length)];
     boss.lastBossPattern = selected.id;
@@ -2436,30 +2513,37 @@ function bossFireAttack(boss) {
     // 一発ごとではなく攻撃パターンの開始時に鳴らす。
     playSound('boss_' + selected.id, 0.65);
     if (boss.bossPhase === 2) playSound('boss_power', 0.3);
-    selected.run(boss);
+    const delay = 850;
+    boss.warningUntil = gameNow() + delay;
+    boss.telegraphAngle = Math.atan2(playerY - boss.y, playerX - boss.x);
+    showBossWarning(boss, selected);
+    scheduleBossAttack(boss, () => {
+        clearBossWarnings();
+        showBossAttackName(selected.name);
+        selected.run(boss);
+        boss.telegraphAngle = null;
+    }, delay);
 }
 
 function updateBullets() {
+    if (!bullets.length) return;
+    const arena = getArenaSize();
+    let grid = buildEnemyGrid(), version = enemySpatialVersion;
     for (let i = bullets.length - 1; i >= 0; i--) {
+        if (!waveEventActive || isGameOver || isPaused) break;
         const b = bullets[i];
         b.x += b.vx; b.y += b.vy;
         b.element.style.left = b.x + 'px';
         b.element.style.top = b.y + 'px';
-
-        if (b.x<0 || b.x>getArenaSize().width || b.y<0 || b.y>getArenaSize().height) {
-            b.element.remove(); bullets.splice(i, 1); continue;
+        if (b.x < 0 || b.x > arena.width || b.y < 0 || b.y > arena.height) {
+            releaseBulletElement(b.element); bullets.splice(i, 1); continue;
         }
-
-        for (let j = enemies.length - 1; j >= 0; j--) {
-            const e = enemies[j];
-            const dist = Math.sqrt((b.x - e.x)**2 + (b.y - e.y)**2);
-            let hitR = 30;
-            if (e.type === 'boss') hitR = 70;
-            if (e.type === 'golem') hitR = 40;
-
-            if (dist < hitR) {
+        if (version !== enemySpatialVersion) { grid = buildEnemyGrid(); version = enemySpatialVersion; }
+        for (const { enemy: e } of nearbyBulletTargets(grid, b.x, b.y)) {
+            const hitR = e.type === 'boss' ? 70 : e.type === 'golem' ? 40 : 30;
+            if ((b.x - e.x)**2 + (b.y - e.y)**2 < hitR * hitR) {
                 damageEnemy(e, b.damage);
-                b.element.remove(); bullets.splice(i, 1);
+                releaseBulletElement(b.element); bullets.splice(i, 1);
                 break;
             }
         }
@@ -2511,6 +2595,7 @@ function updateEnemies() {
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (!waveEventActive || isGameOver) break;
+        if (e.type === 'boss' && now < (e.warningUntil || 0)) continue;
         if (e.type === 'treasure') {
             moveTreasure(e);
             continue; // 接触ダメージや攻撃処理を行わない。
@@ -2584,9 +2669,11 @@ function takePlayerDamage(dmg) {
     updateHpDisplay();
     playSound("hurt");
     
-    gameArea.classList.remove('screen-shake');
-    void gameArea.offsetWidth;
-    gameArea.classList.add('screen-shake');
+    if (!liteMode) {
+        gameArea.classList.remove('screen-shake');
+        void gameArea.offsetWidth;
+        gameArea.classList.add('screen-shake');
+    }
 
     if (playerCurrentHp <= 0) {
         gameOver("体力ゼロ");
@@ -2620,6 +2707,7 @@ function damageEnemy(e, dmg) {
 
 function killEnemy(e) {
     if (!enemies.includes(e)) return;
+    enemySpatialVersion++;
     recordDefeat(e);
     playSound("coin");
     const reward = e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1);
@@ -2760,6 +2848,7 @@ function gameOver(reason) {
 }
 
 function showDamageText(x, y, txt) {
+    if (liteMode && typeof txt === 'number') return;
     const el = document.createElement('div');
     el.classList.add('damage-text');
     el.textContent = txt;
@@ -2769,6 +2858,7 @@ function showDamageText(x, y, txt) {
 }
 
 function showCoinText(x, y, txt) {
+    if (liteMode) return;
     const el = document.createElement('div');
     el.classList.add('damage-text');
     el.style.color = '#ffd700'; el.textContent = `+${txt}G`;
@@ -2785,3 +2875,89 @@ function updateBossHpBar(hp) {
 }
 
 
+
+// Device-local controls and account-local between-wave checkpoint.
+const controlSettings = { side: 'right', size: 'normal', sensitivity: 1 };
+try {
+    const saved = JSON.parse(localStorage.getItem('jorinbo-controls-v1') || '{}');
+    if (['left','right'].includes(saved.side)) controlSettings.side = saved.side;
+    if (['normal','large'].includes(saved.size)) controlSettings.size = saved.size;
+    if (Number.isFinite(saved.sensitivity)) controlSettings.sensitivity = Math.max(.5, Math.min(2, saved.sensitivity));
+} catch (_) {}
+function applyControlSettings() {
+    document.body.classList.toggle('skill-left', controlSettings.side === 'left');
+    document.body.classList.toggle('skill-large', controlSettings.size === 'large');
+    for (const key of ['side','size','sensitivity']) document.getElementById('control-' + key).value = controlSettings[key];
+    document.getElementById('control-sensitivity-value').textContent = controlSettings.sensitivity.toFixed(1) + '倍';
+}
+for (const key of ['side','size','sensitivity']) document.getElementById('control-' + key).addEventListener('input', e => {
+    controlSettings[key] = key === 'sensitivity' ? Number(e.target.value) : e.target.value;
+    applyControlSettings();
+    try { localStorage.setItem('jorinbo-controls-v1', JSON.stringify(controlSettings)); } catch (_) {}
+});
+applyControlSettings();
+function readCheckpoint() {
+    try {
+        const c = JSON.parse(localStorage.getItem(getSaveKey() + '_checkpoint') || 'null');
+        if (!c || c.version !== 1 || !['normal','endless'].includes(c.mode) || !Number.isInteger(c.wave) || c.wave < 1 || (c.mode === 'normal' && c.wave >= 20) || !Object.hasOwn(CHARACTERS,c.character) || !c.upgrades || !c.record) return null;
+        return c;
+    } catch (_) { return null; }
+}
+function updateContinueButton() {
+    const c = readCheckpoint(), button = document.getElementById('btn-continue-run');
+    button.classList.toggle('hidden', !c);
+    if (c) button.textContent = `WAVE ${c.wave + 1}から再開（${CHARACTERS[c.character].name}）`;
+}
+document.getElementById('btn-suspend-run').addEventListener('click', async () => {
+    if (waveShopScreen.classList.contains('hidden') || rewardPending || lastRewardWave !== currentWave) return;
+    if (gameMode === 'test') { alert('開発テスト中は中断保存できません。'); return; }
+    const button = document.getElementById('btn-suspend-run'); button.disabled = true;
+    try {
+        saveData();
+        await flushCloudSave();
+        if (cloudConflict) throw new Error('同期が必要です。ホームで同期してください。');
+        const c = { version:1, mode:gameMode, wave:currentWave, character:gameData.character,
+            hp:playerCurrentHp, upgrades:{...runUpgrades}, coins:sessionCoins, record:{...runRecord},
+            cooldown:Math.max(0,bombCooldown-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent };
+        localStorage.setItem(getSaveKey() + '_checkpoint', JSON.stringify(c));
+        stopWaveEvent(); waveShopScreen.classList.add('hidden'); gameScreen.classList.add('hidden');
+        showHomeScreen();
+    } catch (error) { alert('中断保存できませんでした。画面を閉じずに再試行してください。\n' + error.message); }
+    finally { button.disabled = false; }
+});
+document.getElementById('btn-continue-run').addEventListener('click', () => {
+    const c = readCheckpoint();
+    if (!c || startingRun || homeScreen.classList.contains('hidden')) return;
+    if (cloudConflict) { alert('先にホームの「同期」を押してください。'); return; }
+    // Consume once before playing: defeated enemies and coins cannot be replayed from this checkpoint.
+    try { localStorage.removeItem(getSaveKey() + '_checkpoint'); }
+    catch (_) { alert('中断データを更新できません。再試行してください。'); return; }
+    gameData.character = c.character; gameMode = c.mode; currentWave = c.wave + 1;
+    resetRunUpgrades(); runUpgrades = c.upgrades; lastRewardWave = c.wave;
+    runRecord = c.record; combatSegmentStart = null; sessionCoins = c.coins;
+    lastWaveEvent = c.lastEvent; waveResultSaved = false;
+    lastBombTime = gameNow() - bombCooldown + c.cooldown;
+    updateRunUpgradeSummary(); updateCharacterDisplay();
+    playerMaxHp = getPlayerMaxHp(); playerCurrentHp = Math.max(1,Math.min(playerMaxHp,c.hp)); updateHpDisplay();
+    gameCoinsDisplay.textContent = sessionCoins;
+    const names = {sphere:'インボリュート',bomb:'ボム',energy:'ハイエナジー',satellite:'サテライト'};
+    if (gameSkillName) gameSkillName.textContent = names[gameData.skills.equipped] || 'SKILL';
+    homeScreen.classList.add('hidden'); gameScreen.classList.remove('hidden');
+    gameOverScreen.classList.add('hidden'); gameClearScreen.classList.add('hidden');
+    document.getElementById('btn-dev-stop').classList.add('hidden');
+    document.body.style.cursor = 'none'; saveData(); startWaveSequence();
+});
+let bossWarnings = [];
+function clearBossWarnings() {
+    bossWarnings.forEach(el => el.remove()); bossWarnings = [];
+}
+function showBossWarning(boss, pattern) {
+    clearBossWarnings();
+    const aimed = ['fan','breath','lances','aim'].includes(pattern.id);
+    showBossAttackName('予告：' + pattern.name + (aimed ? '（狙い方向）' : '（全方向・回転）'));
+    const el = document.createElement('div');
+    el.className = 'boss-warning ' + (aimed ? 'boss-warning-cone' : 'boss-warning-ring');
+    el.style.left = boss.x + 'px'; el.style.top = boss.y + 'px';
+    if (aimed) el.style.transform = `rotate(${boss.telegraphAngle}rad)`;
+    gameArea.appendChild(el); bossWarnings.push(el);
+}

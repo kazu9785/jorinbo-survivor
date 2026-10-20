@@ -88,6 +88,7 @@ function playSound(el = "confirm", vol = 0.5) { window.GameAudio?.effect(el, vol
 // ■■■ セーブデータ管理 ■■■
 function getDefaultData() {
     return {
+        training: createDefaultTraining(),
         codex: {},
         records: { normal: 0, endless: 0 },
         lastResult: null,
@@ -125,7 +126,7 @@ function getSelectedCharacter() {
     return Object.hasOwn(CHARACTERS, gameData.character) ? CHARACTERS[gameData.character] : CHARACTERS.balance;
 }
 function getPlayerMaxHp() {
-    return getSelectedCharacter().hp + ((gameData.upgrade.maxHp || 1) - 1) * 5 + (runUpgrades.maxHp || 0) * 5;
+    return getSelectedCharacter().hp + ((gameData.upgrade.maxHp || 1) - 1) * 5 + (runUpgrades.maxHp || 0) * 5 + trainingHpBonus();
 }
 function updateCharacterDisplay() {
     const character = getSelectedCharacter();
@@ -345,6 +346,7 @@ function repairGameData(saved) {
     if (!saved || !saved.upgrade) return getDefaultData();
 
     const repaired = saved;
+    repaired.training = repairTraining(saved.training);
     repaired.codex = repaired.codex && typeof repaired.codex === 'object' ? repaired.codex : {};
     repaired.records ||= { normal: 0, endless: 0 };
     repaired.lastResult ||= null;
@@ -367,6 +369,10 @@ function applyDeveloperPreset() {
     if (!isDeveloper) return;
     gameData.coins = Math.max(gameData.coins, 1000000);
     gameData.endlessUnlocked = true;
+    gameData.training = repairTraining(gameData.training);
+    for (const id of TRAINING_CHARACTERS) {
+        const p = gameData.training[id]; p.uses = Math.max(35,p.uses); p.bestWave = Math.max(20,p.bestWave); p.levels = {a:5,b:5,c:5};
+    }
     gameData.upgrade = { damage: 100, fireRate: 11, count: 10, bulletSize: 6, speed: 93, maxHp: 100 };
     gameData.skills.owned = ['sphere', 'bomb', 'energy', 'satellite'];
     gameData.skills.levels = { sphere: 20, bomb: 20, energy: 20, satellite: 20 };
@@ -520,6 +526,7 @@ window.addEventListener('blur', pauseGame);
 
 let runRecord = null, combatSegmentStart = null;
 function beginRunRecord() {
+    trainingStartRun();
     runRecord = { kills: 0, bosses: 0, elapsed: 0, character: gameData.character,
         mode: gameMode, finalized: false };
     combatSegmentStart = null;
@@ -875,6 +882,7 @@ function showAuthScreen() {
 }
 
 function showHomeScreen() {
+    activeTraining = null;
     updateContinueButton();
     window.GameAudio?.scene("menu");
     document.getElementById('btn-developer').classList.toggle('hidden', !isDeveloper);
@@ -1345,7 +1353,7 @@ gameArea.addEventListener('contextmenu', e => {
 function attemptSkill() {
     if (!waveEventActive || isGameOver || isPaused) return;
     const now = gameNow();
-    if (now - lastBombTime >= bombCooldown) {
+    if (now - lastBombTime >= getSkillCooldown()) {
         if (gameData.skills.equipped === 'sphere') {
             triggerInvoluteSphere();
         } else if (gameData.skills.equipped === 'bomb') {
@@ -1355,6 +1363,7 @@ function attemptSkill() {
         } else if (gameData.skills.equipped === 'satellite') {
             triggerSatellite();
         }
+        trainingOnSkill();
         lastBombTime = now;
     }
 }
@@ -1702,7 +1711,7 @@ function getPlayerStats() {
     let bSize = 10 + (sizeLevel - 1) * 4;
 
     return {
-        shotInterval: Math.max(50, Math.max(100, 500 - (rate - 1) * 40) / (1 + (runUpgrades.fireRate || 0) * 0.1)),
+        shotInterval: Math.max(50, Math.max(100, 500 - (rate - 1) * 40) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier()),
         damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage,
         moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed),
         bulletCount: cnt + (runUpgrades.count || 0),
@@ -1712,6 +1721,9 @@ function getPlayerStats() {
 
 // ■■■ ゲームループ関連 ■■■
 function startWaveSequence() {
+    chooseTrainingAdaptation(launchWaveSequence);
+}
+function launchWaveSequence() {
     resetBossArena();
     window.GameAudio?.scene("battle");
     stopWaveEvent();
@@ -1749,6 +1761,8 @@ function startWaveSequence() {
 }
 
 function startBattle() {
+    trainingOnWaveStart();
+    document.body.style.cursor = 'none';
     resetFrameClock();
     const arena = getArenaSize();
     playerX = mouseX = arena.width / 2;
@@ -1802,6 +1816,7 @@ function simulateCombatStep() {
     if (isGameOver) return;
     if (isPaused) return;
 
+    const oldPlayerX = playerX, oldPlayerY = playerY;
     const stats = getPlayerStats();
 
     if (!isNaN(mouseX) && !isNaN(mouseY)) {
@@ -1809,6 +1824,7 @@ function simulateCombatStep() {
         playerY += (mouseY - playerY) * stats.moveSpeed;
     }
     clampPlayerPosition();
+    updateTrainingCombat(oldPlayerX, oldPlayerY);
     player.style.left = playerX + 'px';
     player.style.top = playerY + 'px';
 
@@ -1855,7 +1871,7 @@ function triggerBomb() {
     gameSetTimeout(() => effect.remove(), 1000);
 
     const level = gameData.skills.levels.bomb;
-    const damage = 100 + (level - 1) * 50;
+    const damage = (100 + (level - 1) * 50) * trainingSkillMultiplier();
 
     for (let i = enemies.length - 1; i >= 0; i--) {
         damageEnemy(enemies[i], damage);
@@ -1871,7 +1887,7 @@ function triggerHighEnergyCircle() {
     // 画面全体を覆うほど大きな半径にする
     const maxDim = Math.max(getArenaSize().width, getArenaSize().height);
     const radius = maxDim; 
-    const damage = 20 + (level - 1) * 10;
+    const damage = (20 + (level - 1) * 10) * trainingSkillMultiplier();
 
     const el = document.createElement('div');
     el.classList.add('energy-circle');
@@ -1894,7 +1910,7 @@ function triggerSatellite() {
     playSound("skill");
     const level = gameData.skills.levels.satellite;
     const beamCount = 2 + Math.floor(level / 2); 
-    const damage = 30 + (level - 1) * 15;
+    const damage = (30 + (level - 1) * 15) * trainingSkillMultiplier();
 
     if (enemies.length > 0) {
         for (let i = 0; i < beamCount; i++) {
@@ -1940,8 +1956,8 @@ function updateInvoluteBullets() {
             const dx = bx - e.x;
             const dy = by - e.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 60) {
-                damageEnemy(e, 5); 
+            if (dist < 60 * trainingSkillRadius()) {
+                damageEnemy(e, 5 * trainingSkillMultiplier()); 
                 if (liteMode) continue;
                 const hitEffect = document.createElement('div');
                 hitEffect.style.position = 'absolute';
@@ -1962,11 +1978,11 @@ function updateInvoluteBullets() {
 
 function updateBombGauge(now) {
     const button = document.getElementById('btn-touch-skill');
-    const seconds = Math.max(0, Math.ceil((bombCooldown - (now - lastBombTime)) / 1000));
+    const seconds = Math.max(0, Math.ceil((getSkillCooldown() - (now - lastBombTime)) / 1000));
     button.disabled = isGameOver || !waveEventActive || seconds > 0;
     button.textContent = seconds > 0 ? 'あと ' + seconds + '秒' : 'スキル発動';
     const elapsed = now - lastBombTime;
-    let percentage = (elapsed / bombCooldown) * 100;
+    let percentage = (elapsed / getSkillCooldown()) * 100;
     if (percentage > 100) percentage = 100;
     if (bombGaugeBar) {
         bombGaugeBar.style.width = `${percentage}%`;
@@ -2542,7 +2558,7 @@ function updateBullets() {
         for (const { enemy: e } of nearbyBulletTargets(grid, b.x, b.y)) {
             const hitR = e.type === 'boss' ? 70 : e.type === 'golem' ? 40 : 30;
             if ((b.x - e.x)**2 + (b.y - e.y)**2 < hitR * hitR) {
-                damageEnemy(e, b.damage);
+                damageEnemy(e, trainingBulletDamage(e, b.damage));
                 releaseBulletElement(b.element); bullets.splice(i, 1);
                 break;
             }
@@ -2665,7 +2681,9 @@ function updateEnemies() {
 function takePlayerDamage(dmg) {
     if (isGameOver || !waveEventActive) return;
     if (currentWaveEvent === 'rage') dmg = Math.ceil(dmg * 1.5);
-    playerCurrentHp -= dmg;
+    dmg = trainingIncomingDamage(dmg);
+    if (dmg <= 0) { updateHpDisplay(); return; }
+    playerCurrentHp = Math.max(0, Math.round((playerCurrentHp - dmg) * 1000) / 1000);
     updateHpDisplay();
     playSound("hurt");
     
@@ -2677,11 +2695,11 @@ function takePlayerDamage(dmg) {
 
     if (playerCurrentHp <= 0) {
         gameOver("体力ゼロ");
-    }
+    } else trainingCounterAttack();
 }
 
 function updateHpDisplay() {
-    if(hpDisplay) hpDisplay.textContent = `${playerCurrentHp}/${playerMaxHp}`;
+    if(hpDisplay) hpDisplay.textContent = `${Number(playerCurrentHp.toFixed(1))}/${playerMaxHp}`;
 }
 
 function damageEnemy(e, dmg) {
@@ -2710,7 +2728,7 @@ function killEnemy(e) {
     enemySpatialVersion++;
     recordDefeat(e);
     playSound("coin");
-    const reward = e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1);
+    const reward = trainingCoinReward(e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1));
     
     sessionCoins += reward;
     if(gameCoinsDisplay) gameCoinsDisplay.textContent = sessionCoins;
@@ -2918,7 +2936,7 @@ document.getElementById('btn-suspend-run').addEventListener('click', async () =>
         if (cloudConflict) throw new Error('同期が必要です。ホームで同期してください。');
         const c = { version:1, mode:gameMode, wave:currentWave, character:gameData.character,
             hp:playerCurrentHp, upgrades:{...runUpgrades}, coins:sessionCoins, record:{...runRecord},
-            cooldown:Math.max(0,bombCooldown-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent };
+            cooldown:Math.max(0,getSkillCooldown()-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent, training:trainingCheckpoint() };
         localStorage.setItem(getSaveKey() + '_checkpoint', JSON.stringify(c));
         stopWaveEvent(); waveShopScreen.classList.add('hidden'); gameScreen.classList.add('hidden');
         showHomeScreen();
@@ -2934,9 +2952,10 @@ document.getElementById('btn-continue-run').addEventListener('click', () => {
     catch (_) { alert('中断データを更新できません。再試行してください。'); return; }
     gameData.character = c.character; gameMode = c.mode; currentWave = c.wave + 1;
     resetRunUpgrades(); runUpgrades = c.upgrades; lastRewardWave = c.wave;
+    restoreTrainingCheckpoint(c.training);
     runRecord = c.record; combatSegmentStart = null; sessionCoins = c.coins;
     lastWaveEvent = c.lastEvent; waveResultSaved = false;
-    lastBombTime = gameNow() - bombCooldown + c.cooldown;
+    lastBombTime = gameNow() - getSkillCooldown() + Math.min(getSkillCooldown(),c.cooldown);
     updateRunUpgradeSummary(); updateCharacterDisplay();
     playerMaxHp = getPlayerMaxHp(); playerCurrentHp = Math.max(1,Math.min(playerMaxHp,c.hp)); updateHpDisplay();
     gameCoinsDisplay.textContent = sessionCoins;
@@ -2961,3 +2980,5 @@ function showBossWarning(boss, pattern) {
     if (aimed) el.style.transform = `rotate(${boss.telegraphAngle}rad)`;
     gameArea.appendChild(el); bossWarnings.push(el);
 }
+
+initTrainingUI();

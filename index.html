@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="常林暴">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="stylesheet" href="style.css?v=resume-controls-1">
+    <link rel="stylesheet" href="style.css?v=training-1">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -70,6 +70,7 @@
                 </section>
             </div>
             <footer class="home-footer">
+<button id="btn-training" class="menu-btn">キャラクター育成</button>
 <button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
 <details class="control-settings"><summary>スマホ操作設定</summary>
 <label>スキルボタンの位置 <select id="control-side"><option value="right">右</option><option value="left">左</option></select></label>
@@ -227,6 +228,7 @@
         
         <div id="wave-event-hud" class="hidden" aria-live="polite"></div>
         <div id="game-area">
+            <div id="training-hud" aria-live="off"></div>
             <div id="player"></div>
         </div>
 
@@ -277,12 +279,28 @@
         </div>
     </div>
 
+    <dialog id="training-dialog" aria-labelledby="training-title">
+        <h2 id="training-title">キャラクター育成</h2>
+        <label>キャラクター <select id="training-character"></select></label>
+        <p id="training-summary"></p>
+        <p>各ルート最大Lv.5。プレイ条件のどちらか＋コインで育成できます。選択した1ルートだけが発動します。</p>
+        <p>切り替えは無料。購入済みレベルは残ります。変更は次の新しい挑戦から適用され、中断再開では保存時のルート・レベルを使用します。</p>
+        <div id="training-cards"></div>
+        <p>キャラ別記録はこの機能の追加後から集計します。開発テストは記録対象外です。</p>
+        <form method="dialog"><button type="submit">閉じる</button></form>
+    </dialog>
+    <dialog id="adaptation-dialog" aria-labelledby="adaptation-wave">
+        <h2 id="adaptation-wave">WAVEの補助を選択</h2>
+        <button id="adaptation-attack" type="button">攻撃</button>
+        <button id="adaptation-defense" type="button">防御</button>
+    </dialog>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="audio.js?v=audio-lite-1"></script>
-    <script src="script.js?v=resume-controls-1"></script>
+    <script src="training.js?v=training-1"></script>
+    <script src="script.js?v=training-1"></script>
     <dialog id="install-guide" aria-labelledby="install-guide-title">
         <h2 id="install-guide-title">ホーム画面に追加</h2>
         <p id="install-guide-text"></p>

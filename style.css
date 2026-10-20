@@ -62,7 +62,7 @@ h1, h2, .menu-btn, .hud-item, .boss-name, .damage-text, .back-btn, .buy-btn, .re
 .game-title { font-size: 32px; color: #00ffff; text-shadow: 4px 4px 0px #ff00ff; margin-bottom: 20px; line-height: 1.5; }
 .coin-display { font-size: 20px; color: #ffd700; margin-bottom: 30px; border: 1px solid #ffd700; padding: 10px; border-radius: 5px; background: #331100; }
 .menu-grid { display: grid; gap: 15px; margin-bottom: 20px; }
-.menu-btn { padding: 15px; font-size: 14px; color: white; border: none; cursor: pointer; border-radius: 5px; transition: transform 0.1s, box-shadow 0.1s; }
+.menu-btn { background: #20364f; padding: 15px; font-size: 14px; color: white; border: none; cursor: pointer; border-radius: 5px; transition: transform 0.1s, box-shadow 0.1s; }
 .menu-btn:active { transform: translateY(2px); }
 .battle-btn { background: linear-gradient(45deg, #ff4757, #ff6b81); box-shadow: 0 4px 0 #a3001d; font-size: 18px; }
 .shop-btn { background: linear-gradient(45deg, #4a4eff, #00ffff); box-shadow: 0 4px 0 #0055aa; color: #000; font-weight: bold; }
@@ -651,3 +651,18 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .game-info-dialog th,.game-info-dialog td { border-bottom:1px solid #405a75; padding:8px; text-align:left; }
 .guide-bottom { margin-top:20px; text-align:center; }
 @media(max-width:600px) { .game-info-dialog { padding:16px; } .game-info-dialog details { padding:10px; } .game-info-dialog h2 { font-size:1.1rem; } .game-info-links button { flex:1 1 160px; } }
+
+/* Ver.1.0.1: explicit button surfaces on desktop and mobile. */
+#btn-training { background:#47336f; color:#fff4d6; border:1px solid #bda1eb; }
+#btn-developer { background:#154859; color:#e0faff; border:1px solid #72cddd; }
+.back-btn, #btn-close-codex, #btn-close-result { background:#25364c; color:#f0f6ff; border:1px solid #91a8c5; border-radius:8px; min-height:44px; }
+#btn-continue-run, #btn-suspend-run { background:#1d4b42; color:#e4fff4; border:1px solid #7acbb3; }
+#btn-training, #btn-developer, #btn-continue-run, #btn-suspend-run { border-radius:10px; min-height:48px; }
+@media(hover:hover) {
+    #btn-training:hover:not(:disabled) { background:#5b438c; }
+    #btn-developer:hover:not(:disabled) { background:#1d6073; }
+    .back-btn:hover:not(:disabled), #btn-close-codex:hover, #btn-close-result:hover { background:#354e6b; }
+    #btn-continue-run:hover:not(:disabled), #btn-suspend-run:hover:not(:disabled) { background:#286454; }
+}
+.menu-btn:focus-visible, .back-btn:focus-visible, #btn-close-codex:focus-visible { outline:3px solid #ffe082; outline-offset:3px; }
+#btn-training:disabled, #btn-developer:disabled, #btn-continue-run:disabled, #btn-suspend-run:disabled { background:#293447; color:#b7c4d4; border-color:#65758a; opacity:1; cursor:default; }

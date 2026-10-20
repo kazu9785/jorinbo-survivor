@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
+    <meta name="app-version" content="1.0.0">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#101827">
     <meta name="mobile-web-app-capable" content="yes">
@@ -11,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="常林暴">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="stylesheet" href="style.css?v=training-1">
+    <link rel="stylesheet" href="style.css?v=1.0.0">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -31,6 +32,10 @@
                     <button type="button" id="btn-register" class="menu-btn shop-btn">新規登録</button>
                 </div>
             </form>
+            <div class="game-info-links">
+<button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.0</span> · 更新履歴</button>
+</div>
             <p id="auth-status" class="status-message" aria-live="polite"></p>
             <button type="button" class="install-game-button">ホーム画面に追加</button>
             <button id="btn-auth-ranking" class="ranking-open-btn">ランキングを見る</button>
@@ -70,6 +75,10 @@
                 </section>
             </div>
             <footer class="home-footer">
+<div class="game-info-links">
+<button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.0</span> · 更新履歴</button>
+</div>
 <button id="btn-training" class="menu-btn">キャラクター育成</button>
 <button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
 <details class="control-settings"><summary>スマホ操作設定</summary>
@@ -308,5 +317,60 @@
         <form method="dialog"><button type="submit">閉じる</button></form>
     </dialog>
     <script src="install.js?v=resume-controls-1"></script>
+<dialog id="play-guide" class="game-info-dialog" aria-labelledby="play-guide-title">
+    <header><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button type="submit" aria-label="遊び方を閉じる">閉じる</button></form></header>
+    <p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE20クリアを目指そう！</p>
+    <details open><summary>まずはここから：ゲームの流れ</summary>
+        <ol><li>名前とパスワードで登録・ログインする。</li><li>ホームでキャラ・スキルを選んで、通常モードを開始。</li><li>攻撃は自動。移動で敵や弾を避けよう。</li><li>通常の敵を倒すとボスが登場。HPが半分になると第2形態に変化。</li><li>ボス撃破後は3択強化を選び、ショップで準備して次のWAVEへ。</li></ol>
+        <p>HPが0になるか時間切れでゲームオーバー。通常WAVE20をクリアするとホームへ戻り、WAVE21から始まるエンドレスモードが解放されます。</p>
+    </details>
+    <details><summary>PC・スマホの操作と一時停止</summary>
+        <dl><dt>PCの移動</dt><dd>ゲーム画面内でマウスを動かすとキャラが追いかけます。</dd><dt>PCのスキル</dt><dd>マウスの右クリック。スペースキーでは発動しません。</dd><dt>スマホの移動</dt><dd>ゲーム画面を指でドラッグ。指を動かした方向へ移動します。</dd><dt>スマホのスキル</dt><dd>「スキル発動」ボタンをタップ。ホームでボタンの左右・大きさ・移動感度を変更できます。</dd><dt>一時停止</dt><dd>一時停止ボタン、またはPCのEscキー。別画面へ移った場合も自動停止します。再開操作後、3秒のカウントダウンで再開します。</dd></dl>
+    </details>
+    <details><summary>コイン・強化・スキルの違い</summary>
+        <dl><dt>コイン（G）</dt><dd>敵を倒すと獲得。武器・能力・スキル・キャラ育成に使います。</dd><dt>武器・能力・スキルの強化</dt><dd>通常セーブに残る強化です。次の挑戦でも使えます。</dd><dt>WAVEクリア時の3択強化</dt><dd>今回の挑戦だけ有効。新しい挑戦ではリセットされ、中断再開では引き継ぎます。</dd><dt>スキルの待ち時間</dt><dd>通常は発動後30秒。魔導士の速詠型で短縮できます。ゲージやボタンの残り秒数が目安です。</dd></dl>
+    </details>
+    <details><summary>キャラ別育成：解放条件と切り替え</summary>
+        <p>ホームの「キャラクター育成」から育成します。各キャラ3ルート、各ルート最大Lv.5。同時に発動するのは選択した1ルートです。</p>
+        <p><strong>そのキャラの最高到達WAVE、または使用回数</strong>のどちらかを満たし、コインを支払うとレベルアップできます。自動では上がらないので育成ボタンを押してください。</p>
+        <div class="guide-table-scroll"><table><caption>各レベルの購入条件</caption><thead><tr><th>Lv.</th><th>到達WAVE</th><th>または使用</th><th>コイン</th></tr></thead><tbody>
+        <tr><td>1</td><td>3以上</td><td>2回以上</td><td>100G</td></tr><tr><td>2</td><td>6以上</td><td>5回以上</td><td>300G</td></tr><tr><td>3</td><td>10以上</td><td>10回以上</td><td>700G</td></tr><tr><td>4</td><td>15以上</td><td>20回以上</td><td>1,500G</td></tr><tr><td>5</td><td>20以上</td><td>35回以上</td><td>3,000G</td></tr>
+        </tbody></table></div>
+        <p>ルートの切り替えは無料で購入済みレベルは残ります。変更は次の新しい挑戦から適用され、中断再開は保存時のルート・レベルを使います。キャラ別記録は育成機能の導入後から集計。中断再開では使用回数は増えません。</p>
+    </details>
+    <details><summary>中断保存・クラウド同期・データリセット</summary>
+        <p>WAVEクリア後に3択強化を選び、ショップで<strong>「中断保存してホームへ」</strong>を押すと次のWAVEから再開できます。</p>
+        <p>中断データは<strong>同じ端末・ブラウザ・アカウント</strong>で使います。戦闘中の中断保存には対応していません。再開時に中断データは消費されるため、再開後に画面を閉じても元の地点へは戻れません。次のWAVE間で再び保存してください。</p>
+        <p>コイン・恒久強化・キャラ育成はクラウド保存の対象。ホームの保存状態を確認し、保存失敗や別端末との競合が表示されたら「同期」の案内に従ってください。中断データと音量・操作・軽量モード設定は端末側に保存します。</p>
+        <p>データリセットではコイン・強化・キャラ育成・ランキング記録・挑戦回数・エンドレス解放も初期化されます。ブラウザのデータ削除でも端末内の中断データや設定は消えるので、更新のためにデータ削除はしないでください。</p>
+    </details>
+    <details><summary>イベント・ボス予告・用語</summary>
+        <dl><dt>WAVE</dt><dd>敵とボスを倒す1ステージの区切り。最高到達WAVEは到達記録で、クリア数とは異なります。</dd><dt>コインラッシュ</dt><dd>獲得コインが増えるイベント。</dd><dt>暴走WAVE</dt><dd>敵が強化されるイベント。接触や敵弾に注意。</dd><dt>宝物スライム</dt><dd>素早く逃げる特別な敵。制限時間内に倒してコインを狙おう。</dd><dt>弾幕地獄</dt><dd>追加の弾幕が発生するイベント。</dd><dt>ボス攻撃予告</dt><dd>黄色の扇形は狙い方向、リングは全方向・回転攻撃の目印。全ての危険範囲を示すものではなく、後続弾は方向が変わることもあります。</dd><dt>挑戦回数</dt><dd>新しい挑戦を開始した回数。ランキングは全体、育成画面はキャラ別の使用回数を表示します。</dd></dl>
+    </details>
+    <details><summary>音が出ない・動作が重いとき</summary>
+        <p>起動時に「音ありで開始」を選択。音が止まったら再開ボタン、または「♫ 音量」の「音声を開始・再開」をタップしてください。ミュート設定・BGMと効果音の音量、本体音量やBluetoothの接続先も確認できます。</p>
+        <p>動作が重い場合はホームの「軽量モード」をオン。数字・発光・画面揺れなどを減らします。敵の数・強さは変わりません。</p>
+    </details>
+    <details><summary>ホーム画面への追加・友達への共有</summary>
+        <p>ログイン画面やホームの「ホーム画面に追加」から端末別の案内を確認できます。共有するのは公開したゲームのURLです。ログイン・ランキングにはインターネット接続が必要です。</p>
+        <p>友達と表示が違う場合は「更新履歴」のバージョン番号を比べてみてください。</p>
+    </details>
+    <form method="dialog" class="guide-bottom"><button type="submit">ガイドを閉じる</button></form>
+</dialog>
+<dialog id="release-guide" class="game-info-dialog" aria-labelledby="release-guide-title">
+    <header><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
+    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.0</strong></p>
+    <article><h3>Ver.1.0.0 <small>2026年10月20日</small></h3>
+        <ul><li>ログイン前とホームに「遊び方・用語ガイド」を追加。</li><li>バージョン番号・更新履歴を表示。</li></ul>
+        <h3>このバージョンに含まれる主な機能</h3>
+        <p>通常20WAVE・エンドレス／4キャラ×3育成ルート／WAVEイベントと3択強化／ボス第2形態と攻撃予告／ランキング・クラウド保存／WAVE間の中断保存／スマホ操作設定・軽量モード／音声の開始・復帰案内／ホーム画面への追加。</p>
+    </article>
+    <details><summary>友達と画面やバージョンが違うとき</summary>
+        <ol><li>同じゲームのURLを開いているか確認。</li><li>戦闘中ならWAVE間で中断保存し、ホームへ戻る。</li><li>ページを再読み込み。PCではCtrl＋F5も試せます。</li><li>ホーム画面から起動している場合はアプリを閉じて開き直すか、ブラウザでも同じURLを確認。</li><li>公開直後は少し待ってからもう一度確認。</li></ol>
+        <p>この番号は開いている画面のバージョンです。最新バージョンを自動確認する機能ではありません。端末内データが消えるので、ブラウザのデータ削除は不要です。</p>
+    </details>
+    <form method="dialog" class="guide-bottom"><button type="submit">閉じる</button></form>
+</dialog>
+<script src="guide.js?v=1.0.0"></script>
 </body>
 </html>

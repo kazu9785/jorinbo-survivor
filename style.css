@@ -666,3 +666,11 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 }
 .menu-btn:focus-visible, .back-btn:focus-visible, #btn-close-codex:focus-visible { outline:3px solid #ffe082; outline-offset:3px; }
 #btn-training:disabled, #btn-developer:disabled, #btn-continue-run:disabled, #btn-suspend-run:disabled { background:#293447; color:#b7c4d4; border-color:#65758a; opacity:1; cursor:default; }
+
+.game-info-links [data-update-game] { background:#18493d; border-color:#6ccbaa; color:#edfff5; font-weight:bold; }
+.game-info-links [data-update-game]:hover { background:#22634f; }
+.game-info-links button:focus-visible { outline:3px solid #ffe59a; outline-offset:3px; }
+[data-update-game]:disabled, #update-game-close:disabled { opacity:.6; cursor:wait; }
+.update-inline-status { flex-basis:100%; order:2; margin:0; color:#a9e9ca; font-size:.85rem; }
+.update-inline-status:empty { display:none; }
+#update-game-status { white-space:pre-line; overflow-wrap:anywhere; }

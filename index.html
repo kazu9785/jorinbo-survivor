@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <meta name="app-version" content="1.0.3">
+    <meta name="app-version" content="1.0.4">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#101827">
     <meta name="mobile-web-app-capable" content="yes">
@@ -12,8 +12,21 @@
     <meta name="apple-mobile-web-app-title" content="常林暴">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="stylesheet" href="style.css?v=1.0.2">
+    <link rel="stylesheet" href="style.css?v=1.0.4">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
+<script>
+// An update token is shared by HTML, CSS and local JavaScript, including unchanged filenames.
+window.gameAssetUrl = function (path) {
+    const url = new URL(path, document.baseURI);
+    const token = new URL(location.href).searchParams.get('_game_update');
+    if (token && url.origin === location.origin) url.searchParams.set('_game_update', token);
+    return url.href;
+};
+document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+    const next = gameAssetUrl(link.href);
+    if (next !== link.href) link.href = next;
+});
+</script>
 </head>
 <body>
 
@@ -33,8 +46,10 @@
                 </div>
             </form>
             <div class="game-info-links">
+<button type="button" data-update-game>最新版に更新</button>
+<p class="update-inline-status" data-update-status role="status"></p>
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.3</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.4</span> · 更新履歴</button>
 </div>
             <p id="auth-status" class="status-message" aria-live="polite"></p>
             <button type="button" class="install-game-button">ホーム画面に追加</button>
@@ -76,8 +91,10 @@
             </div>
             <footer class="home-footer">
 <div class="game-info-links">
+<button type="button" data-update-game>最新版に更新</button>
+<p class="update-inline-status" data-update-status role="status"></p>
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.3</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.4</span> · 更新履歴</button>
 </div>
 <button id="btn-training" class="menu-btn">キャラクター育成</button>
 <button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
@@ -306,17 +323,17 @@
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="audio.js?v=audio-lite-1"></script>
-    <script src="training.js?v=training-1"></script>
-    <script src="script.js?v=sync-fix-1.0.3"></script>
+    <script type="application/json" data-game-src="firebase-config.js?v=1.0.4"></script>
+    <script type="application/json" data-game-src="audio.js?v=1.0.4"></script>
+    <script type="application/json" data-game-src="training.js?v=1.0.4"></script>
+    <script type="application/json" data-game-src="script.js?v=1.0.4"></script>
     <dialog id="install-guide" aria-labelledby="install-guide-title">
         <h2 id="install-guide-title">ホーム画面に追加</h2>
         <p id="install-guide-text"></p>
         <p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
         <form method="dialog"><button type="submit">閉じる</button></form>
     </dialog>
-    <script src="install.js?v=resume-controls-1"></script>
+    <script type="application/json" data-game-src="install.js?v=1.0.4"></script>
 <dialog id="play-guide" class="game-info-dialog" aria-labelledby="play-guide-title">
     <header><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button type="submit" aria-label="遊び方を閉じる">閉じる</button></form></header>
     <p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE20クリアを目指そう！</p>
@@ -359,7 +376,8 @@
 </dialog>
 <dialog id="release-guide" class="game-info-dialog" aria-labelledby="release-guide-title">
     <header><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
-    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.3</strong></p>
+    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.4</strong></p>
+    <article><h3>Ver.1.0.4 <small>2026年10月21日</small></h3><ul><li>ホーム・ログイン画面に「最新版に更新」を追加。</li><li>保存確認後に最新の画面・CSS・JavaScriptを読み込み。通信失敗時は画面に留まります。</li></ul></article>
     <article><h3>Ver.1.0.3 <small>2026年10月21日</small></h3><ul><li>クラウド保存ルールの評価上限超過を修正。Firebase側のルール更新も必要です。</li><li>新規登録時の成功表示を、保存が完了する前に出さないよう修正。</li></ul></article>
     <article><h3>Ver.1.0.2（診断版）</h3><ul><li>同期・ログイン失敗時に処理名と保存形式の診断を表示。</li></ul></article>
     <article><h3>Ver.1.0.1 <small>2026年10月20日</small></h3><ul><li>キャラクター育成・開発者テスト・戻るボタンの背景色と文字色を改善。</li><li>中断・再開・結果画面のボタンも暗い背景で読みやすく調整。</li></ul></article>
@@ -369,11 +387,38 @@
         <p>通常20WAVE・エンドレス／4キャラ×3育成ルート／WAVEイベントと3択強化／ボス第2形態と攻撃予告／ランキング・クラウド保存／WAVE間の中断保存／スマホ操作設定・軽量モード／音声の開始・復帰案内／ホーム画面への追加。</p>
     </article>
     <details><summary>友達と画面やバージョンが違うとき</summary>
-        <ol><li>同じゲームのURLを開いているか確認。</li><li>戦闘中ならWAVE間で中断保存し、ホームへ戻る。</li><li>ページを再読み込み。PCではCtrl＋F5も試せます。</li><li>ホーム画面から起動している場合はアプリを閉じて開き直すか、ブラウザでも同じURLを確認。</li><li>公開直後は少し待ってからもう一度確認。</li></ol>
+        <ol><li>同じゲームのURLを開いているか確認。</li><li>戦闘中ならWAVE間で中断保存し、ホームへ戻る。</li><li>ホームまたはログイン画面の「最新版に更新」を押す。保存後に最新の画面とコードを読み直します。</li><li>ホーム画面から起動している場合はアプリを閉じて開き直すか、ブラウザでも同じURLを確認。</li><li>公開直後は少し待ってからもう一度確認。</li></ol>
         <p>この番号は開いている画面のバージョンです。最新バージョンを自動確認する機能ではありません。端末内データが消えるので、ブラウザのデータ削除は不要です。</p>
     </details>
     <form method="dialog" class="guide-bottom"><button type="submit">閉じる</button></form>
 </dialog>
-<script src="guide.js?v=1.0.0"></script>
+<script type="application/json" data-game-src="guide.js?v=1.0.4"></script>
+<dialog id="update-game-dialog" class="game-info-dialog" aria-labelledby="update-game-title">
+<h2 id="update-game-title">最新版に更新</h2>
+<p id="update-game-status" role="status" aria-live="polite"></p>
+<p>ログイン情報・コイン・育成データは残ります。公開直後は、反映まで少し待ってから再度お試しください。</p>
+<button type="button" id="update-game-close">閉じる</button>
+</dialog>
+<script type="application/json" data-game-src="update.js?v=1.0.4"></script>
+<script>
+(async () => {
+    for (const source of document.querySelectorAll('script[data-game-src]')) {
+        const script = document.createElement('script');
+        script.src = gameAssetUrl(source.dataset.gameSrc);
+        script.async = false;
+        try {
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                document.body.appendChild(script);
+            });
+        } catch (_) {
+            const message = document.getElementById('auth-status');
+            if (message) message.textContent = 'ファイルを読み込めませんでした：' + source.dataset.gameSrc.split('?')[0] + '。通信を確認してページを再読み込みしてください。';
+            break;
+        }
+    }
+})();
+</script>
 </body>
 </html>

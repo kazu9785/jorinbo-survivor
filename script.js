@@ -3051,3 +3051,12 @@ function showBossWarning(boss, pattern) {
 }
 
 initTrainingUI();
+
+// Called only from the home/login update action; the modal prevents changes while saving.
+async function prepareGameUpdate() {
+    if (startingRun || combatSessionActive) throw new Error('戦闘を終了するか、中断保存してホームへ戻ってください。');
+    if (auth?.currentUser) {
+        if (!cloudReady) throw new Error('ログイン・クラウド読み込みの完了を待ってください。');
+        await flushCloudSave();
+    }
+}

@@ -704,7 +704,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = '診断版 1.0.2 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.0.3 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -977,7 +977,7 @@ async function registerPlayer() {
         pendingRegistrationName = username;
         const email = await usernameToInternalEmail(username);
         await auth.createUserWithEmailAndPassword(email, password);
-        setStatus(authStatus, '登録できました。ゲームを開始できます。', 'success');
+        // ホーム表示はAuth監視処理でクラウド保存の完了を待って行う。
         loginPassword.value = '';
     } catch (error) {
         pendingRegistrationName = '';

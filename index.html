@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <meta name="app-version" content="1.0.2">
+    <meta name="app-version" content="1.0.3">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#101827">
     <meta name="mobile-web-app-capable" content="yes">
@@ -34,7 +34,7 @@
             </form>
             <div class="game-info-links">
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.2</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.3</span> · 更新履歴</button>
 </div>
             <p id="auth-status" class="status-message" aria-live="polite"></p>
             <button type="button" class="install-game-button">ホーム画面に追加</button>
@@ -77,7 +77,7 @@
             <footer class="home-footer">
 <div class="game-info-links">
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.2</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.3</span> · 更新履歴</button>
 </div>
 <button id="btn-training" class="menu-btn">キャラクター育成</button>
 <button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
@@ -309,7 +309,7 @@
     <script src="firebase-config.js"></script>
     <script src="audio.js?v=audio-lite-1"></script>
     <script src="training.js?v=training-1"></script>
-    <script src="script.js?v=diagnostic-1.0.2"></script>
+    <script src="script.js?v=sync-fix-1.0.3"></script>
     <dialog id="install-guide" aria-labelledby="install-guide-title">
         <h2 id="install-guide-title">ホーム画面に追加</h2>
         <p id="install-guide-text"></p>
@@ -359,7 +359,8 @@
 </dialog>
 <dialog id="release-guide" class="game-info-dialog" aria-labelledby="release-guide-title">
     <header><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
-    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.2</strong></p>
+    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.3</strong></p>
+    <article><h3>Ver.1.0.3 <small>2026年10月21日</small></h3><ul><li>クラウド保存ルールの評価上限超過を修正。Firebase側のルール更新も必要です。</li><li>新規登録時の成功表示を、保存が完了する前に出さないよう修正。</li></ul></article>
     <article><h3>Ver.1.0.2（診断版）</h3><ul><li>同期・ログイン失敗時に処理名と保存形式の診断を表示。</li></ul></article>
     <article><h3>Ver.1.0.1 <small>2026年10月20日</small></h3><ul><li>キャラクター育成・開発者テスト・戻るボタンの背景色と文字色を改善。</li><li>中断・再開・結果画面のボタンも暗い背景で読みやすく調整。</li></ul></article>
     <article><h3>Ver.1.0.0 <small>2026年10月20日</small></h3>

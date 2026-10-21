@@ -649,6 +649,69 @@ function cloudStatus(message) {
     if (el) el.textContent = message;
 }
 function pendingSaveKey() { return getSaveKey() + '_pending'; }
+
+// 診断情報には値・名前・UIDを含めず、処理と項目名だけを表示する。
+function saveDiagnosticFields(d) {
+    const errors = [];
+    const check = (ok, path) => { if (!ok) errors.push(path); };
+    const count = v => Number.isSafeInteger(v) && v >= 0 && v <= 1000000000;
+    const map = v => v && typeof v === 'object' && !Array.isArray(v);
+    const keys = (v, allowed, required, path) => {
+        if (!map(v)) { errors.push(path + '（形式）'); return false; }
+        Object.keys(v).forEach(k => check(allowed.includes(k), path + '.' + k + '（未許可項目）'));
+        required.forEach(k => check(k in v, path + '.' + k + '（不足）'));
+        return true;
+    };
+    const base = ['coins','endlessUnlocked','name','character','upgrade','skills'];
+    if (!keys(d, [...base,'codex','records','lastResult','training'], base, 'data')) return errors;
+    check(Number.isSafeInteger(d.coins) && d.coins >= 0, 'data.coins');
+    check(typeof d.endlessUnlocked === 'boolean', 'data.endlessUnlocked');
+    check(typeof d.name === 'string' && d.name.length <= 64, 'data.name');
+    const chars = ['balance','power','speed','tank'];
+    check(chars.includes(d.character), 'data.character');
+    const upgrades = ['damage','fireRate','count','bulletSize','speed','maxHp'];
+    if (keys(d.upgrade, upgrades, upgrades, 'data.upgrade')) upgrades.forEach(k => check(count(d.upgrade[k]) && d.upgrade[k] >= 1, 'data.upgrade.'+k));
+    const skills = ['sphere','bomb','energy','satellite'];
+    if (keys(d.skills, ['owned','equipped','levels'], ['owned','equipped','levels'], 'data.skills')) {
+        check(Array.isArray(d.skills.owned) && d.skills.owned.length >= 1 && d.skills.owned.length <= 4 && d.skills.owned.every(k => skills.includes(k)) && d.skills.owned.includes(d.skills.equipped), 'data.skills.owned/equipped');
+        if (keys(d.skills.levels, skills, skills, 'data.skills.levels')) skills.forEach(k => check(count(d.skills.levels[k]) && d.skills.levels[k] >= 1, 'data.skills.levels.'+k));
+    }
+    if ('training' in d && keys(d.training, chars, chars, 'data.training')) chars.forEach(k => {
+        const t=d.training[k], path='data.training.'+k;
+        if (!keys(t,['uses','bestWave','route','levels'],['uses','bestWave','route','levels'],path)) return;
+        check(count(t.uses),path+'.uses'); check(count(t.bestWave),path+'.bestWave');
+        check(['a','b','c'].includes(t.route),path+'.route');
+        if (keys(t.levels,['a','b','c'],['a','b','c'],path+'.levels')) ['a','b','c'].forEach(r => check(Number.isInteger(t.levels[r]) && t.levels[r]>=0 && t.levels[r]<=5,path+'.levels.'+r));
+    });
+    if ('records' in d && keys(d.records,['normal','endless'],['normal','endless'],'data.records')) ['normal','endless'].forEach(k=>check(count(d.records[k]),'data.records.'+k));
+    const codex=['minion','shooter','golem','rusher','treasure',...['fire','ice','forest','dark'].flatMap(k=>['boss_'+k,'boss_'+k+'_phase2'])];
+    if ('codex' in d && keys(d.codex,codex,[],'data.codex')) Object.keys(d.codex).forEach(k=>check(count(d.codex[k]),'data.codex.'+k));
+    if (d.lastResult != null) {
+        const r=d.lastResult, fields=['wave','coins','kills','bosses','seconds','character','mode','reason','newBest'];
+        if (keys(r,fields,fields,'data.lastResult')) {
+            ['wave','kills','bosses','seconds'].forEach(k=>check(count(r[k]),'data.lastResult.'+k));
+            check(Number.isSafeInteger(r.coins)&&r.coins>=0,'data.lastResult.coins');
+            check(chars.includes(r.character),'data.lastResult.character');
+            check(['normal','endless','test'].includes(r.mode),'data.lastResult.mode');
+            check(typeof r.reason==='string'&&r.reason.length<=100,'data.lastResult.reason');
+            check(typeof r.newBest==='boolean','data.lastResult.newBest');
+        }
+    }
+    return errors;
+}
+function diagnosticError(error, stage, data) {
+    if (error.diagnostic) return error;
+    const fields = data ? saveDiagnosticFields(data) : [];
+    const result = new Error(error.message);
+    result.code = error.code;
+    result.diagnostic = '診断版 1.0.2 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.message = result.diagnostic;
+    return result;
+}
+async function diagnosticTask(stage, work) {
+    try { return await work(); } catch(error) { throw diagnosticError(error, stage); }
+}
+
 function cloudDocument(data, revision) {
     return { data, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 }
@@ -662,19 +725,22 @@ async function loadCloudData(user) {
     let pending = null;
     try { pending = JSON.parse(localStorage.getItem(pendingSaveKey())); } catch (_) {}
     const local = JSON.parse(JSON.stringify(gameData));
+    let diagnosticStage = cloudRef.parent.id + " 読み込み";
     const result = await db.runTransaction(async transaction => {
         const snapshot = await transaction.get(cloudRef);
         if (!snapshot.exists) {
+            diagnosticStage = cloudRef.parent.id + " 初回保存";
             transaction.set(cloudRef, cloudDocument(local, 1));
             return { data: local, revision: 1 };
         }
         const remote = snapshot.data();
         if (pending && pending.revision === remote.revision) {
+            diagnosticStage = cloudRef.parent.id + " 未同期データ保存";
             transaction.set(cloudRef, cloudDocument(local, remote.revision + 1));
             return { data: local, revision: remote.revision + 1 };
         }
         return remote;
-    });
+    }).catch(error => { throw diagnosticError(error, diagnosticStage, local); });
     if (pending && pending.revision !== result.revision - 1) {
         localStorage.setItem(getSaveKey() + '_conflictBackup', JSON.stringify(local));
     }
@@ -711,14 +777,16 @@ async function flushCloudSave() {
     const ref = cloudRef;
     cloudDirty = false;
     cloudStatus('クラウド保存中…');
+    let diagnosticStage = ref.parent.id + " 保存前の読み込み";
     cloudWriting = db.runTransaction(async transaction => {
         const snapshot = await transaction.get(ref);
         if (!snapshot.exists || snapshot.data().revision !== revision) {
             const error = new Error('別の端末で更新されました。同期ボタンから最新データを読み込んでください。');
             error.code = 'save-conflict'; throw error;
         }
+        diagnosticStage = ref.parent.id + " 更新保存";
         transaction.set(ref, cloudDocument(data, revision + 1));
-    });
+    }).catch(error => { throw diagnosticError(error, diagnosticStage, data); });
     try {
         await cloudWriting;
         cloudRevision = revision + 1;
@@ -851,6 +919,7 @@ async function usernameToInternalEmail(username) {
 }
 
 function getAuthErrorMessage(error) {
+    if (error.diagnostic) return error.diagnostic;
     const code = error && error.code ? error.code : '';
     const messages = {
         'auth/email-already-in-use': 'その名前はすでに使われています。',
@@ -1191,9 +1260,9 @@ if (isFirebaseConfigured && auth && db) {
 
         try {
             const playerRef = db.collection('players').doc(user.uid);
-            let snapshot = await playerRef.get();
+            let snapshot = await diagnosticTask("players 読み込み", () => playerRef.get());
             if (!snapshot.exists && pendingRegistrationName) {
-                await createPlayerDocument(user, pendingRegistrationName);
+                await diagnosticTask("players 新規登録", () => createPlayerDocument(user, pendingRegistrationName));
                 snapshot = await playerRef.get();
             }
             if (!snapshot.exists) {

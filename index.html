@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <meta name="app-version" content="1.0.4">
-    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="app-version" content="1.0.5">
+    <link rel="manifest" href="manifest.webmanifest?v=1.0.5">
     <meta name="theme-color" content="#101827">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="常林暴">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.0.5">
+    <link rel="icon" type="image/png" href="icon-192.png?v=1.0.5">
     <link rel="stylesheet" href="style.css?v=1.0.4">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 <script>
@@ -49,7 +49,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <button type="button" data-update-game>最新版に更新</button>
 <p class="update-inline-status" data-update-status role="status"></p>
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.4</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.5</span> · 更新履歴</button>
 </div>
             <p id="auth-status" class="status-message" aria-live="polite"></p>
             <button type="button" class="install-game-button">ホーム画面に追加</button>
@@ -94,7 +94,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <button type="button" data-update-game>最新版に更新</button>
 <p class="update-inline-status" data-update-status role="status"></p>
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.4</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide"><span class="app-version">Ver.1.0.5</span> · 更新履歴</button>
 </div>
 <button id="btn-training" class="menu-btn">キャラクター育成</button>
 <button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
@@ -376,7 +376,8 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 </dialog>
 <dialog id="release-guide" class="game-info-dialog" aria-labelledby="release-guide-title">
     <header><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
-    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.4</strong></p>
+    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.0.5</strong></p>
+    <article><h3>Ver.1.0.5 <small>2026年10月22日</small></h3><ul><li>ホーム画面・ブラウザタブのゲームアイコンを変更。</li></ul></article>
     <article><h3>Ver.1.0.4 <small>2026年10月21日</small></h3><ul><li>ホーム・ログイン画面に「最新版に更新」を追加。</li><li>保存確認後に最新の画面・CSS・JavaScriptを読み込み。通信失敗時は画面に留まります。</li></ul></article>
     <article><h3>Ver.1.0.3 <small>2026年10月21日</small></h3><ul><li>クラウド保存ルールの評価上限超過を修正。Firebase側のルール更新も必要です。</li><li>新規登録時の成功表示を、保存が完了する前に出さないよう修正。</li></ul></article>
     <article><h3>Ver.1.0.2（診断版）</h3><ul><li>同期・ログイン失敗時に処理名と保存形式の診断を表示。</li></ul></article>

@@ -61,8 +61,8 @@ function trainingLevel(character,route) {
     return activeTraining?.character===character && activeTraining.route===route ? activeTraining.level : 0;
 }
 function trainingHpBonus() { return trainingLevel('tank','c')*3; }
-function getSkillCooldown() { return bombCooldown*(1-.08*trainingLevel('power','b')); }
-function trainingSkillMultiplier() { return 1+.15*trainingLevel('power','a'); }
+function getSkillCooldown() { return bombCooldown*(1-.08*trainingLevel('power','b'))*equipmentStats().cooldown; }
+function trainingSkillMultiplier() { return (1+.15*trainingLevel('power','a'))*equipmentSkillMultiplier(); }
 function trainingSkillRadius() { return 1+.06*trainingLevel('power','a'); }
 function trainingOnSkill() { if (trainingLevel('power','c')) trainingState.surgeUntil=gameNow()+6000; }
 function trainingFireRateMultiplier() {

@@ -89,6 +89,7 @@ function playSound(el = "confirm", vol = 0.5) { window.GameAudio?.effect(el, vol
 function getDefaultData() {
     return {
         training: createDefaultTraining(),
+        equipment: createDefaultEquipment(),
         codex: {},
         records: { normal: 0, endless: 0 },
         lastResult: null,
@@ -126,7 +127,7 @@ function getSelectedCharacter() {
     return Object.hasOwn(CHARACTERS, gameData.character) ? CHARACTERS[gameData.character] : CHARACTERS.balance;
 }
 function getPlayerMaxHp() {
-    return getSelectedCharacter().hp + ((gameData.upgrade.maxHp || 1) - 1) * 5 + (runUpgrades.maxHp || 0) * 5 + trainingHpBonus();
+    return getSelectedCharacter().hp + ((gameData.upgrade.maxHp || 1) - 1) * 5 + (runUpgrades.maxHp || 0) * 5 + trainingHpBonus() + equipmentStats().hp;
 }
 function updateCharacterDisplay() {
     const character = getSelectedCharacter();
@@ -347,6 +348,7 @@ function repairGameData(saved) {
 
     const repaired = saved;
     repaired.training = repairTraining(saved.training);
+    repaired.equipment = repairEquipment(saved.equipment);
     repaired.codex = repaired.codex && typeof repaired.codex === 'object' ? repaired.codex : {};
     repaired.records ||= { normal: 0, endless: 0 };
     repaired.lastResult ||= null;
@@ -368,6 +370,7 @@ function repairGameData(saved) {
 function applyDeveloperPreset() {
     if (!isDeveloper) return;
     gameData.coins = Math.max(gameData.coins, 1000000);
+    applyDeveloperEquipment();
     gameData.endlessUnlocked = true;
     gameData.training = repairTraining(gameData.training);
     for (const id of TRAINING_CHARACTERS) {
@@ -526,6 +529,7 @@ window.addEventListener('blur', pauseGame);
 
 let runRecord = null, combatSegmentStart = null;
 function beginRunRecord() {
+    equipmentStartRun();
     trainingStartRun();
     runRecord = { kills: 0, bosses: 0, elapsed: 0, character: gameData.character,
         mode: gameMode, finalized: false };
@@ -663,8 +667,9 @@ function saveDiagnosticFields(d) {
         return true;
     };
     const base = ['coins','endlessUnlocked','name','character','upgrade','skills'];
-    if (!keys(d, [...base,'codex','records','lastResult','training'], base, 'data')) return errors;
+    if (!keys(d, [...base,'codex','records','lastResult','training','equipment'], base, 'data')) return errors;
     check(Number.isSafeInteger(d.coins) && d.coins >= 0, 'data.coins');
+    if ('equipment' in d) check(validEquipmentLocal(d.equipment),'data.equipment');
     check(typeof d.endlessUnlocked === 'boolean', 'data.endlessUnlocked');
     check(typeof d.name === 'string' && d.name.length <= 64, 'data.name');
     const chars = ['balance','power','speed','tank'];
@@ -704,7 +709,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.0.3 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.2.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -861,6 +866,7 @@ function saveData() {
 }
 
 function updateCoinDisplays() {
+    updateEquipmentBalance();
     if(totalCoinsDisplay) totalCoinsDisplay.textContent = gameData.coins;
     if(weaponShopCoinsDisplay) weaponShopCoinsDisplay.textContent = gameData.coins;
     if(playerShopCoinsDisplay) playerShopCoinsDisplay.textContent = gameData.coins;
@@ -951,6 +957,8 @@ function showAuthScreen() {
 }
 
 function showHomeScreen() {
+    equipmentRun = null;
+    updateEquipmentBalance();
     activeTraining = null;
     updateContinueButton();
     window.GameAudio?.scene("menu");
@@ -1499,7 +1507,7 @@ btnBackPlayer.addEventListener('click', () => { playerShopScreen.classList.add('
 btnBackSkill.addEventListener('click', () => { skillShopScreen.classList.add('hidden'); homeScreen.classList.remove('hidden'); });
 
 btnReset.addEventListener('click', async () => {
-    if(!confirm("【警告】\n強化・コイン・最高WAVE・直近WAVE・挑戦回数を全て0に戻し、エンドレス解放もリセットしますか？")) return;
+    if(!confirm("【警告】\n装備・召喚結晶・強化・コイン・最高WAVE・直近WAVE・挑戦回数を全て0に戻し、エンドレス解放もリセットしますか？")) return;
 
     btnReset.disabled = true;
     try {
@@ -1780,9 +1788,9 @@ function getPlayerStats() {
     let bSize = 10 + (sizeLevel - 1) * 4;
 
     return {
-        shotInterval: Math.max(50, Math.max(100, 500 - (rate - 1) * 40) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier()),
-        damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage,
-        moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed),
+        shotInterval: Math.max(50, Math.max(100, 500 - (rate - 1) * 40) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate),
+        damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * equipmentStats().damage,
+        moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * equipmentStats().speed),
         bulletCount: cnt + (runUpgrades.count || 0),
         bulletSize: bSize * (1 + (runUpgrades.bulletSize || 0) * 0.2)
     };
@@ -1831,6 +1839,7 @@ function launchWaveSequence() {
 
 function startBattle() {
     trainingOnWaveStart();
+    equipmentWaveStart();
     document.body.style.cursor = 'none';
     resetFrameClock();
     const arena = getArenaSize();
@@ -2232,6 +2241,16 @@ function spawnEnemy(type) {
         jumpOffset = 0;
     }
     
+    const strengthTier = equipmentEnemyTier(type);
+    if (type !== 'boss' && type !== 'treasure') {
+        hp *= [0,1,1.45,2][strengthTier];
+        speed *= [0,1,1.08,1.16][strengthTier];
+        if(strengthTier>1) {
+            el.classList.add('enemy-tier-'+strengthTier);
+            const badge=document.createElement('span');badge.className='enemy-tier-badge';
+            badge.textContent=strengthTier===2?'精鋭':'希少';el.appendChild(badge);
+        }
+    }
     if (currentWaveEvent === 'rage') speed *= 1.3;
     el.style.left = ex + 'px';
     el.style.top = ey + 'px';
@@ -2240,7 +2259,7 @@ function spawnEnemy(type) {
 
     enemySpatialVersion++;
     enemies.push({ 
-        element: el, hpFill: hpFill,
+        element: el, hpFill: hpFill, strengthTier: strengthTier,
         x: ex, y: ey, hp: hp, maxHp: hp, type: type, speed: speed, coinDrop: coinDrop,
         jumpTimer: jumpOffset,
         lastAttackTime: type === 'boss' ? gameNow() : 0,
@@ -2302,7 +2321,7 @@ function enemyFireBullet(enemy) {
     const vx = Math.cos(angle) * 5;
     const vy = Math.sin(angle) * 5;
 
-    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: 2 });
+    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: 2 * (1 + ((enemy.strengthTier || 1)-1)*.2) });
 }
 
 function golemFireBullet(enemy) {
@@ -2320,7 +2339,7 @@ function golemFireBullet(enemy) {
     const vx = Math.cos(angle) * 4;
     const vy = Math.sin(angle) * 4;
 
-    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: 4 });
+    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: 4 * (1 + ((enemy.strengthTier || 1)-1)*.2) });
 }
 
 // ■■■ ボスのランダム攻撃 ■■■
@@ -2627,7 +2646,7 @@ function updateBullets() {
         for (const { enemy: e } of nearbyBulletTargets(grid, b.x, b.y)) {
             const hitR = e.type === 'boss' ? 70 : e.type === 'golem' ? 40 : 30;
             if ((b.x - e.x)**2 + (b.y - e.y)**2 < hitR * hitR) {
-                damageEnemy(e, trainingBulletDamage(e, b.damage));
+                damageEnemy(e, equipmentBulletDamage(e, trainingBulletDamage(e, b.damage)));
                 releaseBulletElement(b.element); bullets.splice(i, 1);
                 break;
             }
@@ -2740,7 +2759,7 @@ function updateEnemies() {
 
         if (Math.sqrt((playerX - e.x)**2 + (playerY - e.y)**2) < (e.type === 'boss' ? 80 : 40)) {
             if (now - lastDamageTime > 1000) {
-                takePlayerDamage((1 + Math.floor(currentWave/3)) * (e.type === 'rusher' ? 2 : 1)); 
+                takePlayerDamage((1 + Math.floor(currentWave/3)) * (e.type === 'rusher' ? 2 : 1) * (e.type === 'boss' ? 1 : 1 + ((e.strengthTier || 1)-1)*.2)); 
                 lastDamageTime = now;
             }
         }
@@ -2750,6 +2769,8 @@ function updateEnemies() {
 function takePlayerDamage(dmg) {
     if (isGameOver || !waveEventActive) return;
     if (currentWaveEvent === 'rage') dmg = Math.ceil(dmg * 1.5);
+    dmg = equipmentIncomingDamage(dmg);
+    if (dmg <= 0) { updateHpDisplay(); return; }
     dmg = trainingIncomingDamage(dmg);
     if (dmg <= 0) { updateHpDisplay(); return; }
     playerCurrentHp = Math.max(0, Math.round((playerCurrentHp - dmg) * 1000) / 1000);
@@ -2803,6 +2824,7 @@ function killEnemy(e) {
     if(gameCoinsDisplay) gameCoinsDisplay.textContent = sessionCoins;
     
     gameData.coins += reward;
+    equipmentDrop(e);
     saveData();
 
     if (reward > 0) showCoinText(e.x, e.y, reward);
@@ -3005,7 +3027,7 @@ document.getElementById('btn-suspend-run').addEventListener('click', async () =>
         if (cloudConflict) throw new Error('同期が必要です。ホームで同期してください。');
         const c = { version:1, mode:gameMode, wave:currentWave, character:gameData.character,
             hp:playerCurrentHp, upgrades:{...runUpgrades}, coins:sessionCoins, record:{...runRecord},
-            cooldown:Math.max(0,getSkillCooldown()-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent, training:trainingCheckpoint() };
+            cooldown:Math.max(0,getSkillCooldown()-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent, training:trainingCheckpoint(), equipment:equipmentCheckpoint() };
         localStorage.setItem(getSaveKey() + '_checkpoint', JSON.stringify(c));
         stopWaveEvent(); waveShopScreen.classList.add('hidden'); gameScreen.classList.add('hidden');
         showHomeScreen();
@@ -3021,6 +3043,7 @@ document.getElementById('btn-continue-run').addEventListener('click', () => {
     catch (_) { alert('中断データを更新できません。再試行してください。'); return; }
     gameData.character = c.character; gameMode = c.mode; currentWave = c.wave + 1;
     resetRunUpgrades(); runUpgrades = c.upgrades; lastRewardWave = c.wave;
+    equipmentStartRun(c.equipment);
     restoreTrainingCheckpoint(c.training);
     runRecord = c.record; combatSegmentStart = null; sessionCoins = c.coins;
     lastWaveEvent = c.lastEvent; waveResultSaved = false;
@@ -3051,6 +3074,7 @@ function showBossWarning(boss, pattern) {
 }
 
 initTrainingUI();
+initEquipmentUI();
 
 // Called only from the home/login update action; the modal prevents changes while saving.
 async function prepareGameUpdate() {

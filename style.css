@@ -674,3 +674,44 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .update-inline-status { flex-basis:100%; order:2; margin:0; color:#a9e9ca; font-size:.85rem; }
 .update-inline-status:empty { display:none; }
 #update-game-status { white-space:pre-line; overflow-wrap:anywhere; }
+
+/* Equipment: desktop four columns, phones one column, scroll within dialog. */
+.equipment-dialog {width:min(1180px,94vw);max-width:94vw;max-height:88dvh;overflow:auto;background:#111d32;color:#edf3ff;}
+.equipment-dialog select,.equipment-dialog button {background:#263e61;color:#fff;border:1px solid #7996c1;border-radius:8px;padding:10px;cursor:pointer;}
+.equipment-dialog button:disabled {opacity:.5;cursor:default;}
+.equipment-dialog button:focus-visible {outline:3px solid #63dce8;outline-offset:2px;}
+.equipment-actions {display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;}
+.equipment-cards {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.equipment-card {padding:10px;background:#192840;border-radius:12px;min-width:0;}
+.equipment-option {border:1px solid;border-radius:10px;margin:12px 0;padding:9px;font-size:13px;line-height:1.6;}
+.equipment-option.unowned {background:#111b2c;}
+.equipment-option p {min-height:60px;}
+.equipment-icon {width:100px;height:100px;max-width:100%;background-size:400% 400%;background-repeat:no-repeat;margin:auto;}
+.equipment-results {display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;}
+.equipment-result {background:#293b57;padding:10px;border-radius:10px;max-width:160px;}
+.crystal-drop {position:absolute;display:flex;align-items:center;color:#a7f5ff;pointer-events:none;z-index:60;animation:crystal-rise 1s ease-out forwards;}
+.crystal-drop img {width:32px;height:32px;object-fit:contain;}
+@keyframes crystal-rise {to{transform:translateY(-60px);opacity:0;}}
+.enemy-tier-2 {outline:2px solid #57bcff;}.enemy-tier-3 {outline:3px solid #d590ff;}
+.enemy-tier-badge {position:absolute;top:-25px;left:0;white-space:nowrap;background:#17233b;color:white;font-size:11px;padding:2px 4px;border-radius:4px;}
+@media(max-width:850px){.equipment-cards{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:500px){.equipment-cards{grid-template-columns:1fr;}.equipment-option{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center;}.equipment-icon{width:80px;height:80px;}.equipment-option p{min-height:0;}.equipment-option button{grid-column:1/-1;}}
+
+/* v1.2 equipment instances */
+.equipment-box-card{border:1px solid;border-radius:12px;padding:12px;background:#192840;min-width:0;font-size:13px;line-height:1.6;}
+.equipment-box-card .equipment-name{font-weight:bold;font-size:15px;color:#fff;}
+.equipment-affixes{white-space:pre-line;color:#f4e3b7;line-height:1.7;}
+.equipment-card-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.equipment-loadout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0;}
+.equipment-loadout-slot{background:#21334d;border:1px solid #6e88ad;border-radius:10px;text-align:center;padding:10px;}
+.equipment-filters{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0;}
+.equipment-filters label{display:flex;flex-direction:column;gap:5px;}
+.equipment-probability-scroll{overflow-x:auto;}
+.equipment-odds-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;}
+.equipment-odds-table th,.equipment-odds-table td{padding:10px;border:1px solid #627ca3;min-width:65px;text-align:left;}
+.equipment-odds-table th{background:#2b4365;color:#fff;}
+#equipment-status{color:#b5f3ef;min-height:1.5em;}
+.equipment-durability{font-size:11px!important;max-width:100%;}
+@media(max-width:650px){.equipment-loadout{grid-template-columns:repeat(2,minmax(0,1fr));}.equipment-filters label{flex:1 1 130px;}.equipment-filters select{max-width:100%;}.equipment-dialog{padding:12px;}.equipment-durability{font-size:10px!important;}}
+
+#equipment-durability-hud{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);max-width:94%;width:max-content;padding:3px 7px;border-radius:6px;background:rgba(8,17,31,.8);color:#bce5ff;z-index:40;pointer-events:none;white-space:normal;text-align:center;}

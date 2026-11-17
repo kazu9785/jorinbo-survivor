@@ -51,35 +51,65 @@ function sellSelectedEquipment(){
  if(!confirm(items.length+'個を合計'+sum+'Gで売却しますか？\nロック・装備中・中断データで使用中の品は除外されます。売却は取り消せません。'))return false;
  const ids=new Set(items.map(i=>i.uid));gameData.equipment.items=gameData.equipment.items.filter(w=>!ids.has(decodeEquipment(w)?.uid));gameData.coins+=sum;saleSelection.clear();saveData();renderEquipment();return true;
 }
-const COMPARE_FIELDS=[['damage','通常攻撃',100,'ポイント'],['hp','最大HP',1,''],['speed','移動補正',100,'ポイント'],['fireRate','連射補正',100,'ポイント'],['skill','スキル威力',100,'ポイント'],['cooldown','スキル待ち時間',100,'ポイント'],['reduction','ダメージ軽減',100,'ポイント'],['evade','回避率',100,'ポイント'],['crit','会心率',100,'ポイント'],['boss','対ボス補正',100,'ポイント'],['heal','WAVE開始時回復',1,''],['shield','WAVE開始時シールド',1,'']];
+const COMPARE_FIELDS=[['damage','通常攻撃',100,'ポイント'],['hp','最大HP',1,''],['speed','移動補正',100,'ポイント'],['fireRate','連射補正',100,'ポイント'],['skill','スキル威力',100,'ポイント'],['cooldown','スキル待ち時間',100,'ポイント'],['reduction','ダメージ軽減',100,'ポイント'],['evade','回避率',100,'ポイント'],['crit','会心率',100,'ポイント'],['boss','対ボス補正',100,'ポイント'],['heal','WAVE開始時回復',1,''],['shield','WAVE開始時シールド',1,''],['drop','結晶ドロップ率',100,'ポイント']];
 function itemComparison(item){
  const start=Math.floor(item.slot/4)*4;
  const before=gameData.equipment.equipped.slice(start,start+4).map(decodeEquipment).map(i=>i?.durability>0?i:null),after=before.slice();after[item.slot%4]=item.durability>0?item:null;
  const a=equipmentStats(before),b=equipmentStats(after);
  return COMPARE_FIELDS.map(([key,label,scale,unit])=>({key,label,unit,value:Math.round((b[key]-a[key])*scale*100)/100}));
 }
+function itemDetailPanel(parent,title,fold=false){
+ const panel=document.createElement(fold?'details':'section');panel.className='item-pop-panel';
+ const heading=document.createElement(fold?'summary':'h3');heading.textContent=title;panel.appendChild(heading);parent.appendChild(panel);return panel;
+}
+function itemDetailChip(parent,text,className='') {const chip=document.createElement('span');chip.className='item-chip '+className;chip.textContent=text;parent.appendChild(chip);return chip;}
 function openItemDetails(uid){
  const item=equipmentFind(uid);if(!item)return;markEquipmentSeen(uid);renderEquipment();itemDetailUid=uid;
- const area=document.getElementById('item-detail-content');area.replaceChildren();area.appendChild(equipmentIcon(item.slot,item.grade,item));
- appendEqText(area,equipmentName(item),'equipment-name');appendEqText(area,'耐久 '+item.durability+'/'+EQ_MAX_DURABILITY[item.grade]);equipmentDurabilityGauge(area,item);
- appendEqText(area,equipmentDescription(item.slot%4,item.grade));appendEqText(area,equipmentAffixText(item));
- const current=decodeEquipment(gameData.equipment.equipped[item.slot]);
- appendEqText(area,'比較対象：'+(current?equipmentName(current):'未装備')+'（'+CHARACTERS[EQ_CHARS[Math.floor(item.slot/4)]].name+'）');
- if(current)appendEqText(area,'現在の特殊スキル：'+equipmentAffixText(current));
- const changes=itemComparison(item).filter(d=>d.value!==0);
- if(!changes.length)appendEqText(area,'装備による能力補正の変化なし');
- for(const d of changes)appendEqText(area,d.label+' '+(d.value>0?'+':'')+d.value+d.unit,(d.key==='cooldown'?d.value<0:d.value>0)?'stat-gain':'stat-loss');
- appendEqText(area,'％効果は加算ポイント差。装備効果の上限を反映。キャラ育成・ゲーム側の速度上限は含みません。耐久0の装備効果は0です。','equipment-affixes');
- const actions=document.createElement('div');actions.className='equipment-card-actions';area.appendChild(actions);
- eqButton(actions,equipmentLocked(uid)?'🔒 ロック解除':'☆ お気に入りロック',!canEditTraining(),()=>toggleEquipmentLock(uid));
- eqButton(actions,'装備する',!canEditTraining()||item.durability===0,()=>{equipItem(item.slot,uid);openItemDetails(uid);});
- eqButton(actions,'🔧 '+repairGoldCost(item)+'Gで全回復',!canEditTraining()||!repairGoldCost(item)||gameData.coins<repairGoldCost(item),()=>repairEquipmentGold(uid));
- eqButton(actions,'合成で修理',!canEditTraining()||item.durability>=EQ_MAX_DURABILITY[item.grade],()=>openEquipmentFusion(uid));
- eqButton(actions,saleSelection.has(uid)?'売却対象から外す':'まとめて売却の対象に選ぶ',!canEditTraining()||equipmentProtected(uid),()=>{if(!canEditTraining()||equipmentProtected(uid))return;if(saleSelection.has(uid))saleSelection.delete(uid);else saleSelection.add(uid);renderEquipment();openItemDetails(uid);});
- eqButton(actions,'売却 '+equipmentSaleValue(item)+'G',!canEditTraining()||equipmentProtected(uid),()=>{if(sellEquipment(uid))document.getElementById('item-detail-dialog').close();});
+ const area=document.getElementById('item-detail-content');area.replaceChildren();
+ const hero=document.createElement('div');hero.className='item-pop-hero grade-'+item.grade;
+ hero.style.setProperty('--item-accent',['#aab9cc','#51bfff','#b784ff','#ffca57','#ff9ee8'][item.grade-1]);
+ hero.appendChild(equipmentIcon(item.slot,item.grade,item));const info=document.createElement('div');hero.appendChild(info);area.appendChild(hero);
+ itemDetailChip(info,EQ_GRADES[item.grade-1],'item-grade');itemDetailChip(info,CHARACTERS[EQ_CHARS[Math.floor(item.slot/4)]].name);
+ appendEqText(info,SERIES_NAMES[equipmentSeries(item)]+'の'+EQ_SLOTS[item.slot%4],'item-pop-name');
+ const current=decodeEquipment(gameData.equipment.equipped[item.slot]),equipped=current?.uid===uid;
+ if(equipped)itemDetailChip(info,'✓ 装備中');if(equipmentLocked(uid))itemDetailChip(info,'🔒 ロック中');
+ appendEqText(info,'🛡 耐久 '+item.durability+' / '+EQ_MAX_DURABILITY[item.grade]+(item.durability===0?' · 破損':''),'item-durability-label');equipmentDurabilityGauge(info,item);
+ const primary=document.createElement('div');primary.className='item-primary-actions';area.appendChild(primary);
+ eqButton(primary,equipped?'✓ 装備中':'⚔ 装備する',!canEditTraining()||equipped||item.durability===0,()=>{equipItem(item.slot,uid);openItemDetails(uid);});
+ eqButton(primary,equipmentLocked(uid)?'🔓 ロック解除':'🔒 ロック',!canEditTraining(),()=>toggleEquipmentLock(uid));
+ if(item.durability===0)appendEqText(area,'修理すると装備効果が戻ります。','item-pop-warning');
+ const effects=itemDetailPanel(area,'✨ この装備の効果');
+ itemDetailChip(effects,equipmentDescription(item.slot%4,item.grade),'item-base-effect');
+ const skills=document.createElement('div');skills.className='item-skill-grid';effects.appendChild(skills);
+ item.skills.forEach(id=>{const a=EQ_AFFIXES[id],card=document.createElement('div');card.className='item-skill-card skill-tier-'+a.tier;appendEqText(card,['✦','◆','★'][a.tier]+' '+a.name,'item-skill-name');appendEqText(card,a.description(item.grade),'item-skill-effect');itemDetailChip(card,EQ_AFFIX_TIERS[a.tier]);skills.appendChild(card);});
+ const changes=itemComparison(item).filter(d=>d.value!==0),gain=changes.filter(d=>d.key==='cooldown'?d.value<0:d.value>0).length;
+ const comparison=itemDetailPanel(area,'↔ 装備すると '+(changes.length?'↑'+gain+'項目 / ↓'+(changes.length-gain)+'項目':'能力差なし'),true);
+ appendEqText(comparison,'比較：'+(current?SERIES_NAMES[equipmentSeries(current)]+' / '+EQ_GRADES[current.grade-1]+' #'+current.uid:'未装備'),'item-muted');
+ const diffs=document.createElement('div');diffs.className='item-diff-grid';comparison.appendChild(diffs);
+ changes.forEach(d=>itemDetailChip(diffs,d.label+' '+(d.value>0?'+':'')+d.value+(d.unit==='ポイント'?'pt':d.unit),(d.key==='cooldown'?d.value<0:d.value>0)?'stat-gain':'stat-loss'));
+ if(current)appendEqText(comparison,'現在の特殊スキル：'+equipmentAffixText(current),'item-muted');
+ appendEqText(comparison,'pt＝％補正の加算差。セット効果・装備上限を反映。育成・ゲーム側の速度上限は含みません。','item-muted');
+ const series=itemDetailPanel(area,'🔗 '+SERIES_NAMES[equipmentSeries(item)]+'セット',true);
+ const start=Math.floor(item.slot/4)*4,items=gameData.equipment.equipped.slice(start,start+4).map(decodeEquipment),before=seriesCounts(items)[equipmentSeries(item)];items[item.slot%4]=item;
+ const after=seriesCounts(items)[equipmentSeries(item)];appendEqText(series,'同シリーズ：現在 '+before+'部位 → 装備後 '+after+'部位','item-set-count');
+ const steps=document.createElement('div');steps.className='item-set-steps';series.appendChild(steps);
+ [2,3,4].forEach(n=>itemDetailChip(steps,n+'部位'+(after>=n?' ✓':''),after>=n?'set-reached':''));
+ appendEqText(series,SERIES_HELP[equipmentSeries(item)],'item-skill-effect');appendEqText(series,'数値は2→3→4部位の合計。グレード混在OK・破損品は対象外。','item-muted');
+ const repair=itemDetailPanel(area,'🔧 修理 '+(repairGoldCost(item)?repairGoldCost(item)+'G':'不要'),true);
+ const repairs=document.createElement('div');repairs.className='item-action-grid';repair.appendChild(repairs);
+ eqButton(repairs,repairGoldCost(item)+'Gで全回復',!canEditTraining()||!repairGoldCost(item)||gameData.coins<repairGoldCost(item),()=>repairEquipmentGold(uid));
+ eqButton(repairs,'同じ装備で合成',!canEditTraining()||item.durability>=EQ_MAX_DURABILITY[item.grade],()=>openEquipmentFusion(uid));
+ appendEqText(repair,'所持金 '+gameData.coins+'G。合成は同キャラ・部位・グレード・シリーズ。素材は消費されます。','item-muted');
+ const sale=itemDetailPanel(area,'🪙 売却・整理',true);
+ if(equipmentProtected(uid))appendEqText(sale,'保護中：装備・ロック・保存セット・中断使用の登録を外すと売却できます。','item-pop-warning');
+ const sales=document.createElement('div');sales.className='item-action-grid';sale.appendChild(sales);
+ eqButton(sales,saleSelection.has(uid)?'選択から外す':'まとめ売却に選ぶ',!canEditTraining()||equipmentProtected(uid),()=>{toggleSaleItem(uid);openItemDetails(uid);});
+ eqButton(sales,'売却 '+equipmentSaleValue(item)+'G',!canEditTraining()||equipmentProtected(uid),()=>{if(sellEquipment(uid))document.getElementById('item-detail-dialog').close();});
  addForgeItemActions(area,item);
+ const help=itemDetailPanel(area,'ⓘ 装備のルール',true);appendEqText(help,'WAVE開始ごとに耐久−1。最後の耐久1はそのWAVE中有効。装備変更は新しい挑戦から適用されます。');appendEqText(help,'装備ID：'+uid,'item-muted');
  const dialog=document.getElementById('item-detail-dialog');if(!dialog.open)dialog.showModal();
 }
+
 function trainingNextGoal(id,route){
  const p=gameData.training[id],gate=TRAINING_GATES[p.levels[route]];if(!gate)return '最大レベル！';
  const play=p.bestWave>=gate.wave||p.uses>=gate.uses;

@@ -694,6 +694,28 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 @keyframes crystal-rise {to{transform:translateY(-60px);opacity:0;}}
 .enemy-tier-2 {outline:2px solid #57bcff;}.enemy-tier-3 {outline:3px solid #d590ff;}
 .enemy-tier-badge {position:absolute;top:-25px;left:0;white-space:nowrap;background:#17233b;color:white;font-size:11px;padding:2px 4px;border-radius:4px;}
+
+/* 100WAVE expansion: equal-cell atlases; inline positions select each creature. */
+.enemy-expanded {width:72px;height:72px;transform:translate(-50%,-50%);background-color:transparent;}
+.enemy-boss.stage-sprite {background-color:transparent;}
+.codex-sprite {width:110px;height:110px;margin:0 auto;}
+.codex-sprite.undiscovered {filter:brightness(0);opacity:.5;}
+.stage-charge-warning {filter:brightness(1.65);outline:2px dashed #ffe596;}
+.stage-bullet-tier-1 {background:#ffc46b;box-shadow:0 0 5px #ff963b;}
+.stage-bullet-tier-2 {background:#8ceaff;box-shadow:0 0 5px #50bbff;}
+.stage-bullet-tier-3 {background:#e4b0ff;box-shadow:0 0 5px #ca64ff;}
+#game-area.arena-thunder {--arena-image:url('arena_ice.png');--arena-glow:rgba(255,224,80,.4);}
+#game-area.arena-sand {--arena-image:url('arena_fire.png');--arena-glow:rgba(225,173,71,.4);}
+#game-area.arena-abyss {--arena-image:url('arena_ice.png');--arena-glow:rgba(56,33,188,.5);}
+#game-area.arena-moon {--arena-image:url('arena_dark.png');--arena-glow:rgba(205,172,255,.4);}
+#game-area.arena-phoenix {--arena-image:url('arena_fire.png');--arena-glow:rgba(255,237,165,.45);}
+#game-area.arena-thunder::before,#game-area.arena-sand::before,#game-area.arena-abyss::before,
+#game-area.arena-moon::before,#game-area.arena-phoenix::before {opacity:1;}
+.boss-bullet-thunder {background:radial-gradient(circle,#fff,#58caff);box-shadow:0 0 10px #ffff70;}
+.boss-bullet-sand {background:radial-gradient(circle,#fff3ba,#a76a18);box-shadow:0 0 10px #e8a638;}
+.boss-bullet-abyss {background:radial-gradient(circle,#e1a8ff,#3256be);box-shadow:0 0 10px #9e48ff;}
+.boss-bullet-moon {background:radial-gradient(circle,#fff,#a26ef8);box-shadow:0 0 10px #d1aaff;}
+.boss-bullet-phoenix {background:radial-gradient(circle,#fffce2,#ff9d62);box-shadow:0 0 10px #fff5a4;}
 @media(max-width:850px){.equipment-cards{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:500px){.equipment-cards{grid-template-columns:1fr;}.equipment-option{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center;}.equipment-icon{width:80px;height:80px;}.equipment-option p{min-height:0;}.equipment-option button{grid-column:1/-1;}}
 

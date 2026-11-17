@@ -204,7 +204,7 @@ function updateRunUpgradeSummary() {
 }
 
 function openWaveReward() {
-    if ((gameMode === 'normal' && currentWave >= 20) || currentWave <= lastRewardWave || rewardPending) return;
+    if ((gameMode === 'normal' && currentWave >= NORMAL_WAVE_LIMIT) || currentWave <= lastRewardWave || rewardPending) return;
     rewardPending = true;
     document.body.style.cursor = 'default';
     const pool = [...RUN_REWARDS];
@@ -283,6 +283,7 @@ function prepareWaveEvent() {
 }
 
 function stopWaveEvent() {
+    stagePendingEnemies = [];
     finishCombatSegment();
     combatSessionActive = false;
     clearPause();
@@ -594,9 +595,10 @@ function getCodexEntries() {
         { id:'rusher', name:'常林暴', image:'常林暴.png', detail:'HPは低めだが足が速く、接触ダメージが高い。' },
         { id:'treasure', name:'黄金スライム', image:'slime.png', detail:'最速で逃げ回る。攻撃はしない。15秒以内の撃破で大量コイン！' }
     ];
+    STAGE_ENEMIES.forEach((e,i)=>entries.push({id:e.id,name:e.name,atlas:i,detail:['','通常','精鋭','希少'][e.tier]+' ／ WAVE'+e.unlock+'〜 ／ '+e.detail}));
     BOSS_TYPES.forEach((boss, i) => {
-        entries.push({ id:'boss_'+boss.id, name:boss.name, image:`boss${i+1}.png`, detail:boss.detail+'。HP半分で第2形態へ。第1形態の撃破数は0のままです。' });
-        entries.push({ id:'boss_'+boss.id+'_phase2', name:boss.awakened, image:`boss${i+1}_phase2.png`, detail:boss.detail+'がさらに強化された姿。攻撃間隔と移動速度が変化する。' });
+        entries.push({ id:'boss_'+boss.id, name:boss.name, image:`boss${i+1}.png`, atlas:boss.atlas, bossAtlas:true, phase:1, detail:boss.detail+'。HP半分で第2形態へ。第1形態の撃破数は0のままです。' });
+        entries.push({ id:'boss_'+boss.id+'_phase2', name:boss.awakened, image:`boss${i+1}_phase2.png`, atlas:boss.atlas, bossAtlas:true, phase:2, detail:boss.detail+'がさらに強化された姿。攻撃間隔と移動速度が変化する。' });
     });
     return entries;
 }
@@ -610,8 +612,12 @@ function openCodex() {
         const seen = Object.hasOwn(gameData.codex, entry.id);
         const card = document.createElement('article');
         card.classList.add('codex-card');
-        const image = document.createElement('img'); image.src = entry.image;
-        image.alt = seen ? entry.name : '未遭遇の敵';
+        const image = document.createElement(entry.atlas == null ? 'img' : 'div');
+        if (entry.atlas != null) {
+            stageSetSprite(image, entry.atlas, entry.bossAtlas, entry.phase || 1);
+            image.classList.add('codex-sprite'); image.setAttribute('role','img');
+            image.setAttribute('aria-label',seen ? entry.name : '未遭遇の敵');
+        } else { image.src = entry.image; image.alt = seen ? entry.name : '未遭遇の敵'; }
         if (!seen) image.classList.add('undiscovered');
         if (entry.id === 'treasure' && seen) image.classList.add('gold-slime');
         const title = document.createElement('h3'); title.textContent = seen ? entry.name : '？？？';
@@ -689,7 +695,7 @@ function saveDiagnosticFields(d) {
         if (keys(t.levels,['a','b','c'],['a','b','c'],path+'.levels')) ['a','b','c'].forEach(r => check(Number.isInteger(t.levels[r]) && t.levels[r]>=0 && t.levels[r]<=5,path+'.levels.'+r));
     });
     if ('records' in d && keys(d.records,['normal','endless'],['normal','endless'],'data.records')) ['normal','endless'].forEach(k=>check(count(d.records[k]),'data.records.'+k));
-    const codex=['minion','shooter','golem','rusher','treasure',...['fire','ice','forest','dark'].flatMap(k=>['boss_'+k,'boss_'+k+'_phase2'])];
+    const codex=['minion','shooter','golem','rusher','treasure',...STAGE_ENEMIES.map(e=>e.id),...BOSS_TYPES.flatMap(b=>['boss_'+b.id,'boss_'+b.id+'_phase2'])];
     if ('codex' in d && keys(d.codex,codex,[],'data.codex')) Object.keys(d.codex).forEach(k=>check(count(d.codex[k]),'data.codex.'+k));
     if (d.lastResult != null) {
         const r=d.lastResult, fields=['wave','coins','kills','bosses','seconds','character','mode','reason','newBest'];
@@ -709,7 +715,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.2.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.3.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -853,7 +859,7 @@ document.getElementById('btn-dev-start').addEventListener('click', async () => {
     const boss = document.getElementById('dev-boss').value;
     const event = document.getElementById('dev-event').value;
     const phase = Number(document.getElementById('dev-phase').value);
-    developerTest = { wave, boss: ['random','fire','ice','forest','dark'].includes(boss) ? boss : 'random',
+    developerTest = { wave, boss: ['random',...BOSS_TYPES.map(b=>b.id)].includes(boss) ? boss : 'random',
         event: event === 'none' || Object.hasOwn(WAVE_EVENTS, event) ? event : 'auto',
         phase: phase === 2 ? 2 : 1, bossOnly: document.getElementById('dev-scene').value === 'boss' };
     await startNewRun('test');
@@ -1326,11 +1332,12 @@ const BOSS_TYPES = [
     { id: 'fire', name: '炎竜', awakened: '獄炎竜', hp: 1, speed: 0.85, bulletSpeed: 1, damage: 1.35, interval: 1, phaseSpeed: 1.25, detail: '高火力・連続火炎弾', reward: 8 },
     { id: 'ice', name: '氷竜', awakened: '氷晶竜', hp: 1.15, speed: 0.65, bulletSpeed: 1.2, damage: 1, interval: 1.1, phaseSpeed: 1.15, detail: '移動は遅いが氷槍が速い', reward: 9 },
     { id: 'forest', name: '森竜', awakened: '古樹竜', hp: 1.4, speed: 0.55, bulletSpeed: 0.8, damage: 1, interval: 1.15, phaseSpeed: 1.15, detail: '高HP・曲がる種子弾', reward: 11 },
-    { id: 'dark', name: '闇竜', awakened: '深淵竜', hp: 0.85, speed: 1.05, bulletSpeed: 1.1, damage: 1, interval: 0.95, phaseSpeed: 1.25, detail: '低HP・高速移動・らせん弾', reward: 8 }
+    { id: 'dark', name: '闇竜', awakened: '深淵竜', hp: 0.85, speed: 1.05, bulletSpeed: 1.1, damage: 1, interval: 0.95, phaseSpeed: 1.25, detail: '低HP・高速移動・らせん弾', reward: 8 },
+    ...EXTRA_BOSSES
 ];
 function getBossType(boss) { return BOSS_TYPES[boss.bossImageIndex] || BOSS_TYPES[0]; }
 function resetBossArena() {
-    gameArea.classList.remove('arena-fire', 'arena-ice', 'arena-forest', 'arena-dark', 'arena-awakened');
+    gameArea.classList.remove(...BOSS_TYPES.map(b=>'arena-'+b.id), 'arena-awakened');
 }
 function updateBossArena(boss) {
     resetBossArena();
@@ -1476,7 +1483,7 @@ async function startNewRun(mode = 'normal') {
 
     gameMode = mode;
     document.getElementById('btn-dev-stop').classList.toggle('hidden', !isDeveloper || mode !== 'test');
-    currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? 21 : 1;
+    currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? NORMAL_WAVE_LIMIT + 1 : 1;
     sessionCoins = 0;
     beginRunRecord();
     resetRunUpgrades();
@@ -1528,7 +1535,7 @@ btnRetry.addEventListener('click', async () => {
 
     if (isDeveloper) applyDeveloperPreset();
     gameOverScreen.classList.add('hidden');
-    currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? 21 : 1;
+    currentWave = gameMode === 'test' && isDeveloper && developerTest ? developerTest.wave : gameMode === 'endless' ? NORMAL_WAVE_LIMIT + 1 : 1;
     sessionCoins = 0;
     beginRunRecord();
     resetRunUpgrades();
@@ -1825,7 +1832,7 @@ function launchWaveSequence() {
     hearts = [];
     
     waveDisplay.textContent = currentWave;
-    waveTimeLeft = 30 + Math.floor(currentWave * 5);
+    waveTimeLeft = stageStats().time;
     timerText.textContent = waveTimeLeft;
 
     waveModal.classList.remove('hidden');
@@ -2069,19 +2076,12 @@ function updateBombGauge(now) {
 }
 
 function spawnWaveEnemies() {
-    let count = 5 + Math.floor(currentWave * 3);
+    let count = stageStats().count;
     if (currentWaveEvent === 'barrage') count = Math.max(3, Math.ceil(count * 0.6));
-    if (count > 100) count = 100;
     enemiesRemaining = count;
-    if(enemyCountText) enemyCountText.textContent = enemiesRemaining;
-    
-    for (let i = 0; i < count; i++) {
-        const rand = Math.random();
-        if (currentWave >= 2 && (i === 0 || rand < 0.15)) spawnEnemy('rusher');
-        else if (rand < 0.2) spawnEnemy('golem');
-        else if (rand < 0.4) spawnEnemy('shooter');
-        else spawnEnemy('minion');
-    }
+    if (enemyCountText) enemyCountText.textContent = enemiesRemaining;
+    stagePendingEnemies = Array.from({length:count}, () => stageChooseEnemy());
+    stageFillEnemies(true);
 }
 
 // 黄金スライム：画面内で距離を確保して出現し、周回しながら逃げる。
@@ -2113,9 +2113,10 @@ function getTreasureSpawnPosition() {
 
 function getTreasureSpeed() {
     // 通常スライムのジャンプ中の3倍速・暴走倍率も含めて上回る。
-    const fastest = Math.max((1.5 + currentWave * 0.1) * 3,
-        (2.8 + currentWave * 0.12) * 1.2,
-        ...BOSS_TYPES.map(info => info.speed * info.phaseSpeed));
+    const fastest = Math.max((1.5 + Math.min(1.2, currentWave*.04))*3*1.16,
+        (2.8 + Math.min(1.8, currentWave*.04))*1.2*1.16,
+        ...STAGE_ENEMIES.map(e=>e.speed*stageStats().speed*1.16*(e.move==='charge'?1.8:1)),
+        ...BOSS_TYPES.map(info=>info.speed*info.phaseSpeed*stageStats().speed));
     return fastest * 1.3 * 1.15;
 }
 
@@ -2189,10 +2190,18 @@ function spawnEnemy(type) {
     let hp, speed, coinDrop, jumpOffset;
     let bossImageIndex = null;
     
-    if (type === 'minion') {
+    const archetype = STAGE_ENEMY_MAP[type];
+    if (archetype) {
+        el.classList.add('enemy-expanded');
+        stageSetSprite(el, archetype.atlas);
+        hp = (3 + currentWave * 1.5) * archetype.hp;
+        speed = archetype.speed * stageStats().speed;
+        coinDrop = 1 + archetype.tier * 2 + Math.floor(currentWave / 10);
+        jumpOffset = 0;
+    } else if (type === 'minion') {
         el.classList.add('enemy-minion');
         hp = 2 + Math.floor(currentWave * 1.5);
-        speed = 1.5 + (currentWave * 0.1);
+        speed = 1.5 + Math.min(1.2, currentWave * 0.04);
         coinDrop = Math.floor(Math.random() * 2); 
         jumpOffset = Math.floor(Math.random() * 60);
     } else if (type === 'shooter') {
@@ -2210,7 +2219,7 @@ function spawnEnemy(type) {
     } else if (type === 'rusher') {
         el.classList.add('enemy-rusher');
         hp = Math.max(1, Math.floor((2 + currentWave * 1.5) * 0.7));
-        speed = (2.8 + currentWave * 0.12) * 1.2;
+        speed = (2.8 + Math.min(1.8, currentWave * 0.04)) * 1.2;
         coinDrop = 3;
         jumpOffset = 0;
     } else if (type === 'treasure') {
@@ -2224,26 +2233,27 @@ function spawnEnemy(type) {
         ey = position.y;
     } else { // boss
         el.classList.add('enemy-boss');
-        let imgIndex = Math.floor(Math.random() * bossImages.length);
+        let imgIndex = stageBossIndex();
         if (isDeveloper && gameMode === 'test' && developerTest?.boss !== 'random') {
             const selected = BOSS_TYPES.findIndex(info => info.id === developerTest?.boss);
             if (selected >= 0) imgIndex = selected;
         }
         bossImageIndex = imgIndex;
         const info = BOSS_TYPES[imgIndex];
-        el.style.backgroundImage = `url('${bossImages[imgIndex]}?v=dragons-1')`;
-        hp = Math.round((50 + currentWave * 30) * info.hp);
-        speed = info.speed;
+        if (info.atlas != null) stageSetSprite(el, info.atlas, true);
+        else el.style.backgroundImage = `url('${bossImages[imgIndex]}?v=dragons-1')`;
+        hp = Math.round((50 + currentWave * 30) * info.hp * stageStats().hp);
+        speed = info.speed * stageStats().speed;
         bossMaxHp = hp;
         updateBossHpBar(hp);
-        coinDrop = info.reward;
+        coinDrop = info.reward + Math.floor(currentWave * 1.5);
         hpBar.style.display = 'none';
         jumpOffset = 0;
     }
     
-    const strengthTier = equipmentEnemyTier(type);
+    const strengthTier = STAGE_ENEMY_MAP[type]?.tier || equipmentEnemyTier(type);
     if (type !== 'boss' && type !== 'treasure') {
-        hp *= [0,1,1.45,2][strengthTier];
+        hp = Math.ceil(hp * [0,1,1.45,2][strengthTier] * stageStats().hp);
         speed *= [0,1,1.08,1.16][strengthTier];
         if(strengthTier>1) {
             el.classList.add('enemy-tier-'+strengthTier);
@@ -2260,9 +2270,10 @@ function spawnEnemy(type) {
     enemySpatialVersion++;
     enemies.push({ 
         element: el, hpFill: hpFill, strengthTier: strengthTier,
+        archetype, spawnedAt:gameNow(), motionSeed:Math.random()*Math.PI*2, orbitDirection:Math.random()<.5?-1:1,
         x: ex, y: ey, hp: hp, maxHp: hp, type: type, speed: speed, coinDrop: coinDrop,
         jumpTimer: jumpOffset,
-        lastAttackTime: type === 'boss' ? gameNow() : 0,
+        lastAttackTime: gameNow(),
         lastBossPattern: null,
         bossImageIndex: bossImageIndex,
         bossPhase: 1,
@@ -2310,6 +2321,7 @@ function fireBullet(damage, count, size) {
 }
 
 function enemyFireBullet(enemy) {
+    if (enemyBullets.length >= 180) return;
     const el = document.createElement('div');
     const speed = 30 + (currentWave * 1);
     el.classList.add('enemy-bullet');
@@ -2321,10 +2333,11 @@ function enemyFireBullet(enemy) {
     const vx = Math.cos(angle) * 5;
     const vy = Math.sin(angle) * 5;
 
-    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: 2 * (1 + ((enemy.strengthTier || 1)-1)*.2) });
+    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: Math.ceil(2 * stageStats().damage) * (1 + ((enemy.strengthTier || 1)-1)*.2) });
 }
 
 function golemFireBullet(enemy) {
+    if (enemyBullets.length >= 180) return;
     const el = document.createElement('div');
     el.classList.add('enemy-bullet');
     el.style.width = '60px';
@@ -2339,7 +2352,7 @@ function golemFireBullet(enemy) {
     const vx = Math.cos(angle) * 4;
     const vy = Math.sin(angle) * 4;
 
-    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: 4 * (1 + ((enemy.strengthTier || 1)-1)*.2) });
+    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: Math.ceil(3 * stageStats().damage) * (1 + ((enemy.strengthTier || 1)-1)*.2) });
 }
 
 // ■■■ ボスのランダム攻撃 ■■■
@@ -2347,7 +2360,7 @@ function getBossAttackStats(boss) {
     const info = getBossType(boss);
     return {
         speed: Math.min(6.2, 3.5 + currentWave * 0.13) * (boss?.bossPhase === 2 ? 1.15 : 1) * info.bulletSpeed,
-        damage: Math.ceil(Math.min(6, 2 + Math.floor((currentWave - 1) / 4)) * info.damage)
+        damage: Math.ceil((2 + (currentWave - 1) * .075) * info.damage)
     };
 }
 
@@ -2379,6 +2392,7 @@ function showBossAttackName(name) {
 }
 
 function createBossBullet(boss, angle, speed, damage, options = {}) {
+    if (enemyBullets.length >= 200) return;
     if (!isBossAlive(boss) || gameNow() < boss.transformingUntil) return;
 
     const el = document.createElement('div');
@@ -2512,12 +2526,15 @@ function beginBossSecondPhase(boss) {
     boss.lastAttackTime = boss.transformingUntil;
     boss.lastBossPattern = null;
     boss.speed *= getBossType(boss).phaseSpeed;
-    // 読み込み成功時のみ切り替え、未配置なら元の姿を残す。
-    const phaseImage = new Image();
-    phaseImage.onload = () => {
-        if (isBossAlive(boss)) boss.element.style.backgroundImage = `url('boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1')`;
-    };
-    phaseImage.src = `boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1`;
+    if (getBossType(boss).atlas != null) {
+        stageSetSprite(boss.element, getBossType(boss).atlas, true, 2);
+    } else {
+        const phaseImage = new Image();
+        phaseImage.onload = () => {
+            if (isBossAlive(boss)) boss.element.style.backgroundImage = `url('boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1')`;
+        };
+        phaseImage.src = `boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1`;
+    }
     boss.element.classList.add('boss-phase2', 'boss-phase2-' + boss.phase2Type, 'boss-transforming');
     if (bossHud) bossHud.classList.add('boss-hud-phase2');
     updateBossIdentity(boss);
@@ -2584,6 +2601,7 @@ function bossAttackVineSeeds(boss) {
     }, round * 550);
 }
 function getBossPatterns(boss) {
+    if (getBossType(boss).atlas != null) return stageBossPatterns(boss);
     const phase2 = boss.bossPhase === 2;
     const circle = phase2 ? bossAttackDoubleCircle : bossAttackCircle;
     const spiral = phase2 ? bossAttackAwakenedSpiral : bossAttackSpiral;
@@ -2615,7 +2633,7 @@ function bossFireAttack(boss) {
     boss.lastBossPattern = selected.id;
     showBossAttackName(selected.name);
     // 一発ごとではなく攻撃パターンの開始時に鳴らす。
-    playSound('boss_' + selected.id, 0.65);
+    playSound('boss_' + ({ring:'circle',vortex:'spiral'}[selected.id] || selected.id), 0.65);
     if (boss.bossPhase === 2) playSound('boss_power', 0.3);
     const delay = 850;
     boss.warningUntil = gameNow() + delay;
@@ -2695,6 +2713,7 @@ function updateEnemyBullets() {
 }
 
 function updateEnemies() {
+    stageFillEnemies();
     const now = gameNow();
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
@@ -2707,7 +2726,11 @@ function updateEnemies() {
         
         let moveSpeed = e.speed;
 
-        if (e.type === 'minion') {
+        if (e.archetype) {
+            stageMoveEnemy(e, now);
+            moveSpeed = 0; // 専用移動で座標を更新済み。
+        }
+        else if (e.type === 'minion') {
             e.jumpTimer++;
             const cycle = e.jumpTimer % 60;
             if (cycle > 40) {
@@ -2759,7 +2782,7 @@ function updateEnemies() {
 
         if (Math.sqrt((playerX - e.x)**2 + (playerY - e.y)**2) < (e.type === 'boss' ? 80 : 40)) {
             if (now - lastDamageTime > 1000) {
-                takePlayerDamage((1 + Math.floor(currentWave/3)) * (e.type === 'rusher' ? 2 : 1) * (e.type === 'boss' ? 1 : 1 + ((e.strengthTier || 1)-1)*.2)); 
+                takePlayerDamage(Math.ceil(stageStats().damage * (e.archetype?.damage || (e.type === 'rusher' ? 2 : e.type === 'boss' ? getBossType(e).damage : 1))) * (e.type === 'boss' ? 1 : 1 + ((e.strengthTier || 1)-1)*.2)); 
                 lastDamageTime = now;
             }
         }
@@ -2894,7 +2917,7 @@ function waveClear() {
     stopWaveEvent();
     isGameOver = true;
     clearBossAttackTimers();
-    if (gameMode === 'normal' && currentWave >= 20) {
+    if (gameMode === 'normal' && currentWave >= NORMAL_WAVE_LIMIT) {
         gameClear();
         return;
     }
@@ -2907,14 +2930,14 @@ function waveClear() {
 }
 
 function gameClear() {
-    finalizeRun('WAVE20クリア');
+    finalizeRun('WAVE' + NORMAL_WAVE_LIMIT + 'クリア');
     renderRunResult('clear-details');
     window.GameAudio?.scene("menu");
     stopWaveEvent();
     isGameOver = true;
     gameData.endlessUnlocked = true;
     saveData();
-    saveWaveResult(20);
+    saveWaveResult(NORMAL_WAVE_LIMIT);
     clearBossAttackTimers();
     playSound("victory");
     clearInterval(windowTimerInterval);
@@ -3008,7 +3031,7 @@ applyControlSettings();
 function readCheckpoint() {
     try {
         const c = JSON.parse(localStorage.getItem(getSaveKey() + '_checkpoint') || 'null');
-        if (!c || c.version !== 1 || !['normal','endless'].includes(c.mode) || !Number.isInteger(c.wave) || c.wave < 1 || (c.mode === 'normal' && c.wave >= 20) || !Object.hasOwn(CHARACTERS,c.character) || !c.upgrades || !c.record) return null;
+        if (!c || c.version !== 1 || !['normal','endless'].includes(c.mode) || !Number.isInteger(c.wave) || c.wave < 1 || (c.mode === 'normal' && c.wave >= NORMAL_WAVE_LIMIT) || !Object.hasOwn(CHARACTERS,c.character) || !c.upgrades || !c.record) return null;
         return c;
     } catch (_) { return null; }
 }

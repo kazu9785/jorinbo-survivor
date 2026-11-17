@@ -820,3 +820,10 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .is-promoting .gacha-rune {opacity:.7;transition:box-shadow .4s,border-color .4s;}
 @keyframes promotion-float {0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-9px) scale(1.05);}}
 @media(prefers-reduced-motion:reduce){.is-promoting * {animation:none !important;}}
+
+/* Beginner overview: retain readable width on mobile with explicit scrolling. */
+.overview-dialog { width: min(1100px, 94vw); }
+.overview-dialog a { color: #9eeaff; text-decoration: underline; }
+.overview-image-scroll { overflow: auto; border-radius: 12px; background: #10152b; }
+.overview-image-scroll img { display: block; width: 100%; min-width: 700px; height: auto; }
+.overview-image-scroll:focus-visible { outline: 3px solid #5fdcff; outline-offset: 3px; }

@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>常林暴サバイバー</title>
-    <meta name="app-version" content="1.6.1">
-    <link rel="manifest" href="manifest.webmanifest?v=1.6.1">
+    <meta name="app-version" content="1.6.2">
+    <link rel="manifest" href="manifest.webmanifest?v=1.6.2">
     <meta name="theme-color" content="#101827">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="常林暴">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.6.1">
-    <link rel="icon" type="image/png" href="icon-192.png?v=1.6.1">
-    <link rel="stylesheet" href="style.css?v=1.6.1">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.6.2">
+    <link rel="icon" type="image/png" href="icon-192.png?v=1.6.2">
+    <link rel="stylesheet" href="style.css?v=1.6.2">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
 <script>
 // An update token is shared by HTML, CSS and local JavaScript, including unchanged filenames.
@@ -50,7 +50,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p class="update-inline-status" data-update-status role="status"></p>
 <button type="button" data-info-dialog="overview-guide">ゲーム概要</button>
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide" hidden><span class="app-version">Ver.1.6.1</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide" hidden><span class="app-version">Ver.1.6.2</span> · 更新履歴</button>
 </div>
             <p id="auth-status" class="status-message" aria-live="polite"></p>
             <button type="button" class="install-game-button">ホーム画面に追加</button>
@@ -71,7 +71,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
                 <section class="home-character-panel" aria-label="選択中のキャラクター">
                     <p class="home-section-label">選択中のキャラクター</p>
                     <div class="selected-character"><img id="selected-character-image" src="player_balance.png" alt="冒険者"><span id="selected-character-name">冒険者（バランス型）</span></div>
-                    <p id="home-next-goal" class="pop-note"></p><button id="btn-equipment" class="menu-btn">装備・召喚ガチャ（結晶 <span class="crystal-balance">0</span>）</button><button id="btn-training" class="menu-btn">キャラクター育成</button><button id="btn-character" class="menu-btn shop-btn">キャラクター選択</button>
+                    <p id="home-next-goal" class="pop-note"></p><button id="btn-equipment" class="menu-btn">装備ボックス</button><button id="btn-summon" class="menu-btn">召喚ガチャ（結晶 <span class="crystal-balance">0</span>）</button><button id="btn-training" class="menu-btn">キャラクター育成</button><button id="btn-character" class="menu-btn shop-btn">キャラクター選択</button>
                 </section>
                 <section class="home-play-panel" aria-label="モード選択とメニュー">
                     <h2 class="home-section-label">⚔ 冒険</h2>
@@ -97,7 +97,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p class="update-inline-status" data-update-status role="status"></p>
 <button type="button" data-info-dialog="overview-guide">ゲーム概要</button>
 <button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide" hidden><span class="app-version">Ver.1.6.1</span> · 更新履歴</button>
+<button type="button" data-info-dialog="release-guide" hidden><span class="app-version">Ver.1.6.2</span> · 更新履歴</button>
 </div>
 
 
@@ -331,21 +331,21 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
-    <script type="application/json" data-game-src="firebase-config.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="audio.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="presentation.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="stages.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="equipment.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="training.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="adventure.js?v=1.6.1"></script>
-    <script type="application/json" data-game-src="script.js?v=1.6.1"></script>
+    <script type="application/json" data-game-src="firebase-config.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="audio.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="presentation.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="stages.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="equipment.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="training.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="adventure.js?v=1.6.2"></script>
+    <script type="application/json" data-game-src="script.js?v=1.6.2"></script>
     <dialog id="install-guide" aria-labelledby="install-guide-title">
         <h2 id="install-guide-title">ホーム画面に追加</h2>
         <p id="install-guide-text"></p>
         <p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
         <form method="dialog"><button type="submit">閉じる</button></form>
     </dialog>
-    <script type="application/json" data-game-src="install.js?v=1.6.1"></script>
+    <script type="application/json" data-game-src="install.js?v=1.6.2"></script>
 <dialog id="play-guide" class="game-info-dialog" aria-labelledby="play-guide-title">
     <header><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button type="submit" aria-label="遊び方を閉じる">閉じる</button></form></header>
     <p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE100クリアを目指そう！</p>
@@ -406,8 +406,9 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 </dialog>
 <dialog id="release-guide" class="game-info-dialog" aria-labelledby="release-guide-title">
     <header><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
-    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.6.1</strong></p>
-    <article><h3>Ver.1.6.1</h3><p>PCホームをコンパクト化。概要画像の全体表示・拡大切替を追加。</p></article>
+    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.6.2</strong></p>
+    <article><h3>Ver.1.6.2</h3><p>ガチャとボックスを分離。ボックスをレア度別の枠付きアイコン表示に変更。</p></article>
+<article><h3>Ver.1.6.1</h3><p>PCホームをコンパクト化。概要画像の全体表示・拡大切替を追加。</p></article>
     <article><h3>Ver.1.6.0</h3><ul><li>ホーム整理・装備比較・ロック・一括売却・ゴールド修理・耐久チェック・育成目標・実績・初回操作案内を追加。</li><li>キャラ別／モード別ランキング、開発者用レア演出プレビューを追加。</li><li>Firestoreルールの更新が必要です。</li></ul></article>
     <article><h3>Ver.1.5.2</h3><ul><li>開封した宝箱を、その場で獲得装備の画像に切り替えるよう変更。</li></ul></article>
     <article><h3>Ver.1.5.1</h3><ul><li>10連の宝箱を左上から1個ずつ開封。昇格演出も個別の順番で再生。</li></ul></article>
@@ -438,13 +439,9 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
     <form method="dialog" class="guide-bottom"><button type="submit">閉じる</button></form>
 </dialog>
 <dialog id="equipment-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="equipment-title">
-<header><h2 id="equipment-title">装備ボックス・召喚ガチャ</h2><form method="dialog"><button>閉じる</button></form></header>
+<header><h2 id="equipment-title">装備ボックス</h2><form method="dialog"><button>閉じる</button></form></header>
 <p>召喚結晶 <strong class="crystal-balance">0</strong> 個 ｜ <span id="equipment-box-summary"></span></p>
-<p>全キャラ・全部位の装備が出ます。重複も個別にボックスへ入り、耐久と特殊スキルを持ちます。</p>
-<div class="equipment-actions"><button id="equipment-roll" type="button">1回召喚：結晶10個</button><button id="equipment-roll10" type="button">10回召喚：結晶100個</button><button id="equipment-probabilities" type="button">排出率・特殊スキル確率を見る</button></div>
-<p id="equipment-status" role="status" aria-live="polite"></p>
-<details><summary>耐久・売却・合成の使い方</summary><p>☆ロックでお気に入りを保護。売却と合成素材から除外されます。チェックした品はまとめて売却でき、ページ外の選択も対象です。「比較・詳細」で装備の能力差を確認できます。</p><p>ゴールド修理は不足耐久1につきN1G・R2G・SR4G・SSR8G・UR16Gで全回復。ロック中も修理可能です。合成修理は従来どおり素材だけで行えます。</p><p>WAVE開始時に装備の耐久を1消費。そのWAVE中は効果が続き、耐久0の装備は次のWAVEから効果がなくなります。最大耐久はN60・R90・SR130・SSR180・UR250。破損しても装備は消えません。</p><p>合成は同じキャラ・部位・グレードの装備が対象。残す装備の耐久＋素材の残り耐久を、最大耐久まで回復します。超過分は切り捨て。特殊スキルは残す装備のものを維持し、素材は消えます。</p><p>装備中・中断データで使用中の品は、売却や合成素材にできません。売却はゴールドへ換金（耐久が少ないと価格も下がります）。装備変更は新しい挑戦から適用。中断再開は保存時の装備を使用します。</p><p>同じ特殊スキルも重複して付き、効果は加算。全体上限は確率画面を確認してください。ボックス上限は500個で、空きが足りないと召喚できません。</p></details>
-<button type="button" id="dev-rare-summon" hidden>開発者：レア演出確定10連（保存なし）</button><div id="equipment-results" class="equipment-results" aria-live="polite"></div>
+<p id="equipment-box-status" role="status"></p><p>アイコンをタップして性能・装備・修理・売却を確認できます。</p><details><summary>耐久・売却・合成の使い方</summary><p>☆ロックでお気に入りを保護。売却と合成素材から除外されます。詳細画面で売却対象に選択した品はまとめて売却でき、ページ外の選択も対象です。「比較・詳細」で装備の能力差を確認できます。</p><p>ゴールド修理は不足耐久1につきN1G・R2G・SR4G・SSR8G・UR16Gで全回復。ロック中も修理可能です。合成修理は従来どおり素材だけで行えます。</p><p>WAVE開始時に装備の耐久を1消費。そのWAVE中は効果が続き、耐久0の装備は次のWAVEから効果がなくなります。最大耐久はN60・R90・SR130・SSR180・UR250。破損しても装備は消えません。</p><p>合成は同じキャラ・部位・グレードの装備が対象。残す装備の耐久＋素材の残り耐久を、最大耐久まで回復します。超過分は切り捨て。特殊スキルは残す装備のものを維持し、素材は消えます。</p><p>装備中・中断データで使用中の品は、売却や合成素材にできません。売却はゴールドへ換金（耐久が少ないと価格も下がります）。装備変更は新しい挑戦から適用。中断再開は保存時の装備を使用します。</p><p>同じ特殊スキルも重複して付き、効果は加算。全体上限は確率画面を確認してください。ボックス上限は500個で、空きが足りないと召喚できません。</p></details>
 <h3>キャラ別の装備</h3><label>キャラ <select id="equipment-character"></select></label><div id="equipment-loadout" class="equipment-loadout"></div>
 <h3>装備ボックス</h3>
 <div class="equipment-filters">
@@ -455,7 +452,12 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <label>並び順<select id="equipment-sort"><option value="type">部位→キャラ→グレード</option><option value="grade">グレードが高い順</option><option value="new">入手が新しい順</option><option value="durability">残り耐久の割合が低い順</option></select></label>
 </div>
 <div class="equipment-actions"><button id="equipment-prev" type="button">前へ</button><span id="equipment-page-label"></span><button id="equipment-next" type="button">次へ</button></div>
-<div class="bulk-sale-toolbar"><button type="button" id="select-sale-filter">絞り込み中の全件を選択</button><button type="button" id="clear-sale-selection">選択解除</button><span id="sale-summary"></span><button type="button" id="sell-selected">選択品を売却</button><small>ページ外の選択も含みます。ロック・装備中・中断使用中は除外。</small></div><div id="equipment-cards" class="equipment-cards"></div>
+<div class="bulk-sale-toolbar"><button type="button" id="select-sale-filter">絞り込み中の全件を選択</button><button type="button" id="clear-sale-selection">選択解除</button><span id="sale-summary"></span><button type="button" id="sell-selected">選択品を売却</button><small>ページ外の選択も含みます。ロック・装備中・中断使用中は除外。</small></div><div id="equipment-cards" class="equipment-cards equipment-icon-grid"></div>
+</dialog>
+<dialog id="summon-menu-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="summon-menu-title"><header><h2 id="summon-menu-title">召喚ガチャ</h2><form method="dialog"><button>閉じる</button></form></header><p>召喚結晶 <strong class="crystal-balance">0</strong> 個</p><p>全キャラ・全部位の装備が出ます。重複も個別にボックスへ入り、耐久と特殊スキルを持ちます。</p>
+<div class="equipment-actions"><button id="equipment-roll" type="button">1回召喚：結晶10個</button><button id="equipment-roll10" type="button">10回召喚：結晶100個</button><button id="equipment-probabilities" type="button">排出率・特殊スキル確率を見る</button></div>
+<p id="equipment-status" role="status" aria-live="polite"></p>
+<button type="button" id="dev-rare-summon" hidden>開発者：レア演出確定10連（保存なし）</button><div id="equipment-results" class="equipment-results" aria-live="polite"></div>
 </dialog>
 <dialog id="gacha-dialog" class="game-info-dialog gacha-dialog" aria-labelledby="gacha-heading">
     <div id="gacha-scene" class="gacha-scene">
@@ -474,14 +476,14 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <dialog id="equipment-probability-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="equipment-probability-title">
 <header><h2 id="equipment-probability-title">排出率・特殊スキルの付与確率</h2><form method="dialog"><button>閉じる</button></form></header><div class="equipment-probability-scroll" id="equipment-probability-content"></div>
 </dialog>
-<script type="application/json" data-game-src="guide.js?v=1.6.1"></script>
+<script type="application/json" data-game-src="guide.js?v=1.6.2"></script>
 <dialog id="update-game-dialog" class="game-info-dialog" aria-labelledby="update-game-title">
 <h2 id="update-game-title">最新版に更新</h2>
 <p id="update-game-status" role="status" aria-live="polite"></p>
 <p>ログイン情報・コイン・育成データは残ります。公開直後は、反映まで少し待ってから再度お試しください。</p>
 <button type="button" id="update-game-close">閉じる</button>
 </dialog>
-<script type="application/json" data-game-src="update.js?v=1.6.1"></script>
+<script type="application/json" data-game-src="update.js?v=1.6.2"></script>
 <script>
 (async () => {
     for (const source of document.querySelectorAll('script[data-game-src]')) {

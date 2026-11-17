@@ -916,3 +916,18 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
  .overview-dialog > p {font-size:12px;line-height:1.5;margin:8px 0;}
  .overview-dialog .guide-bottom {margin:8px 0 0;}
 }
+
+/* Compact equipment inventory: every tile opens its full details. */
+#equipment-cards.equipment-icon-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:12px;padding:14px 8px;}
+.equipment-icon-tile {--rarity:#9ca8bb;position:relative;display:grid;place-items:center;aspect-ratio:1;padding:6px;min-width:0;border:2px solid var(--rarity);border-radius:14px;background:radial-gradient(ellipse at top,#25364f,#0c1425);box-shadow:0 0 5px var(--rarity),inset 0 0 8px #ffffff0c;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.equipment-icon-tile .equipment-icon {width:100%;height:auto;aspect-ratio:1;max-width:100px;margin:0;pointer-events:none;}
+.equipment-icon-tile.grade-1 {box-shadow:none;}
+.equipment-icon-tile.grade-2 {--rarity:#51bfff;}
+.equipment-icon-tile.grade-3 {--rarity:#b784ff;box-shadow:0 0 9px #b784ff80,inset 0 0 12px #b784ff22;}
+.equipment-icon-tile.grade-4 {--rarity:#ffca57;box-shadow:0 0 13px #ffca5799,inset 0 0 16px #ffca5733;}
+.equipment-icon-tile.grade-5 {--rarity:#ff9ee8;border-color:#fff0b5;box-shadow:0 0 8px #ffd45c,0 0 17px #e775ff,inset 0 0 18px #62e8ff66;background:linear-gradient(135deg,#383654,#16233a,#493156);}
+.equipment-icon-tile:focus-visible {outline:3px solid white;outline-offset:4px;}
+.equipment-icon-tile.sale-selected {outline:3px dashed #6effc4;outline-offset:3px;}
+@media(hover:hover){.equipment-icon-tile:hover{transform:translateY(-2px);filter:brightness(1.15);}}
+@media(max-width:500px){#equipment-cards.equipment-icon-grid {grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:12px 4px;}.equipment-icon-tile {padding:3px;border-radius:10px;}}
+body.lite-mode .equipment-icon-tile {box-shadow:none;}

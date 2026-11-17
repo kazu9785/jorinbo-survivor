@@ -140,7 +140,7 @@ function equipmentAffixText(i){return i.skills.map(a=>`【${EQ_AFFIX_TIERS[EQ_AF
 function equipmentIcon(slot,g){const icon=document.createElement('div');icon.className='equipment-icon';icon.setAttribute('aria-hidden','true');icon.style.backgroundImage=`url('equipment_${EQ_GRADES[g-1].toLowerCase()}.png')`;icon.style.backgroundPosition=`${slot%4*100/3}% ${Math.floor(slot/4)*100/3}%`;return icon;}
 function equipmentWeightedIndex(weights){let r=Math.random()*weights.reduce((a,b)=>a+b,0);for(let i=0;i<weights.length;i++){r-=weights[i];if(r<0)return i;}return weights.length-1;}
 function rollEquipmentAffixes(g){return Array.from({length:EQ_SKILL_SLOTS[g]},()=>{const pool=EQ_AFFIX_POOLS[equipmentWeightedIndex(EQ_AFFIX_WEIGHTS[g])];return pool[Math.floor(Math.random()*pool.length)];});}
-function equipmentMessage(text){document.getElementById('equipment-status').textContent=text;}
+function equipmentMessage(text){document.getElementById('equipment-status').textContent=text;document.getElementById('equipment-box-status').textContent=text;}
 function equipmentRoll(count=1){
  if(gachaBusy||!canEditTraining()||![1,10].includes(count))return [];
  const d=gameData.equipment,cost=count*10;
@@ -186,7 +186,7 @@ function fuseEquipment(baseUid,materialUid){
  const restored=Math.min(EQ_MAX_DURABILITY[base.grade],base.durability+material.durability),overflow=Math.max(0,base.durability+material.durability-EQ_MAX_DURABILITY[base.grade]);
  if(!confirm(`残す：${equipmentName(base)}\n${equipmentAffixText(base)}\n\n消費：${equipmentName(material)}\n${equipmentAffixText(material)}\n\n耐久 ${base.durability}＋${material.durability} → ${restored}/${EQ_MAX_DURABILITY[base.grade]}${overflow?'（上限超過'+overflow+'は切り捨て）':''}\n残す装備の特殊スキルは変わりません。素材は消えます。合成しますか？`))return false;
  equipmentReplace({...base,durability:restored});gameData.equipment.items=gameData.equipment.items.filter(w=>decodeEquipment(w)?.uid!==materialUid);
- saveData();document.getElementById('equipment-fusion-dialog').close();renderEquipment();equipmentMessage(`合成完了：耐久を${restored}に回復しました。`);return true;
+ saveData();document.getElementById('equipment-fusion-dialog').close();renderEquipment();if(document.getElementById('item-detail-dialog').open)openItemDetails(baseUid);equipmentMessage(`合成完了：耐久を${restored}に回復しました。`);return true;
 }
 function appendEqText(parent,text,className=''){const p=document.createElement('p');p.textContent=text;if(className)p.className=className;parent.appendChild(p);return p;}
 function eqButton(parent,label,disabled,action){const b=document.createElement('button');b.type='button';b.textContent=label;b.disabled=disabled;b.addEventListener('click',action);parent.appendChild(b);return b;}
@@ -226,21 +226,10 @@ function renderEquipment(){
  document.getElementById('equipment-prev').disabled=equipmentPage===0;document.getElementById('equipment-next').disabled=equipmentPage>=pages-1;
  const area=document.getElementById('equipment-cards');area.replaceChildren();const reserved=equipmentReservedIds();
  for(const i of items.slice(equipmentPage*EQ_PAGE_SIZE,(equipmentPage+1)*EQ_PAGE_SIZE)){
-  const wire=encodeEquipment(i),equipped=d.equipped.includes(wire),protectedItem=equipped||reserved.includes(i.uid)||equipmentLocked(i.uid);
-  const card=document.createElement('article');card.className='equipment-box-card';card.style.borderColor=EQ_COLORS[i.grade-1];
-  card.appendChild(equipmentIcon(i.slot,i.grade));appendEqText(card,equipmentName(i)+(equipmentLocked(i.uid)?' 🔒':''),'equipment-name');
-  equipmentDurabilityGauge(card,i);
-  const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=saleSelection.has(i.uid);check.disabled=!editable||protectedItem;
-  check.addEventListener('change',()=>{if(check.checked)saleSelection.add(i.uid);else saleSelection.delete(i.uid);updateSaleSummary();});label.appendChild(check);label.appendChild(document.createTextNode('まとめて売却に選択'));card.appendChild(label);
-  appendEqText(card,`耐久 ${i.durability}/${EQ_MAX_DURABILITY[i.grade]}${i.durability===0?' / 破損：修理まで効果なし':''}${equipped?' / 装備中':''}${reserved.includes(i.uid)?' / 中断データで使用中':''}`);
-  appendEqText(card,equipmentDescription(i.slot%4,i.grade));appendEqText(card,equipmentAffixText(i),'equipment-affixes');
-  const actions=document.createElement('div');actions.className='equipment-card-actions';
-  eqButton(actions,'比較・詳細',false,()=>openItemDetails(i.uid));
-  eqButton(actions,equipmentLocked(i.uid)?'🔒 解除':'☆ ロック',!editable,()=>toggleEquipmentLock(i.uid));
-  eqButton(actions,'🔧 '+repairGoldCost(i)+'Gで修理',!editable||!repairGoldCost(i)||gameData.coins<repairGoldCost(i),()=>repairEquipmentGold(i.uid));
-  eqButton(actions,equipped?'装備中':'装備する',!editable||equipped||i.durability===0,()=>equipItem(i.slot,i.uid));
-  eqButton(actions,'合成で修理',!editable||i.durability>=EQ_MAX_DURABILITY[i.grade],()=>openEquipmentFusion(i.uid));
-  eqButton(actions,`売却 ${equipmentSaleValue(i)}G`,!editable||protectedItem,()=>sellEquipment(i.uid));card.appendChild(actions);area.appendChild(card);
+  const card=document.createElement('button');card.type='button';card.className='equipment-icon-tile grade-'+i.grade;
+  const label=equipmentName(i)+' / 耐久 '+i.durability+'/'+EQ_MAX_DURABILITY[i.grade]+(equipmentLocked(i.uid)?' / ロック中':'')+(saleSelection.has(i.uid)?' / 売却対象に選択中':'');
+  card.title=label;card.setAttribute('aria-label',label);card.classList.toggle('sale-selected',saleSelection.has(i.uid));
+  card.appendChild(equipmentIcon(i.slot,i.grade));card.addEventListener('click',()=>openItemDetails(i.uid));area.appendChild(card);
  }
  updateSaleSummary();
  if(!items.length)appendEqText(area,'条件に合う装備はありません。召喚するか、絞り込み条件を変更してください。');
@@ -280,6 +269,7 @@ function initEquipmentUI(){
  select.addEventListener('change',()=>{equipmentViewedCharacter=select.value;renderEquipment();});
  ['equipment-filter-character','equipment-filter-slot','equipment-filter-grade','equipment-filter-affix','equipment-sort'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{equipmentPage=0;renderEquipment();}));
  document.getElementById('btn-equipment').addEventListener('click',()=>{if(!canEditTraining())return;equipmentViewedCharacter=gameData.character;select.value=equipmentViewedCharacter;equipmentPage=0;equipmentMessage('');document.getElementById('equipment-results').replaceChildren();renderEquipment();document.getElementById('equipment-dialog').showModal();});
+ document.getElementById('btn-summon').addEventListener('click',()=>{if(!canEditTraining())return;equipmentMessage('');document.getElementById('equipment-results').replaceChildren();renderEquipment();document.getElementById('summon-menu-dialog').showModal();});
  document.getElementById('equipment-roll').addEventListener('click',()=>summonEquipment(1));document.getElementById('equipment-roll10').addEventListener('click',()=>summonEquipment(10));
  document.getElementById('equipment-prev').addEventListener('click',()=>{equipmentPage=Math.max(0,equipmentPage-1);renderEquipment();});
  document.getElementById('equipment-next').addEventListener('click',()=>{equipmentPage++;renderEquipment();});

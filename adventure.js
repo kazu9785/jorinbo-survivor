@@ -65,6 +65,9 @@ function openItemDetails(uid){
  eqButton(actions,equipmentLocked(uid)?'🔒 ロック解除':'☆ お気に入りロック',!canEditTraining(),()=>toggleEquipmentLock(uid));
  eqButton(actions,'装備する',!canEditTraining()||item.durability===0,()=>{equipItem(item.slot,uid);openItemDetails(uid);});
  eqButton(actions,'🔧 '+repairGoldCost(item)+'Gで全回復',!canEditTraining()||!repairGoldCost(item)||gameData.coins<repairGoldCost(item),()=>repairEquipmentGold(uid));
+ eqButton(actions,'合成で修理',!canEditTraining()||item.durability>=EQ_MAX_DURABILITY[item.grade],()=>openEquipmentFusion(uid));
+ eqButton(actions,saleSelection.has(uid)?'売却対象から外す':'まとめて売却の対象に選ぶ',!canEditTraining()||equipmentProtected(uid),()=>{if(!canEditTraining()||equipmentProtected(uid))return;if(saleSelection.has(uid))saleSelection.delete(uid);else saleSelection.add(uid);renderEquipment();openItemDetails(uid);});
+ eqButton(actions,'売却 '+equipmentSaleValue(item)+'G',!canEditTraining()||equipmentProtected(uid),()=>{if(sellEquipment(uid))document.getElementById('item-detail-dialog').close();});
  const dialog=document.getElementById('item-detail-dialog');if(!dialog.open)dialog.showModal();
 }
 function trainingNextGoal(id,route){

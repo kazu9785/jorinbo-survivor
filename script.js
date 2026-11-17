@@ -90,6 +90,7 @@ function playSound(el = "confirm", vol = 0.5) { window.GameAudio?.effect(el, vol
 function getDefaultData() {
     return {
         journey: defaultJourney(),
+        forge: defaultForge(),
         training: createDefaultTraining(),
         equipment: createDefaultEquipment(),
         codex: {},
@@ -190,6 +191,7 @@ const RUN_REWARDS = [
 ];
 
 function resetRunUpgrades() {
+    stageRoute={kind:'normal',until:0};routeChoosing=false;
     runUpgrades = Object.fromEntries(RUN_REWARDS.map(reward => [reward.id, 0]));
     rewardChoices = [];
     rewardPending = false;
@@ -353,6 +355,7 @@ function repairGameData(saved) {
 
     const repaired = saved;
     repaired.journey = repairJourney(saved.journey);
+    repaired.forge = repairForge(saved.forge);
     repaired.training = repairTraining(saved.training);
     repaired.equipment = repairEquipment(saved.equipment);
     repaired.codex = repaired.codex && typeof repaired.codex === 'object' ? repaired.codex : {};
@@ -648,9 +651,9 @@ function upgradeComparison(key, includeRun = true) {
     finally { gameData.upgrade[key] = level; runUpgrades = originalRun; }
     const format = stats => {
         const n = value => Number(value.toFixed(2));
-        return { damage:`${n(stats.damage)}`, fireRate:`${n(1000 / stats.shotInterval)}発/秒`,
+        return { damage:`${Math.floor(stats.damage)}`, fireRate:`${n(1000 / stats.shotInterval)}発/秒`,
             speed:`追従率 ${n(stats.moveSpeed * 100)}％`, count:`${stats.bulletCount}発`,
-            bulletSize:`${n(stats.bulletSize)}px`, maxHp:`${stats.maxHp}` }[key];
+            bulletSize:`${n(stats.bulletSize)}px`, maxHp:`${Math.floor(stats.maxHp)}` }[key];
     };
     const a = format(before), b = format(after);
     return `${a} → ${b}${a === b ? '（効果上限）' : ''}`;
@@ -680,8 +683,9 @@ function saveDiagnosticFields(d) {
         return true;
     };
     const base = ['coins','endlessUnlocked','name','character','upgrade','skills'];
-    if (!keys(d, [...base,'codex','records','lastResult','training','equipment','journey'], base, 'data')) return errors;
+    if (!keys(d, [...base,'codex','records','lastResult','training','equipment','journey','forge'], base, 'data')) return errors;
     check(Number.isSafeInteger(d.coins) && d.coins >= 0, 'data.coins');
+    if ('forge' in d) check(validForge(d.forge),'data.forge');
     if ('journey' in d) check(validJourney(d.journey),'data.journey');
     if ('equipment' in d) check(validEquipmentLocal(d.equipment),'data.equipment');
     check(typeof d.endlessUnlocked === 'boolean', 'data.endlessUnlocked');
@@ -723,7 +727,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.6.3 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.7.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -732,7 +736,7 @@ async function diagnosticTask(stage, work) {
 }
 
 function cloudDocument(data, revision) {
-    return { data, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    return { data:{...data,forge:packForge(repairForge(data.forge))}, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 }
 async function loadCloudData(user) {
     cloudReady = false;
@@ -874,6 +878,7 @@ document.getElementById('btn-dev-start').addEventListener('click', async () => {
 });
 
 function saveData() {
+    pruneForge();
     localStorage.setItem(getSaveKey(), JSON.stringify(gameData));
     scheduleCloudSave();
     updateCoinDisplays();
@@ -1846,7 +1851,7 @@ function getPlayerStats() {
 
 // ■■■ ゲームループ関連 ■■■
 function startWaveSequence() {
-    chooseTrainingAdaptation(launchWaveSequence);
+    chooseStageRoute(()=>chooseTrainingAdaptation(launchWaveSequence));
 }
 function launchWaveSequence() {
     resetBossArena();
@@ -2398,7 +2403,7 @@ function getBossAttackStats(boss) {
     const info = getBossType(boss);
     return {
         speed: Math.min(6.2, 3.5 + currentWave * 0.13) * (boss?.bossPhase === 2 ? 1.15 : 1) * info.bulletSpeed,
-        damage: Math.ceil((2 + (currentWave - 1) * .075) * info.damage)
+        damage: Math.ceil((2 + (currentWave - 1) * .075) * info.damage * routeMultipliers().damage)
     };
 }
 
@@ -2853,7 +2858,7 @@ function takePlayerDamage(dmg) {
 }
 
 function updateHpDisplay() {
-    if(hpDisplay) hpDisplay.textContent = `${Number(playerCurrentHp.toFixed(1))}/${playerMaxHp}`;
+    if(hpDisplay) hpDisplay.textContent = `${Math.max(0,Math.floor(playerCurrentHp))}/${Math.floor(playerMaxHp)}`;
 }
 
 function damageEnemy(e, dmg) {
@@ -2886,7 +2891,7 @@ function killEnemy(e) {
     enemySpatialVersion++;
     recordDefeat(e);
     playSound("coin");
-    const reward = trainingCoinReward(e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1));
+    const reward = Math.floor(trainingCoinReward(e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1))*routeMultipliers().coins);
     
     sessionCoins += reward;
     if(gameCoinsDisplay) gameCoinsDisplay.textContent = sessionCoins;
@@ -3031,7 +3036,7 @@ function showDamageText(x, y, txt) {
     if (liteMode && typeof txt === 'number') return;
     const el = document.createElement('div');
     el.classList.add('damage-text','world-transient');
-    el.textContent = txt;
+    el.textContent = typeof txt === 'number' ? Math.floor(txt) : txt;
     el.style.left = x + 'px'; el.style.top = y + 'px';
     worldLayer.appendChild(el);
     gameSetTimeout(() => el.remove(), 800);
@@ -3098,7 +3103,7 @@ document.getElementById('btn-suspend-run').addEventListener('click', async () =>
         if (cloudConflict) throw new Error('同期が必要です。ホームで同期してください。');
         const c = { version:1, mode:gameMode, wave:currentWave, character:gameData.character,
             hp:playerCurrentHp, upgrades:{...runUpgrades}, coins:sessionCoins, record:{...runRecord},
-            cooldown:Math.max(0,getSkillCooldown()-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent, training:trainingCheckpoint(), equipment:equipmentCheckpoint() };
+            cooldown:Math.max(0,getSkillCooldown()-(gameNow()-lastBombTime)), lastEvent:lastWaveEvent, training:trainingCheckpoint(), equipment:equipmentCheckpoint(), stageRoute:{...stageRoute} };
         localStorage.setItem(getSaveKey() + '_checkpoint', JSON.stringify(c));
         stopWaveEvent(); waveShopScreen.classList.add('hidden'); gameScreen.classList.add('hidden');
         showHomeScreen();
@@ -3113,7 +3118,7 @@ document.getElementById('btn-continue-run').addEventListener('click', () => {
     try { localStorage.removeItem(getSaveKey() + '_checkpoint'); }
     catch (_) { alert('中断データを更新できません。再試行してください。'); return; }
     gameData.character = c.character; gameMode = c.mode; currentWave = c.wave + 1;
-    resetRunUpgrades(); runUpgrades = c.upgrades; lastRewardWave = c.wave;
+    resetRunUpgrades(); if(c.stageRoute&&['safe','risk'].includes(c.stageRoute.kind)&&Number.isInteger(c.stageRoute.until)&&c.stageRoute.until>=currentWave&&c.stageRoute.until<=currentWave+9)stageRoute=c.stageRoute; runUpgrades = c.upgrades; lastRewardWave = c.wave;
     equipmentStartRun(c.equipment);
     restoreTrainingCheckpoint(c.training);
     runRecord = c.record; combatSegmentStart = null; sessionCoins = c.coins;
@@ -3148,6 +3153,7 @@ initTrainingUI();
 initEquipmentUI();
 initPresentation();
 initAdventureUI();
+initForgeUI();
 
 // Called only from the home/login update action; the modal prevents changes while saving.
 async function prepareGameUpdate() {

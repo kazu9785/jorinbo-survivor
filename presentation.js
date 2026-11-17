@@ -166,7 +166,7 @@ function revealSummonItem(entry){
     element.classList.remove('chest-active','chest-promoting');
     element.classList.add('summon-item-revealed');
     element.style.setProperty('--rarity',EQ_COLORS[entry.grade-1]);
-    element.replaceChildren(equipmentIcon(entry.item.slot,entry.item.grade));
+    element.replaceChildren(equipmentIcon(entry.item.slot,entry.item.grade,entry.item));
     element.setAttribute('aria-label',equipmentName(entry.item)+' 獲得');
     element.setAttribute('title',equipmentName(entry.item));
     if(!gachaPresentation?.preview){
@@ -258,7 +258,7 @@ function renderGachaCards(results,animated=false){
         const card=document.createElement('article');card.className='gacha-reveal-card'+(animated?' reveal-animated':'');
         card.style.setProperty('--rarity',EQ_COLORS[item.grade-1]);card.style.animationDelay=(index*.08)+'s';
         const tag=document.createElement('strong');tag.textContent=EQ_GRADES[item.grade-1];card.appendChild(tag);
-        card.appendChild(equipmentIcon(item.slot,item.grade));appendEqText(card,equipmentName(item));
+        card.appendChild(equipmentIcon(item.slot,item.grade,item));appendEqText(card,equipmentName(item));
         appendEqText(card,equipmentAffixText(item),'equipment-affixes');if(!gachaPresentation?.preview)eqButton(card,'詳細・ロック',false,()=>openItemDetails(item.uid));area.appendChild(card);
     });
 }

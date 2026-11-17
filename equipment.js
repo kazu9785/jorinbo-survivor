@@ -100,6 +100,7 @@ function equipmentStats(items=equipmentActiveItems()){
  const [w,h,b,f]=items.map(i=>i?.grade||0);
  const s={damage:1+w*.08,hp:b*2,speed:1+f*.04,cooldown:1-h*.03,skill:1,crit:0,critPower:1.5,reduction:0,evade:0,fireRate:1,shield:0,heal:0,boss:0};
  items.filter(Boolean).forEach(i=>i.skills.forEach(a=>EQ_AFFIXES[a].apply(s,i.grade)));
+ applySeriesStats(s,items);
  // Hard caps keep stacked rare effects playable; displayed in probability/effect help.
  s.cooldown=Math.max(.2,s.cooldown);s.reduction=Math.min(.75,s.reduction);s.evade=Math.min(.5,s.evade);s.crit=Math.min(.8,s.crit);
  return s;
@@ -126,7 +127,7 @@ function equipmentEnemyTier(type){if(type==='boss')return 4;if(type==='treasure'
 function equipmentDrop(e){
  if(gameMode==='test')return false;
  const tier=e.strengthTier||(e.type==='boss'?4:e.type==='treasure'?3:1),chance=e.type==='treasure'?.65:[0,.08,.12,.18,.35][tier];
- if(Math.random()>=chance)return false;
+ if(Math.random()>=Math.min(1,(chance+equipmentStats().drop)*routeMultipliers().drops))return false;
  const count=e.type==='boss'?5:e.type==='treasure'?3:1;
  gameData.equipment.crystals=Math.min(1000000000,gameData.equipment.crystals+count);
  const el=document.createElement('div');el.className='crystal-drop world-transient';el.style.left=e.x+'px';el.style.top=e.y+'px';
@@ -135,9 +136,14 @@ function equipmentDrop(e){
 }
 function updateEquipmentBalance(){document.querySelectorAll('.crystal-balance').forEach(el=>el.textContent=gameData.equipment.crystals);}
 function equipmentDescription(slot,g){return [`通常攻撃＋${g*8}％`,`スキル待ち時間−${g*3}％`,`最大HP＋${g*2}`,`移動速度＋${g*4}％`][slot];}
-function equipmentName(i){return `${CHARACTERS[EQ_CHARS[Math.floor(i.slot/4)]].name} / ${EQ_SLOTS[i.slot%4]} / ${EQ_GRADES[i.grade-1]} #${i.uid}`;}
+function equipmentName(i){return `${SERIES_NAMES[equipmentSeries(i)]} / ${CHARACTERS[EQ_CHARS[Math.floor(i.slot/4)]].name} / ${EQ_SLOTS[i.slot%4]} / ${EQ_GRADES[i.grade-1]} #${i.uid}`;}
 function equipmentAffixText(i){return i.skills.map(a=>`【${EQ_AFFIX_TIERS[EQ_AFFIXES[a].tier]}】${EQ_AFFIXES[a].name}：${EQ_AFFIXES[a].description(i.grade)}`).join('\n');}
-function equipmentIcon(slot,g){const icon=document.createElement('div');icon.className='equipment-icon';icon.setAttribute('aria-hidden','true');icon.style.backgroundImage=`url('equipment_${EQ_GRADES[g-1].toLowerCase()}.png')`;icon.style.backgroundPosition=`${slot%4*100/3}% ${Math.floor(slot/4)*100/3}%`;return icon;}
+function equipmentIcon(slot,g,item){
+ const icon=document.createElement('div');icon.className='equipment-icon';icon.setAttribute('aria-hidden','true');
+ const series=item?equipmentSeries(item):0,c=Math.floor(slot/4),row=(series%4)*2+Math.floor(c/2),col=(c%2)*4+slot%4;
+ icon.style.backgroundImage=`url('series_${g===5&&series>=4?'ur_extra':EQ_GRADES[g-1].toLowerCase()}.png')`;
+ icon.style.backgroundSize='800% 800%';icon.style.backgroundPosition=`${col*100/7}% ${row*100/7}%`;return icon;
+}
 function equipmentWeightedIndex(weights){let r=Math.random()*weights.reduce((a,b)=>a+b,0);for(let i=0;i<weights.length;i++){r-=weights[i];if(r<0)return i;}return weights.length-1;}
 function rollEquipmentAffixes(g){return Array.from({length:EQ_SKILL_SLOTS[g]},()=>{const pool=EQ_AFFIX_POOLS[equipmentWeightedIndex(EQ_AFFIX_WEIGHTS[g])];return pool[Math.floor(Math.random()*pool.length)];});}
 function equipmentMessage(text){document.getElementById('equipment-status').textContent=text;document.getElementById('equipment-box-status').textContent=text;}
@@ -150,11 +156,11 @@ function equipmentRoll(count=1){
  d.crystals-=cost;const results=[];
  for(let n=0;n<count;n++){
   const grade=equipmentWeightedIndex(EQ_GRADE_WEIGHTS)+1,slot=Math.floor(Math.random()*16);
-  const i={uid:d.nextId++,slot,grade,durability:EQ_MAX_DURABILITY[grade],skills:rollEquipmentAffixes(grade)};d.items.push(encodeEquipment(i));results.push(i);
+  const i={uid:d.nextId++,slot,grade,durability:EQ_MAX_DURABILITY[grade],skills:rollEquipmentAffixes(grade)};d.items.push(encodeEquipment(i));gameData.forge.series.push(i.uid+':'+Math.floor(Math.random()*(grade===5?8:4)));results.push(i);
  }
  saveData();equipmentPage=0;renderEquipment();equipmentMessage(`${count}個をボックスに追加しました。重複した装備も個別に保管します。`);
  const area=document.getElementById('equipment-results');area.replaceChildren();
- results.forEach(i=>{const card=document.createElement('article');card.className='equipment-result';card.appendChild(equipmentIcon(i.slot,i.grade));appendEqText(card,equipmentName(i));appendEqText(card,equipmentAffixText(i),'equipment-affixes');area.appendChild(card);});
+ results.forEach(i=>{const card=document.createElement('article');card.className='equipment-result';card.appendChild(equipmentIcon(i.slot,i.grade,i));appendEqText(card,equipmentName(i));appendEqText(card,equipmentAffixText(i),'equipment-affixes');area.appendChild(card);});
  playSound('confirm');return results;
 }
 function equipmentReservedIds(){
@@ -163,7 +169,7 @@ function equipmentReservedIds(){
  // Legacy checkpoints reference a design, so reserve its migrated instance too.
  return c.equipment.map(id=>typeof id==='number'?id:equipmentItems().find(i=>`${i.slot}-${i.grade}`===id)?.uid).filter(Boolean);
 }
-function equipmentProtected(uid){return equipmentLocked(uid)||gameData.equipment.equipped.some(w=>decodeEquipment(w)?.uid===uid)||equipmentReservedIds().includes(uid);}
+function equipmentProtected(uid){return presetReservedIds().includes(uid)||equipmentLocked(uid)||gameData.equipment.equipped.some(w=>decodeEquipment(w)?.uid===uid)||equipmentReservedIds().includes(uid);}
 function equipItem(slot,id){
  if(!canEditTraining()||!Number.isInteger(slot)||slot<0||slot>15)return false;
  const i=id==='none'?null:equipmentFind(id);
@@ -178,7 +184,7 @@ function sellEquipment(uid){
  if(!confirm(`${equipmentName(i)}\n耐久 ${i.durability}/${EQ_MAX_DURABILITY[i.grade]}\n${equipmentAffixText(i)}\n\n${price}Gで売却しますか？装備はなくなります。`))return false;
  gameData.equipment.items=gameData.equipment.items.filter(w=>decodeEquipment(w)?.uid!==uid);gameData.coins+=price;saveData();renderEquipment();equipmentMessage(`${price}Gで売却しました。`);return true;
 }
-function equipmentFusionCandidates(base){return equipmentItems().filter(i=>i.uid!==base.uid&&i.slot===base.slot&&i.grade===base.grade&&i.durability>0&&!equipmentProtected(i.uid));}
+function equipmentFusionCandidates(base){return equipmentItems().filter(i=>i.uid!==base.uid&&i.slot===base.slot&&i.grade===base.grade&&equipmentSeries(i)===equipmentSeries(base)&&i.durability>0&&!equipmentProtected(i.uid));}
 function fuseEquipment(baseUid,materialUid){
  if(!canEditTraining()||baseUid===materialUid||equipmentProtected(materialUid))return false;
  const base=equipmentFind(baseUid),material=equipmentFind(materialUid);
@@ -195,8 +201,8 @@ function openEquipmentFusion(uid){
  equipmentFusionBase=uid;const area=document.getElementById('equipment-fusion-candidates');area.replaceChildren();
  document.getElementById('equipment-fusion-summary').textContent=`残す装備：${equipmentName(base)}\n耐久 ${base.durability}/${EQ_MAX_DURABILITY[base.grade]}\n${equipmentAffixText(base)}`;
  const candidates=equipmentFusionCandidates(base);
- if(!candidates.length)appendEqText(area,'素材がありません。同じキャラ・部位・グレードで、耐久が残っている未装備の品が必要です。中断データで使用中の装備は素材にできません。');
- candidates.forEach(i=>{const row=document.createElement('article');row.className='equipment-result';row.appendChild(equipmentIcon(i.slot,i.grade));appendEqText(row,equipmentName(i)+` / 耐久${i.durability}`);appendEqText(row,equipmentAffixText(i),'equipment-affixes');eqButton(row,`素材にする → 耐久${Math.min(EQ_MAX_DURABILITY[base.grade],base.durability+i.durability)}`,false,()=>fuseEquipment(uid,i.uid));area.appendChild(row);});
+ if(!candidates.length)appendEqText(area,'素材がありません。同じキャラ・部位・グレード・シリーズで、耐久が残っている未装備の品が必要です。中断データで使用中の装備は素材にできません。');
+ candidates.forEach(i=>{const row=document.createElement('article');row.className='equipment-result';row.appendChild(equipmentIcon(i.slot,i.grade,i));appendEqText(row,equipmentName(i)+` / 耐久${i.durability}`);appendEqText(row,equipmentAffixText(i),'equipment-affixes');eqButton(row,`素材にする → 耐久${Math.min(EQ_MAX_DURABILITY[base.grade],base.durability+i.durability)}`,false,()=>fuseEquipment(uid,i.uid));area.appendChild(row);});
  document.getElementById('equipment-fusion-dialog').showModal();
 }
 function equipmentFilteredItems(){
@@ -219,7 +225,7 @@ function renderEquipment(){
  const c=EQ_CHARS.indexOf(equipmentViewedCharacter),loadout=document.getElementById('equipment-loadout');loadout.replaceChildren();
  for(let s=0;s<4;s++){
   const card=document.createElement('article');card.className='equipment-loadout-slot';const i=decodeEquipment(d.equipped[c*4+s]);
-  appendEqText(card,EQ_SLOTS[s]);if(i){card.appendChild(equipmentIcon(i.slot,i.grade));equipmentDurabilityGauge(card,i);eqButton(card,'比較・詳細',false,()=>openItemDetails(i.uid));appendEqText(card,`${EQ_GRADES[i.grade-1]} #${i.uid} / 耐久${i.durability}/${EQ_MAX_DURABILITY[i.grade]}${i.durability===0?'（破損）':''}`);eqButton(card,'外す',!editable,()=>equipItem(c*4+s,'none'));}else appendEqText(card,'未装備');loadout.appendChild(card);
+  appendEqText(card,EQ_SLOTS[s]);if(i){card.appendChild(equipmentIcon(i.slot,i.grade,i));equipmentDurabilityGauge(card,i);eqButton(card,'比較・詳細',false,()=>openItemDetails(i.uid));appendEqText(card,`${EQ_GRADES[i.grade-1]} #${i.uid} / 耐久${i.durability}/${EQ_MAX_DURABILITY[i.grade]}${i.durability===0?'（破損）':''}`);eqButton(card,'外す',!editable,()=>equipItem(c*4+s,'none'));}else appendEqText(card,'未装備');loadout.appendChild(card);
  }
  const items=equipmentFilteredItems(),pages=Math.max(1,Math.ceil(items.length/EQ_PAGE_SIZE));equipmentPage=Math.min(equipmentPage,pages-1);
  document.getElementById('equipment-page-label').textContent=`${items.length}個 / ${equipmentPage+1}ページ目（全${pages}ページ）`;
@@ -231,8 +237,9 @@ function renderEquipment(){
   card.title=label;card.setAttribute('aria-label',label);card.classList.toggle('sale-selected',saleSelection.has(i.uid));
   card.classList.toggle('selection-mode',saleSelectionMode);
   if(saleSelectionMode){card.setAttribute('aria-pressed',String(saleSelection.has(i.uid)));card.disabled=!editable||equipmentProtected(i.uid);}
-  card.appendChild(equipmentIcon(i.slot,i.grade));card.addEventListener('click',()=>{if(saleSelectionMode)toggleSaleItem(i.uid);else openItemDetails(i.uid);});area.appendChild(card);
+  card.appendChild(equipmentIcon(i.slot,i.grade,i));addEquipmentBadges(card,i);card.addEventListener('click',()=>{if(saleSelectionMode)toggleSaleItem(i.uid);else openItemDetails(i.uid);});area.appendChild(card);
  }
+ renderForge();
  updateSaleSummary();
  if(!items.length)appendEqText(area,'条件に合う装備はありません。召喚するか、絞り込み条件を変更してください。');
  document.getElementById('equipment-roll').disabled=gachaBusy||!editable||d.crystals<10||d.items.length>=EQ_BOX_LIMIT;
@@ -258,10 +265,11 @@ function renderEquipmentProbabilities(){
  EQ_GRADES.forEach((name,index)=>{const g=index+1,w=EQ_AFFIX_WEIGHTS[g],p=w[2]/10000,row=document.createElement('tr');
   [name,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),equipmentPercent(EQ_GRADE_WEIGHTS[index]/1600),EQ_SKILL_SLOTS[g]+'枠',w.map(x=>equipmentPercent(x/100)).join(' / '),equipmentPercent((1-(1-p)**EQ_SKILL_SLOTS[g])*100)].forEach(t=>{const td=document.createElement('td');td.textContent=t;row.appendChild(td);});table.appendChild(row);});const gradeScroll=document.createElement('div');gradeScroll.className='odds-scroll';gradeScroll.appendChild(table);area.appendChild(gradeScroll);
  appendEqText(area,'全キャラ・全部位から抽選します（キャラ各25％、部位各25％、組み合わせ各6.25％）。1回も10回も同じ独立抽選で、確定枠・天井はありません。URの1回あたり確率は0.01％です。1万回で必ず出る意味ではありません。');
+ appendEqText(area,'シリーズはグレード確定後に独立抽選。N〜SSRは各4シリーズ25％、URは各8シリーズ12.5％です。特定の装備はキャラ4×部位4×シリーズ数で均等抽選。例：特定のUR装備1種は0.000078125％です。再抽選は同グレードの1枠と同じ確率です。');
  appendEqText(area,'特殊スキルは各枠で独立抽選。同じスキルが重複することもあり、効果は加算されます。グレード別に枠数と効果量が増えます。下の確率は「そのグレードの装備に付く、1枠あたりの個別スキル確率」です。');
  const effects=document.createElement('table');effects.className='equipment-odds-table';const h=document.createElement('tr');['スキル','分類','N','R','SR','SSR','UR','効果（g＝グレード番号1～5）'].forEach(t=>{const th=document.createElement('th');th.textContent=t;h.appendChild(th);});effects.appendChild(h);
  Object.entries(EQ_AFFIXES).forEach(([id,a])=>{const tr=document.createElement('tr');[a.name,EQ_AFFIX_TIERS[a.tier],...[1,2,3,4,5].map(g=>equipmentPercent(EQ_AFFIX_WEIGHTS[g][a.tier]/100/EQ_AFFIX_POOLS[a.tier].length)),a.description(1)+'（表示はN時。グレードに比例）'].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.appendChild(td);});effects.appendChild(tr);});const effectScroll=document.createElement('div');effectScroll.className='odds-scroll';effectScroll.appendChild(effects);area.appendChild(effectScroll);
- appendEqText(area,'例：特定のUR装備1種を引く確率は0.000625％。さらに指定した1枠に「覇王」が付く確率は、0.000625％ × (0.2％ ÷ 3) ＝ 約0.000000416667％です。表示は小数点以下8桁で丸めています。');
+ appendEqText(area,'例：特定のUR装備1種を引く確率は0.000078125％。さらに指定した1枠に「覇王」が付く確率は、0.000078125％ × (0.2％ ÷ 3) ＝ 約0.000000052083％です。表示は小数点以下8桁で丸めています。');
  appendEqText(area,'合計効果の上限：被ダメージ軽減75％、回避50％、会心80％、装備によるスキル待ち時間短縮80％。移動・連射は従来のゲーム上限も適用。会心は通常弾のみ。');
  appendEqText(area,'結晶ドロップ：通常8％・精鋭12％・希少18％で1個、ボス35％で5個、宝物スライム65％で3個。既存敵の段階抽選：通常75％・精鋭19％・希少6％。追加敵は種族ごとに段階固定で、WAVEごとに解禁・出現比率が変化します。開発テストは結晶ドロップも耐久消費もありません。');
 }

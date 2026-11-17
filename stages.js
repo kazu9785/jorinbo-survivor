@@ -29,8 +29,8 @@ function stageStats(wave = currentWave) {
     const w = Math.max(1, Math.min(1000000, wave));
     return {
         count:Math.min(180,8+Math.floor((w-1)*1.1)),
-        hp:1+Math.max(0,w-10)*.022+Math.pow(Math.max(0,w-30)/70,1.4)*.9,
-        damage:1+(w-1)*.055,
+        hp:(1+Math.max(0,w-10)*.022+Math.pow(Math.max(0,w-30)/70,1.4)*.9)*routeMultipliers().hp,
+        damage:(1+(w-1)*.055)*routeMultipliers().damage,
         speed:1+Math.min(.55,(w-1)*.006),
         time:Math.min(240,50+Math.floor(w*1.5))
     };

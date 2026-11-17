@@ -59,8 +59,8 @@ function itemComparison(item){
  return COMPARE_FIELDS.map(([key,label,scale,unit])=>({key,label,unit,value:Math.round((b[key]-a[key])*scale*100)/100}));
 }
 function openItemDetails(uid){
- const item=equipmentFind(uid);if(!item)return;itemDetailUid=uid;
- const area=document.getElementById('item-detail-content');area.replaceChildren();area.appendChild(equipmentIcon(item.slot,item.grade));
+ const item=equipmentFind(uid);if(!item)return;markEquipmentSeen(uid);renderEquipment();itemDetailUid=uid;
+ const area=document.getElementById('item-detail-content');area.replaceChildren();area.appendChild(equipmentIcon(item.slot,item.grade,item));
  appendEqText(area,equipmentName(item),'equipment-name');appendEqText(area,'耐久 '+item.durability+'/'+EQ_MAX_DURABILITY[item.grade]);equipmentDurabilityGauge(area,item);
  appendEqText(area,equipmentDescription(item.slot%4,item.grade));appendEqText(area,equipmentAffixText(item));
  const current=decodeEquipment(gameData.equipment.equipped[item.slot]);
@@ -77,6 +77,7 @@ function openItemDetails(uid){
  eqButton(actions,'合成で修理',!canEditTraining()||item.durability>=EQ_MAX_DURABILITY[item.grade],()=>openEquipmentFusion(uid));
  eqButton(actions,saleSelection.has(uid)?'売却対象から外す':'まとめて売却の対象に選ぶ',!canEditTraining()||equipmentProtected(uid),()=>{if(!canEditTraining()||equipmentProtected(uid))return;if(saleSelection.has(uid))saleSelection.delete(uid);else saleSelection.add(uid);renderEquipment();openItemDetails(uid);});
  eqButton(actions,'売却 '+equipmentSaleValue(item)+'G',!canEditTraining()||equipmentProtected(uid),()=>{if(sellEquipment(uid))document.getElementById('item-detail-dialog').close();});
+ addForgeItemActions(area,item);
  const dialog=document.getElementById('item-detail-dialog');if(!dialog.open)dialog.showModal();
 }
 function trainingNextGoal(id,route){

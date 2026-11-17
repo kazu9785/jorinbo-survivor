@@ -165,7 +165,7 @@ function animateGachaPromotion(){
         if(gachaPresentation!==state||state.revealed)return;
         const grade=state.promotion.from+step;
         paintGachaGrade(grade);
-        document.getElementById('gacha-heading').textContent=EQ_GRADES[grade-1]+'へ昇格！';
+        document.getElementById('gacha-heading').textContent='宝箱が昇格！';
         playSound('gacha_promote',.45);
     },step*650);
     gachaLater(revealGachaResults,(state.promotion.steps+1)*650);
@@ -244,8 +244,8 @@ function startGachaPresentation(results){
     scene.style.setProperty('--rarity',EQ_COLORS[initialGrade-1]);
     scene.classList.toggle('calm',reducedEffects());
     paintGachaGrade(initialGrade);
-    document.getElementById('gacha-heading').textContent=EQ_GRADES[initialGrade-1]+'の宝箱が現れた！';
-    document.getElementById('gacha-description').textContent=(results.length>1?'10個のうち最高グレードが':'獲得装備は')+EQ_GRADES[initialGrade-1]+'以上。まれに宝箱が昇格します。';
+    document.getElementById('gacha-heading').textContent='装備召喚';
+    document.getElementById('gacha-description').textContent='宝箱を開いて装備を確認しよう。';
     document.getElementById('gacha-reveal-cards').replaceChildren();document.getElementById('gacha-reveal-cards').hidden=true;
     document.getElementById('gacha-mythic').hidden=true;
     document.getElementById('gacha-open').hidden=false;document.getElementById('gacha-open').disabled=false;

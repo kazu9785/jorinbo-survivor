@@ -89,6 +89,7 @@ function playSound(el = "confirm", vol = 0.5) { window.GameAudio?.effect(el, vol
 // ■■■ セーブデータ管理 ■■■
 function getDefaultData() {
     return {
+        journey: defaultJourney(),
         training: createDefaultTraining(),
         equipment: createDefaultEquipment(),
         codex: {},
@@ -351,6 +352,7 @@ function repairGameData(saved) {
     if (!saved || !saved.upgrade) return getDefaultData();
 
     const repaired = saved;
+    repaired.journey = repairJourney(saved.journey);
     repaired.training = repairTraining(saved.training);
     repaired.equipment = repairEquipment(saved.equipment);
     repaired.codex = repaired.codex && typeof repaired.codex === 'object' ? repaired.codex : {};
@@ -533,6 +535,7 @@ window.addEventListener('blur', pauseGame);
 
 let runRecord = null, combatSegmentStart = null;
 function beginRunRecord() {
+    tutorialOrigin=null;
     equipmentStartRun();
     trainingStartRun();
     runRecord = { kills: 0, bosses: 0, elapsed: 0, character: gameData.character,
@@ -563,6 +566,7 @@ function recordDefeat(enemy) {
 function finalizeRun(reason) {
     if (!runRecord || runRecord.finalized) return;
     finishCombatSegment();
+    document.getElementById('tutorial-hint').hidden=true;
     runRecord.finalized = true;
     gameData.records ||= { normal: 0, endless: 0 };
     const mode = runRecord.mode;
@@ -676,8 +680,9 @@ function saveDiagnosticFields(d) {
         return true;
     };
     const base = ['coins','endlessUnlocked','name','character','upgrade','skills'];
-    if (!keys(d, [...base,'codex','records','lastResult','training','equipment'], base, 'data')) return errors;
+    if (!keys(d, [...base,'codex','records','lastResult','training','equipment','journey'], base, 'data')) return errors;
     check(Number.isSafeInteger(d.coins) && d.coins >= 0, 'data.coins');
+    if ('journey' in d) check(validJourney(d.journey),'data.journey');
     if ('equipment' in d) check(validEquipmentLocal(d.equipment),'data.equipment');
     check(typeof d.endlessUnlocked === 'boolean', 'data.endlessUnlocked');
     check(typeof d.name === 'string' && d.name.length <= 64, 'data.name');
@@ -718,7 +723,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.5.2 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.6.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -875,6 +880,7 @@ function saveData() {
 }
 
 function updateCoinDisplays() {
+    refreshAdventureHome();
     updateEquipmentBalance();
     if(totalCoinsDisplay) totalCoinsDisplay.textContent = gameData.coins;
     if(weaponShopCoinsDisplay) weaponShopCoinsDisplay.textContent = gameData.coins;
@@ -963,6 +969,7 @@ function updateReleaseHistoryAccess(allowed) {
 }
 
 function showAuthScreen() {
+    saleSelection.clear();
     updateReleaseHistoryAccess(false);
     window.GameAudio?.scene("menu");
     document.getElementById('character-modal').classList.add('hidden');
@@ -973,6 +980,7 @@ function showAuthScreen() {
 }
 
 function showHomeScreen() {
+    refreshAdventureHome();
     updateReleaseHistoryAccess(isDeveloper && !!auth?.currentUser);
     equipmentRun = null;
     updateEquipmentBalance();
@@ -1061,6 +1069,7 @@ function appendRankingCell(row, text) {
 }
 
 async function loadRanking() {
+    const request=++rankingRequest;
     rankingBody.innerHTML = '';
     if (!isFirebaseConfigured || !db) {
         setStatus(rankingStatus, 'firebase-config.js の設定後にランキングを表示できます。', 'error');
@@ -1069,17 +1078,21 @@ async function loadRanking() {
 
     setStatus(rankingStatus, 'ランキングを読み込んでいます...');
     try {
+        const boardKey=selectedBoardKey();
         const snapshot = await db.collection('players').get();
+        if(request!==rankingRequest)return;
         const players = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.isDeveloper === true) return;
+            const index=BOARD_KEYS.indexOf(boardKey)*3,boards=repairedBoards(data.boards);
+            if(boardKey && (index<0||boards[index]===0))return;
             players.push({
                 uid: doc.id,
                 username: data.username || 'NO NAME',
-                highestWave: Number(data.highestWave) || 0,
-                latestWave: Number(data.latestWave) || 0,
-                attempts: Number(data.attempts) || 0
+                highestWave: boardKey?boards[index]:Number(data.highestWave) || 0,
+                latestWave: boardKey?boards[index+1]:Number(data.latestWave) || 0,
+                attempts: boardKey?boards[index+2]:Number(data.attempts) || 0
             });
         });
 
@@ -1109,7 +1122,7 @@ async function loadRanking() {
     }
 }
 
-async function registerAttempt() {
+async function registerAttempt(mode=gameMode) {
     if (isDeveloper && auth?.currentUser) return true;
     if (!auth || !auth.currentUser || !db) {
         alert('ログインしてから戦闘を開始してください。');
@@ -1117,9 +1130,13 @@ async function registerAttempt() {
     }
 
     try {
-        await db.collection('players').doc(auth.currentUser.uid).update({
-            attempts: firebase.firestore.FieldValue.increment(1),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        const ref=db.collection('players').doc(auth.currentUser.uid),character=gameData.character;
+        await db.runTransaction(async transaction=>{
+            const snapshot=await transaction.get(ref);if(!snapshot.exists)throw new Error('プレイヤーデータがありません。');
+            const data=snapshot.data();transaction.update(ref,{
+                attempts:(Number(data.attempts)||0)+1,boards:updateBoards(data.boards,mode,character),
+                updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+            });
         });
         return true;
     } catch (error) {
@@ -1132,6 +1149,7 @@ async function saveWaveResult(wave) {
     if (isDeveloper || waveResultSaved || !auth || !auth.currentUser || !db) return;
     waveResultSaved = true;
     const reachedWave = Math.max(1, Math.floor(Number(wave) || 1));
+    const recordedMode=gameMode,recordedCharacter=runRecord?.character||gameData.character;
     const playerRef = db.collection('players').doc(auth.currentUser.uid);
 
     try {
@@ -1140,6 +1158,7 @@ async function saveWaveResult(wave) {
             if (!snapshot.exists) throw new Error('プレイヤーデータが見つかりません。');
             const data = snapshot.data();
             transaction.update(playerRef, {
+                boards: updateBoards(data.boards,recordedMode,recordedCharacter,reachedWave),
                 latestWave: reachedWave,
                 highestWave: Math.max(Number(data.highestWave) || 0, reachedWave),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1159,7 +1178,7 @@ async function resetAllData() {
         const snapshot = await transaction.get(cloudRef);
         if (!snapshot.exists || snapshot.data().revision !== cloudRevision) throw new Error('別端末で更新されています。先に同期してください。');
         transaction.set(cloudRef, cloudDocument(getDefaultData(), cloudRevision + 1));
-        transaction.update(player, { highestWave: 0, latestWave: 0, attempts: 0,
+        transaction.update(player, { highestWave: 0, latestWave: 0, attempts: 0, boards:defaultBoards(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     });
     cloudReady = false;
@@ -1464,6 +1483,7 @@ function attemptSkill() {
         }
         worldPulse(playerX,playerY,'#a9f5ff',190);
         trainingOnSkill();
+        if(!isDeveloper && gameData.journey.tutorial===1)completeTutorial();
         lastBombTime = now;
     }
 }
@@ -1471,7 +1491,9 @@ function attemptSkill() {
 // ■■■ メニュー操作 ■■■
 async function startNewRun(mode = 'normal') {
     void window.GameAudio?.unlock?.();
-    if (startingRun || homeScreen.classList.contains('hidden')) return;
+    if (startingRun || preflightPending || homeScreen.classList.contains('hidden')) return;
+    preflightPending=true;
+    try { if(!isDeveloper && !await confirmEquipmentReady())return; } finally { preflightPending=false; }
     if (readCheckpoint() && !confirm('新しい挑戦を始めると中断データが消えます。始めますか？')) return;
     if (mode === 'test' && (!isDeveloper || !developerTest)) return;
     if (cloudConflict) { alert('ホームの「同期」で最新データを読み込んでください。'); return; }
@@ -1481,7 +1503,7 @@ async function startNewRun(mode = 'normal') {
     const endlessButton = document.getElementById('btn-endless');
     endlessButton.disabled = true;
     btnBattle.disabled = true;
-    const attemptSaved = await registerAttempt();
+    const attemptSaved = await registerAttempt(mode);
     btnBattle.disabled = false;
     endlessButton.disabled = false;
     startingRun = false;
@@ -1544,6 +1566,9 @@ btnReset.addEventListener('click', async () => {
 });
 
 btnRetry.addEventListener('click', async () => {
+    if(preflightPending||btnRetry.disabled)return;
+    preflightPending=true;
+    try{if(!isDeveloper&&!await confirmEquipmentReady())return;}finally{preflightPending=false;}
     btnRetry.disabled = true;
     const attemptSaved = await registerAttempt();
     btnRetry.disabled = false;
@@ -1897,6 +1922,7 @@ function startBattle() {
 }
 
 function gameLoop() {
+    if(!isPaused)tutorialTick();
     if (isGameOver) return;
     const now = gameNow();
     if (isPaused) { resetFrameClock(); animationFrameId = requestAnimationFrame(gameLoop); return; }
@@ -2934,6 +2960,7 @@ function spawnBoss() {
 }
 
 function waveClear() {
+    document.getElementById('tutorial-hint').hidden=true;
     if (rewardPending || currentWave <= lastRewardWave) return;
     stopWaveEvent();
     isGameOver = true;
@@ -3120,6 +3147,7 @@ function showBossWarning(boss, pattern) {
 initTrainingUI();
 initEquipmentUI();
 initPresentation();
+initAdventureUI();
 
 // Called only from the home/login update action; the modal prevents changes while saving.
 async function prepareGameUpdate() {

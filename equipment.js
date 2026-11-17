@@ -96,8 +96,8 @@ function equipmentStartRun(snapshot){
 function equipmentCheckpoint(){return equipmentRun?[...equipmentRun.ids]:equipmentCurrentIds();}
 function equipmentActiveItems(){return equipmentRun?equipmentRun.active:equipmentCurrentIds().map(id=>{const i=equipmentFind(id);return i?.durability>0?i:null;});}
 function equipmentGrades(){return equipmentActiveItems().map(i=>i?.grade||0);}
-function equipmentStats(){
- const items=equipmentActiveItems(),[w,h,b,f]=items.map(i=>i?.grade||0);
+function equipmentStats(items=equipmentActiveItems()){
+ const [w,h,b,f]=items.map(i=>i?.grade||0);
  const s={damage:1+w*.08,hp:b*2,speed:1+f*.04,cooldown:1-h*.03,skill:1,crit:0,critPower:1.5,reduction:0,evade:0,fireRate:1,shield:0,heal:0,boss:0};
  items.filter(Boolean).forEach(i=>i.skills.forEach(a=>EQ_AFFIXES[a].apply(s,i.grade)));
  // Hard caps keep stacked rare effects playable; displayed in probability/effect help.
@@ -163,7 +163,7 @@ function equipmentReservedIds(){
  // Legacy checkpoints reference a design, so reserve its migrated instance too.
  return c.equipment.map(id=>typeof id==='number'?id:equipmentItems().find(i=>`${i.slot}-${i.grade}`===id)?.uid).filter(Boolean);
 }
-function equipmentProtected(uid){return gameData.equipment.equipped.some(w=>decodeEquipment(w)?.uid===uid)||equipmentReservedIds().includes(uid);}
+function equipmentProtected(uid){return equipmentLocked(uid)||gameData.equipment.equipped.some(w=>decodeEquipment(w)?.uid===uid)||equipmentReservedIds().includes(uid);}
 function equipItem(slot,id){
  if(!canEditTraining()||!Number.isInteger(slot)||slot<0||slot>15)return false;
  const i=id==='none'?null:equipmentFind(id);
@@ -212,27 +212,37 @@ function equipmentFilteredItems(){
 }
 function renderEquipment(){
  updateEquipmentBalance();const d=gameData.equipment,editable=canEditTraining();
+ document.getElementById('dev-rare-summon').hidden=!isDeveloper;
+ document.getElementById('dev-rare-summon').disabled=gachaBusy||!editable;
+ saleSelection=new Set([...saleSelection].filter(uid=>equipmentFind(uid)&&!equipmentProtected(uid)));
  document.getElementById('equipment-box-summary').textContent=`ボックス ${d.items.length}/${EQ_BOX_LIMIT} ｜ 所持ゴールド ${gameData.coins}G`;
  const c=EQ_CHARS.indexOf(equipmentViewedCharacter),loadout=document.getElementById('equipment-loadout');loadout.replaceChildren();
  for(let s=0;s<4;s++){
   const card=document.createElement('article');card.className='equipment-loadout-slot';const i=decodeEquipment(d.equipped[c*4+s]);
-  appendEqText(card,EQ_SLOTS[s]);if(i){card.appendChild(equipmentIcon(i.slot,i.grade));appendEqText(card,`${EQ_GRADES[i.grade-1]} #${i.uid} / 耐久${i.durability}/${EQ_MAX_DURABILITY[i.grade]}${i.durability===0?'（破損）':''}`);eqButton(card,'外す',!editable,()=>equipItem(c*4+s,'none'));}else appendEqText(card,'未装備');loadout.appendChild(card);
+  appendEqText(card,EQ_SLOTS[s]);if(i){card.appendChild(equipmentIcon(i.slot,i.grade));equipmentDurabilityGauge(card,i);eqButton(card,'比較・詳細',false,()=>openItemDetails(i.uid));appendEqText(card,`${EQ_GRADES[i.grade-1]} #${i.uid} / 耐久${i.durability}/${EQ_MAX_DURABILITY[i.grade]}${i.durability===0?'（破損）':''}`);eqButton(card,'外す',!editable,()=>equipItem(c*4+s,'none'));}else appendEqText(card,'未装備');loadout.appendChild(card);
  }
  const items=equipmentFilteredItems(),pages=Math.max(1,Math.ceil(items.length/EQ_PAGE_SIZE));equipmentPage=Math.min(equipmentPage,pages-1);
  document.getElementById('equipment-page-label').textContent=`${items.length}個 / ${equipmentPage+1}ページ目（全${pages}ページ）`;
  document.getElementById('equipment-prev').disabled=equipmentPage===0;document.getElementById('equipment-next').disabled=equipmentPage>=pages-1;
  const area=document.getElementById('equipment-cards');area.replaceChildren();const reserved=equipmentReservedIds();
  for(const i of items.slice(equipmentPage*EQ_PAGE_SIZE,(equipmentPage+1)*EQ_PAGE_SIZE)){
-  const wire=encodeEquipment(i),equipped=d.equipped.includes(wire),protectedItem=equipped||reserved.includes(i.uid);
+  const wire=encodeEquipment(i),equipped=d.equipped.includes(wire),protectedItem=equipped||reserved.includes(i.uid)||equipmentLocked(i.uid);
   const card=document.createElement('article');card.className='equipment-box-card';card.style.borderColor=EQ_COLORS[i.grade-1];
-  card.appendChild(equipmentIcon(i.slot,i.grade));appendEqText(card,equipmentName(i),'equipment-name');
+  card.appendChild(equipmentIcon(i.slot,i.grade));appendEqText(card,equipmentName(i)+(equipmentLocked(i.uid)?' 🔒':''),'equipment-name');
+  equipmentDurabilityGauge(card,i);
+  const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=saleSelection.has(i.uid);check.disabled=!editable||protectedItem;
+  check.addEventListener('change',()=>{if(check.checked)saleSelection.add(i.uid);else saleSelection.delete(i.uid);updateSaleSummary();});label.appendChild(check);label.appendChild(document.createTextNode('まとめて売却に選択'));card.appendChild(label);
   appendEqText(card,`耐久 ${i.durability}/${EQ_MAX_DURABILITY[i.grade]}${i.durability===0?' / 破損：修理まで効果なし':''}${equipped?' / 装備中':''}${reserved.includes(i.uid)?' / 中断データで使用中':''}`);
   appendEqText(card,equipmentDescription(i.slot%4,i.grade));appendEqText(card,equipmentAffixText(i),'equipment-affixes');
   const actions=document.createElement('div');actions.className='equipment-card-actions';
+  eqButton(actions,'比較・詳細',false,()=>openItemDetails(i.uid));
+  eqButton(actions,equipmentLocked(i.uid)?'🔒 解除':'☆ ロック',!editable,()=>toggleEquipmentLock(i.uid));
+  eqButton(actions,'🔧 '+repairGoldCost(i)+'Gで修理',!editable||!repairGoldCost(i)||gameData.coins<repairGoldCost(i),()=>repairEquipmentGold(i.uid));
   eqButton(actions,equipped?'装備中':'装備する',!editable||equipped||i.durability===0,()=>equipItem(i.slot,i.uid));
   eqButton(actions,'合成で修理',!editable||i.durability>=EQ_MAX_DURABILITY[i.grade],()=>openEquipmentFusion(i.uid));
   eqButton(actions,`売却 ${equipmentSaleValue(i)}G`,!editable||protectedItem,()=>sellEquipment(i.uid));card.appendChild(actions);area.appendChild(card);
  }
+ updateSaleSummary();
  if(!items.length)appendEqText(area,'条件に合う装備はありません。召喚するか、絞り込み条件を変更してください。');
  document.getElementById('equipment-roll').disabled=gachaBusy||!editable||d.crystals<10||d.items.length>=EQ_BOX_LIMIT;
  document.getElementById('equipment-roll10').disabled=gachaBusy||!editable||d.crystals<100||d.items.length+10>EQ_BOX_LIMIT;

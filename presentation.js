@@ -169,6 +169,11 @@ function revealSummonItem(entry){
     element.replaceChildren(equipmentIcon(entry.item.slot,entry.item.grade));
     element.setAttribute('aria-label',equipmentName(entry.item)+' 獲得');
     element.setAttribute('title',equipmentName(entry.item));
+    if(!gachaPresentation?.preview){
+        element.setAttribute('role','button');element.setAttribute('tabindex','0');
+        element.addEventListener('click',()=>openItemDetails(entry.item.uid));
+        element.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openItemDetails(entry.item.uid);}});
+    }
 }
 function animateGachaPromotion(){
     const state=gachaPresentation;if(!state||state.revealed)return;
@@ -254,7 +259,7 @@ function renderGachaCards(results,animated=false){
         card.style.setProperty('--rarity',EQ_COLORS[item.grade-1]);card.style.animationDelay=(index*.08)+'s';
         const tag=document.createElement('strong');tag.textContent=EQ_GRADES[item.grade-1];card.appendChild(tag);
         card.appendChild(equipmentIcon(item.slot,item.grade));appendEqText(card,equipmentName(item));
-        appendEqText(card,equipmentAffixText(item),'equipment-affixes');area.appendChild(card);
+        appendEqText(card,equipmentAffixText(item),'equipment-affixes');if(!gachaPresentation?.preview)eqButton(card,'詳細・ロック',false,()=>openItemDetails(item.uid));area.appendChild(card);
     });
 }
 function revealGachaResults(){
@@ -265,7 +270,7 @@ function revealGachaResults(){
     const scene=document.getElementById('gacha-scene');scene.classList.remove('is-charging','is-promoting');scene.classList.add('is-open');
     chests.forEach(entry=>{entry.element.classList.remove('chest-promoting','chest-active');revealSummonItem(entry);});
     document.getElementById('gacha-heading').textContent=grade===5?'UR · 伝説の装備！':grade===4?'SSR · 希少な輝き！':'召喚成功！';
-    document.getElementById('gacha-description').textContent=results.length+'個の装備を獲得！ ボックスに保存済みです。';
+    document.getElementById('gacha-description').textContent=gachaPresentation.preview?'開発者プレビュー：結晶消費・装備保存はありません。':results.length+'個の装備を獲得！ ボックスに保存済みです。';
     const mythic=results.some(i=>i.skills.some(id=>EQ_AFFIXES[id].tier===2));
     document.getElementById('gacha-mythic').hidden=!mythic;
     renderGachaCards(results,!reducedEffects());
@@ -281,13 +286,15 @@ function finishGachaPresentation(){
     const dialog=document.getElementById('gacha-dialog');if(dialog.open)dialog.close();
     renderEquipment();
 }
-function startGachaPresentation(results){
+function startGachaPresentation(results,options={}){
+    if(options.preview&&(!isDeveloper||!auth?.currentUser))return;
     if(!results.length)return;
     gachaBusy=true;
     const grade=Math.max(...results.map(i=>i.grade));
     const chests=results.map(item=>({item,grade:item.grade,promotion:chooseGachaPromotion(item.grade),element:null,itemRevealed:false}));
+    if(options.preview)chests.forEach((entry,index)=>{const steps=entry.grade===3?2:index%2?2:3;entry.promotion={from:entry.grade-steps,to:entry.grade,steps};});
     const initialGrade=Math.max(...chests.map(entry=>entry.promotion?.from||entry.grade));
-    gachaPresentation={results,grade,chests,revealed:false};
+    gachaPresentation={results,grade,chests,revealed:false,preview:!!options.preview};
     const grid=document.getElementById('gacha-chest-grid');grid.replaceChildren();
     grid.classList.toggle('ten-chests',results.length===10);
     chests.forEach(entry=>{
@@ -299,8 +306,8 @@ function startGachaPresentation(results){
     scene.style.setProperty('--rarity',EQ_COLORS[initialGrade-1]);
     scene.classList.toggle('calm',reducedEffects());
     paintGachaGrade(initialGrade);
-    document.getElementById('gacha-heading').textContent='装備召喚';
-    document.getElementById('gacha-description').textContent='宝箱を開いて装備を確認しよう。';
+    document.getElementById('gacha-heading').textContent=options.preview?'開発者：レア演出プレビュー':'装備召喚';
+    document.getElementById('gacha-description').textContent=options.preview?'結晶消費・装備保存なし。軽量モードでは演出を省略します。':'宝箱を開いて装備を確認しよう。';
     document.getElementById('gacha-reveal-cards').replaceChildren();document.getElementById('gacha-reveal-cards').hidden=true;
     document.getElementById('gacha-mythic').hidden=true;
     document.getElementById('gacha-open').textContent=results.length===10?'順番に開く':'宝箱を開く';

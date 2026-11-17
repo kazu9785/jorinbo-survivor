@@ -154,7 +154,7 @@ function chooseTrainingAdaptation(launch) {
     document.body.style.cursor='default';dialog.showModal();
 }
 function canEditTraining() {
-    return !homeScreen.classList.contains('hidden') && !startingRun && !btnBattle.disabled && !cloudConflict;
+    return !homeScreen.classList.contains('hidden') && !startingRun && !preflightPending && !btnBattle.disabled && !cloudConflict;
 }
 function trainingUpgrade(id,route) {
     if (!canEditTraining() || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
@@ -173,6 +173,7 @@ function renderTraining() {
         if(gate){
             const preview=document.createElement('p');preview.textContent=`次のLv.${level+1}：${route.effect(level+1)}`;card.appendChild(preview);
             const requirement=document.createElement('p');requirement.textContent=`条件：このキャラでWAVE ${gate.wave}以上 または ${gate.uses}回以上使用 ＋ ${gate.cost}G`;card.appendChild(requirement);
+            appendEqText(card,trainingNextGoal(id,route.id),'pop-note');
             const satisfied=p.bestWave>=gate.wave||p.uses>=gate.uses;
             const buy=document.createElement('button');buy.type='button';buy.textContent=!satisfied?'プレイ条件未達成':gameData.coins<gate.cost?'コイン不足':`${gate.cost}GでLv.${level+1}に育成`;
             buy.disabled=!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);

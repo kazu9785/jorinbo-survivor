@@ -239,16 +239,27 @@ function renderEquipment(){
 }
 function equipmentPercent(x){return Number(x.toFixed(8)).toString()+'％';}
 function renderEquipmentProbabilities(){
- const area=document.getElementById('equipment-probability-content');area.replaceChildren();
- renderPromotionProbabilities(area);
+ const root=document.getElementById('equipment-probability-content');root.replaceChildren();
+ const cards=document.createElement('div');cards.className='odds-grade-grid';
+ EQ_GRADES.forEach((name,index)=>{
+  const card=document.createElement('article');card.className='odds-grade-card';card.style.setProperty('--rarity',EQ_COLORS[index]);
+  const chest=document.createElement('div');chest.className='odds-chest';chest.setAttribute('aria-hidden','true');gachaChest(chest,index+1);card.appendChild(chest);
+  const title=document.createElement('h3');title.textContent=name;card.appendChild(title);
+  appendEqText(card,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),'odds-value');
+  appendEqText(card,'特殊スキル '+EQ_SKILL_SLOTS[index+1]+'枠');cards.appendChild(card);
+ });root.appendChild(cards);
+ appendEqText(root,'💎 1回10個 ／ 10連100個　🎲 全キャラ・全部位が対象','pop-note');
+ appendEqText(root,'1回も10連も同じ確率。確定枠・天井はありません。','pop-note');
+ renderPromotionProbabilities(root);
+ const area=document.createElement('details'),summary=document.createElement('summary');summary.textContent='🔎 詳しい確率・特殊スキル・ドロップ率';area.appendChild(summary);root.appendChild(area);
  const table=document.createElement('table');table.className='equipment-odds-table';
  const head=document.createElement('tr');['グレード','排出率','特定キャラ・部位1種','スキル枠','通常 / 希少 / 神話（1枠）','神話が1枠以上'].forEach(t=>{const th=document.createElement('th');th.textContent=t;head.appendChild(th);});table.appendChild(head);
  EQ_GRADES.forEach((name,index)=>{const g=index+1,w=EQ_AFFIX_WEIGHTS[g],p=w[2]/10000,row=document.createElement('tr');
-  [name,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),equipmentPercent(EQ_GRADE_WEIGHTS[index]/1600),EQ_SKILL_SLOTS[g]+'枠',w.map(x=>equipmentPercent(x/100)).join(' / '),equipmentPercent((1-(1-p)**EQ_SKILL_SLOTS[g])*100)].forEach(t=>{const td=document.createElement('td');td.textContent=t;row.appendChild(td);});table.appendChild(row);});area.appendChild(table);
+  [name,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),equipmentPercent(EQ_GRADE_WEIGHTS[index]/1600),EQ_SKILL_SLOTS[g]+'枠',w.map(x=>equipmentPercent(x/100)).join(' / '),equipmentPercent((1-(1-p)**EQ_SKILL_SLOTS[g])*100)].forEach(t=>{const td=document.createElement('td');td.textContent=t;row.appendChild(td);});table.appendChild(row);});const gradeScroll=document.createElement('div');gradeScroll.className='odds-scroll';gradeScroll.appendChild(table);area.appendChild(gradeScroll);
  appendEqText(area,'全キャラ・全部位から抽選します（キャラ各25％、部位各25％、組み合わせ各6.25％）。1回も10回も同じ独立抽選で、確定枠・天井はありません。URの1回あたり確率は0.01％です。1万回で必ず出る意味ではありません。');
  appendEqText(area,'特殊スキルは各枠で独立抽選。同じスキルが重複することもあり、効果は加算されます。グレード別に枠数と効果量が増えます。下の確率は「そのグレードの装備に付く、1枠あたりの個別スキル確率」です。');
  const effects=document.createElement('table');effects.className='equipment-odds-table';const h=document.createElement('tr');['スキル','分類','N','R','SR','SSR','UR','効果（g＝グレード番号1～5）'].forEach(t=>{const th=document.createElement('th');th.textContent=t;h.appendChild(th);});effects.appendChild(h);
- Object.entries(EQ_AFFIXES).forEach(([id,a])=>{const tr=document.createElement('tr');[a.name,EQ_AFFIX_TIERS[a.tier],...[1,2,3,4,5].map(g=>equipmentPercent(EQ_AFFIX_WEIGHTS[g][a.tier]/100/EQ_AFFIX_POOLS[a.tier].length)),a.description(1)+'（表示はN時。グレードに比例）'].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.appendChild(td);});effects.appendChild(tr);});area.appendChild(effects);
+ Object.entries(EQ_AFFIXES).forEach(([id,a])=>{const tr=document.createElement('tr');[a.name,EQ_AFFIX_TIERS[a.tier],...[1,2,3,4,5].map(g=>equipmentPercent(EQ_AFFIX_WEIGHTS[g][a.tier]/100/EQ_AFFIX_POOLS[a.tier].length)),a.description(1)+'（表示はN時。グレードに比例）'].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.appendChild(td);});effects.appendChild(tr);});const effectScroll=document.createElement('div');effectScroll.className='odds-scroll';effectScroll.appendChild(effects);area.appendChild(effectScroll);
  appendEqText(area,'例：特定のUR装備1種を引く確率は0.000625％。さらに指定した1枠に「覇王」が付く確率は、0.000625％ × (0.2％ ÷ 3) ＝ 約0.000000416667％です。表示は小数点以下8桁で丸めています。');
  appendEqText(area,'合計効果の上限：被ダメージ軽減75％、回避50％、会心80％、装備によるスキル待ち時間短縮80％。移動・連射は従来のゲーム上限も適用。会心は通常弾のみ。');
  appendEqText(area,'結晶ドロップ：通常8％・精鋭12％・希少18％で1個、ボス35％で5個、宝物スライム65％で3個。既存敵の段階抽選：通常75％・精鋭19％・希少6％。追加敵は種族ごとに段階固定で、WAVEごとに解禁・出現比率が変化します。開発テストは結晶ドロップも耐久消費もありません。');

@@ -140,7 +140,7 @@ function worldBanner(title,subtitle){
     worldBannerTimer=setTimeout(()=>box.classList.remove('visible'),1900);
 }
 
-// Probability conditional on the already drawn highest grade, once per summon.
+// Conditional on each already drawn item; visual-only promotion per chest.
 const GACHA_PROMOTION_RATES = {3:0.05,4:0.02,5:0.005};
 function chooseGachaPromotion(grade){
     if(!GACHA_PROMOTION_RATES[grade] || Math.random()>=GACHA_PROMOTION_RATES[grade])return null;
@@ -154,38 +154,43 @@ function paintGachaGrade(grade){
     gachaChest(document.getElementById('gacha-chest'),grade);
     document.getElementById('gacha-chest').setAttribute('aria-label',EQ_GRADES[grade-1]+'宝箱');
 }
+function paintSummonChest(entry,grade,open=false){
+    gachaChest(entry.element,grade,open);
+    entry.element.style.setProperty('--rarity',EQ_COLORS[grade-1]);
+    entry.element.setAttribute('aria-label',EQ_GRADES[grade-1]+'宝箱'+(open?' 開封済み':''));
+}
 function animateGachaPromotion(){
-    const state=gachaPresentation;
-    if(!state || state.revealed)return;
-    const scene=document.getElementById('gacha-scene');
-    scene.classList.remove('is-charging');scene.classList.add('is-promoting');
+    const state=gachaPresentation;if(!state||state.revealed)return;
+    const scene=document.getElementById('gacha-scene');scene.classList.remove('is-charging');
     document.getElementById('gacha-heading').textContent='宝箱の輝きが変わる…！';
-    document.getElementById('gacha-description').textContent='昇格チャンス';
-    for(let step=1;step<=state.promotion.steps;step++)gachaLater(()=>{
-        if(gachaPresentation!==state||state.revealed)return;
-        const grade=state.promotion.from+step;
-        paintGachaGrade(grade);
-        document.getElementById('gacha-heading').textContent='宝箱が昇格！';
-        playSound('gacha_promote',.45);
-    },step*650);
-    gachaLater(revealGachaResults,(state.promotion.steps+1)*650);
+    let longest=0;
+    state.chests.forEach(entry=>{
+        const promotion=entry.promotion;if(!promotion)return;
+        longest=Math.max(longest,promotion.steps);entry.element.classList.add('chest-promoting');
+        for(let step=1;step<=promotion.steps;step++)gachaLater(()=>{
+            if(gachaPresentation!==state||state.revealed)return;
+            paintSummonChest(entry,promotion.from+step);
+            document.getElementById('gacha-heading').textContent='宝箱が昇格！';
+        },step*650);
+    });
+    playSound('gacha_promote',.45);
+    gachaLater(revealGachaResults,(longest+1)*650);
 }
 function renderPromotionProbabilities(area){
-    if(!isDeveloper){appendEqText(area,'宝箱は獲得装備のグレードを表します（10連では最高グレード）。まれに開封時に2〜3段階昇格します。演出をスキップしても結果は変わりません。');return;}
-    appendEqText(area,'【開発者専用】昇格演出の確率');
-    appendEqText(area,'宝箱の昇格演出：装備を先に抽選し、その最高グレードをもとに演出を1回抽選します。演出で排出率や装備性能は変わりません。10連の宝箱は全10個のうち最高グレードを表します。表示中の宝箱は最低保証で、まれに2〜3段階昇格します。');
+    appendEqText(area,'宝箱1個につき装備1個。まれに2〜3段階の昇格演出！ スキップしても結果は同じです。');
+    if(!isDeveloper)return;
+    const details=document.createElement('details'),summary=document.createElement('summary');
+    summary.textContent='🔒 開発者専用：昇格演出の確率';details.appendChild(summary);area.appendChild(details);
+    appendEqText(details,'装備の抽選後、宝箱ごとに独立して演出を抽選。装備の排出率は変わりません。');
     const table=document.createElement('table');table.className='equipment-odds-table';
     const header=document.createElement('tr');
-    ['昇格先','開始宝箱','その最高グレード当選時','1回召喚全体での発生率','10連1セットでの発生率'].forEach(label=>{const th=document.createElement('th');th.textContent=label;header.appendChild(th)});table.appendChild(header);
+    ['昇格先','開始宝箱','そのグレード当選時','1個あたり','10連で1個以上'].forEach(label=>{const th=document.createElement('th');th.textContent=label;header.appendChild(th)});table.appendChild(header);
     for(const grade of [3,4,5]){
-        const rate=GACHA_PROMOTION_RATES[grade];
-        const below=EQ_GRADE_WEIGHTS.slice(0,grade-1).reduce((a,b)=>a+b,0)/10000;
-        const cumulative=below+EQ_GRADE_WEIGHTS[grade-1]/10000;
-        const row=document.createElement('tr');
-        [EQ_GRADES[grade-1],grade===3?'N → SR（2段階）':grade===4?'R → SSR / N → SSR（各50％）':'SR → UR / R → UR（各50％）',equipmentPercent(rate*100),equipmentPercent(EQ_GRADE_WEIGHTS[grade-1]/100*rate),equipmentPercent((cumulative**10-below**10)*rate*100)].forEach(label=>{const td=document.createElement('td');td.textContent=label;row.appendChild(td)});table.appendChild(row);
+        const rate=GACHA_PROMOTION_RATES[grade],chance=EQ_GRADE_WEIGHTS[grade-1]/10000*rate,row=document.createElement('tr');
+        [EQ_GRADES[grade-1],grade===3?'N → SR':grade===4?'R / N → SSR':'SR / R → UR',equipmentPercent(rate*100),equipmentPercent(chance*100),equipmentPercent((1-(1-chance)**10)*100)].forEach(label=>{const td=document.createElement('td');td.textContent=label;row.appendChild(td)});table.appendChild(row);
     }
-    area.appendChild(table);
-    appendEqText(area,'N・Rが最高グレードの結果では昇格演出は起きません。昇格先のSR・SSR・URを抽選済みのときだけ低い宝箱から始まります。スキップ・軽量表示でも結果は同じです。演出が出ないままSSR・URの宝箱が直接出る場合が大多数です。');
+    const scroll=document.createElement('div');scroll.className='odds-scroll';scroll.appendChild(table);details.appendChild(scroll);
+    appendEqText(details,'SSR・URの開始宝箱は2候補から各50％。SRは2段階、SSR・URは2〜3段階昇格。');
 }
 let gachaBusy=false,gachaPresentation=null,gachaTimers=[];
 function summonEquipment(count){
@@ -211,12 +216,12 @@ function renderGachaCards(results,animated=false){
 function revealGachaResults(){
     if(!gachaPresentation||gachaPresentation.revealed)return;
     clearGachaTimers();gachaPresentation.revealed=true;
-    const {results,grade,promotion}=gachaPresentation;
+    const {results,grade,chests}=gachaPresentation;
     paintGachaGrade(grade);
     const scene=document.getElementById('gacha-scene');scene.classList.remove('is-charging','is-promoting');scene.classList.add('is-open');
-    gachaChest(document.getElementById('gacha-chest'),grade,true);
+    chests.forEach(entry=>{entry.element.classList.remove('chest-promoting');paintSummonChest(entry,entry.grade,true);});
     document.getElementById('gacha-heading').textContent=grade===5?'UR · 伝説の装備！':grade===4?'SSR · 希少な輝き！':'召喚成功！';
-    document.getElementById('gacha-description').textContent=(promotion?EQ_GRADES[promotion.from-1]+' → '+EQ_GRADES[grade-1]+' ／ '+promotion.steps+'段階昇格！ ':'')+results.length+'個の装備を獲得しました。ボックスに保存済みです。';
+    document.getElementById('gacha-description').textContent=results.length+'個の装備を獲得！ ボックスに保存済みです。';
     const mythic=results.some(i=>i.skills.some(id=>EQ_AFFIXES[id].tier===2));
     document.getElementById('gacha-mythic').hidden=!mythic;
     renderGachaCards(results,!reducedEffects());
@@ -236,9 +241,15 @@ function startGachaPresentation(results){
     if(!results.length)return;
     gachaBusy=true;
     const grade=Math.max(...results.map(i=>i.grade));
-    const promotion=chooseGachaPromotion(grade);
-    const initialGrade=promotion?promotion.from:grade;
-    gachaPresentation={results,grade,promotion,revealed:false};
+    const chests=results.map(item=>({grade:item.grade,promotion:chooseGachaPromotion(item.grade),element:null}));
+    const initialGrade=Math.max(...chests.map(entry=>entry.promotion?.from||entry.grade));
+    gachaPresentation={results,grade,chests,revealed:false};
+    const grid=document.getElementById('gacha-chest-grid');grid.replaceChildren();
+    grid.classList.toggle('ten-chests',results.length===10);
+    chests.forEach(entry=>{
+        entry.element=document.createElement('div');entry.element.className='summon-chest';entry.element.setAttribute('role','img');
+        paintSummonChest(entry,entry.promotion?.from||entry.grade);grid.appendChild(entry.element);
+    });
     const dialog=document.getElementById('gacha-dialog'),scene=document.getElementById('gacha-scene');
     scene.className='gacha-scene grade-'+initialGrade;
     scene.style.setProperty('--rarity',EQ_COLORS[initialGrade-1]);
@@ -248,6 +259,7 @@ function startGachaPresentation(results){
     document.getElementById('gacha-description').textContent='宝箱を開いて装備を確認しよう。';
     document.getElementById('gacha-reveal-cards').replaceChildren();document.getElementById('gacha-reveal-cards').hidden=true;
     document.getElementById('gacha-mythic').hidden=true;
+    document.getElementById('gacha-open').textContent=results.length===10?'10個まとめて開く':'宝箱を開く';
     document.getElementById('gacha-open').hidden=false;document.getElementById('gacha-open').disabled=false;
     document.getElementById('gacha-skip').hidden=false;document.getElementById('gacha-done').hidden=true;
     try{dialog.showModal();renderEquipment();playSound('gacha_charge',.4);}
@@ -259,7 +271,7 @@ function openGachaChest(){
     document.getElementById('gacha-open').disabled=true;
     document.getElementById('gacha-scene').classList.add('is-charging');
     playSound('gacha_charge',.45);
-    gachaLater(()=>{if(gachaPresentation?.promotion&&!reducedEffects())animateGachaPromotion();else revealGachaResults();},reducedEffects()?0:950);
+    gachaLater(()=>{if(gachaPresentation?.chests.some(entry=>entry.promotion)&&!reducedEffects())animateGachaPromotion();else revealGachaResults();},reducedEffects()?0:950);
 }
 function initPresentation(){
     document.getElementById('gacha-open').addEventListener('click',openGachaChest);

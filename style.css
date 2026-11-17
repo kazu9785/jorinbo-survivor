@@ -829,3 +829,21 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .overview-image-scroll:focus-visible { outline: 3px solid #5fdcff; outline-offset: 3px; }
 
 [data-info-dialog="release-guide"][hidden] { display: none !important; }
+
+/* Summon lineup and friendly guides */
+.gacha-chest-grid{display:grid;grid-template-columns:minmax(0,240px);justify-content:center;gap:12px;margin:12px auto;position:relative;}
+.gacha-chest-grid.ten-chests{grid-template-columns:repeat(5,minmax(0,1fr));max-width:780px;gap:clamp(3px,1.4vw,14px);}
+.summon-chest,.odds-chest{aspect-ratio:1;background-image:url('gacha_chests.png');background-size:500% 200%;background-repeat:no-repeat;width:100%;filter:drop-shadow(0 5px 9px #0008);}
+.summon-chest{border-radius:16px;background-color:#ffffff06;box-shadow:inset 0 0 16px color-mix(in srgb,var(--rarity) 16%,transparent);}
+.is-charging .summon-chest{animation:chest-charge .2s linear 4;}
+.summon-chest.chest-promoting{animation:promotion-float .65s ease-in-out infinite;filter:drop-shadow(0 0 14px var(--rarity));}
+.pop-guide-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0;}
+.pop-card{padding:16px 10px;border:1px solid #5672ac;border-radius:18px;text-align:center;background:linear-gradient(145deg,#203358,#19233b);}
+.pop-card:nth-child(2n){background:linear-gradient(145deg,#163c48,#172a39);border-color:#327c88;}
+.pop-card h3{font-size:1rem;margin:5px 0;color:#fff2b7;}.pop-card p{font-size:.9rem;margin:5px 0;color:#d9eaff;line-height:1.7;}.pop-icon{font-size:2rem;}
+.pop-note{padding:10px 14px;border-radius:12px;background:#253451;color:#dbf5ff;font-size:.9rem;}
+.odds-grade-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:16px 0;}
+.odds-grade-card{min-width:0;padding:8px;border-radius:14px;text-align:center;border:1px solid var(--rarity);background:linear-gradient(160deg,#26354c,#121c2f);}
+.odds-grade-card h3{color:var(--rarity);margin:0;font-size:1rem;}.odds-grade-card p{margin:4px 0;font-size:.8rem;}.odds-grade-card .odds-value{font-size:clamp(15px,2.5vw,23px);font-weight:bold;color:#fff;}
+.odds-scroll{max-width:100%;overflow:auto;}.equipment-probability-scroll{overflow:visible;}
+@media(max-width:600px){.pop-guide-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}.odds-grade-grid{grid-template-columns:repeat(3,minmax(0,1fr));}.gacha-chest-grid.ten-chests{gap:3px;}.summon-chest{border-radius:8px;}}

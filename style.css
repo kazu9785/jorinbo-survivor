@@ -871,3 +871,48 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 #tutorial-hint[hidden]{display:none;}#tutorial-hint button {padding:8px 12px;margin-left:8px;border-radius:8px;background:#305273;color:#fff;border:1px solid #70b8da;}
 .summon-item-revealed[role=button]{cursor:pointer;}.summon-item-revealed:focus-visible{outline:3px solid #fff;}
 @media(max-width:650px){.home-records .menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.home-character-panel .pop-note{font-size:.8rem;}}
+
+/* v1.6.1: desktop only; touch/mobile home layout remains unchanged. */
+@media (min-width:851px) and (hover:hover) and (pointer:fine) {
+ #home-screen {padding:16px;}
+ .home-container.home-dashboard {width:min(1120px,100%);padding:20px;display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px 20px;}
+ .home-header,.home-footer,.home-developer-area {grid-column:1/-1;}
+ .home-header {padding-bottom:12px;}
+ .home-header .game-title {font-size:24px;}
+ .home-account-summary {display:flex;align-items:center;gap:16px;max-width:70%;}
+ .home-account-summary .login-user-card {margin:0;font-size:14px;}
+ .home-main {display:contents;}
+ .home-character-panel {grid-column:1;grid-row:2 / 4;padding:14px;}
+ .home-character-panel .selected-character {gap:6px;margin-bottom:8px;}
+ .home-character-panel .selected-character img {width:96px;height:96px;}
+ .home-character-panel .menu-btn {min-height:40px;padding:9px 8px;font-size:13px;margin:4px 0;border-radius:10px;}
+ .home-character-panel .pop-note {font-size:12px;line-height:1.5;margin:8px 0;padding:8px;}
+ .home-play-panel {grid-column:2;grid-row:2;}
+ .home-section-label {font-size:13px;margin-bottom:8px;}
+ .home-mode-grid {gap:10px;margin-bottom:18px;}
+ .home-mode-grid .menu-btn {min-height:72px;padding:12px;font-size:16px;}
+ .home-mode-grid small {margin-top:5px;}
+ #home-screen .home-tools-grid {gap:10px;}
+ .home-tools-grid .menu-btn {min-height:46px;padding:10px 8px;}
+ .home-records {grid-column:2;grid-row:3;margin:0;align-self:end;}
+ .home-records .menu-grid {gap:8px;margin:0;}
+ .home-records .menu-btn {min-height:46px;font-size:12px;padding:10px 6px;border-radius:10px;}
+ .home-footer {gap:10px;padding-top:12px;}
+ .home-footer .game-info-links {margin:0;gap:8px;justify-content:flex-start;}
+ .home-footer .game-info-links button {padding:8px 12px;font-size:12px;min-height:36px;}
+ .home-footer .update-inline-status {font-size:11px;margin:0;}
+ .home-settings {padding:10px 14px;border-radius:12px;}
+ .home-settings > summary {min-height:22px;font-size:13px;}
+ .home-developer-area > #btn-developer {margin-top:0;padding:9px 16px;min-height:38px;font-size:13px;}
+}
+/* Fit the original lossless image; enlarge only on request. */
+.overview-tools {display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.overview-tools button {min-height:44px;padding:8px 16px;}
+.overview-image-scroll {max-height:calc(100dvh - 230px);overflow:auto;touch-action:pan-x pan-y pinch-zoom;}
+.overview-image-scroll img {width:auto;min-width:0;max-width:100%;max-height:calc(100dvh - 230px);height:auto;margin:0 auto;object-fit:contain;image-rendering:auto;}
+.overview-image-scroll.is-zoomed img {width:1024px;max-width:none;max-height:none;margin:0;}
+@media (max-width:850px) {
+ .overview-dialog {padding:12px;box-sizing:border-box;}
+ .overview-dialog > p {font-size:12px;line-height:1.5;margin:8px 0;}
+ .overview-dialog .guide-bottom {margin:8px 0 0;}
+}

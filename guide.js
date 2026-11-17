@@ -13,3 +13,18 @@
         });
     });
 })();
+
+(() => {
+ const dialog=document.getElementById('overview-guide');
+ const frame=dialog?.querySelector('.overview-image-scroll');
+ const button=document.getElementById('overview-zoom');
+ if(!dialog||!frame||!button)return;
+ function setZoom(zoomed){
+  frame.classList.toggle('is-zoomed',zoomed);
+  button.setAttribute('aria-pressed',String(zoomed));
+  button.textContent=zoomed?'全体表示に戻す':'拡大する';
+  frame.scrollTop=0;frame.scrollLeft=0;
+ }
+ button.addEventListener('click',()=>setZoom(button.getAttribute('aria-pressed')!=='true'));
+ dialog.addEventListener('close',()=>setZoom(false));
+})();

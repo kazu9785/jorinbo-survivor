@@ -135,7 +135,7 @@ function trainingCounterAttack() {
         if (!liteMode) {
             const ring=document.createElement('div');ring.className='training-counter';
             Object.assign(ring.style,{left:x+'px',top:y+'px',width:radius*2+'px',height:radius*2+'px'});
-            gameArea.appendChild(ring); gameSetTimeout(()=>ring.remove(),350);
+            worldLayer.appendChild(ring); gameSetTimeout(()=>ring.remove(),350);
         }
         for (const e of [...enemies]) if (Math.hypot(e.x-x,e.y-y)<=radius) damageEnemy(e,damage);
     },0);

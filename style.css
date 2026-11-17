@@ -737,3 +737,79 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 @media(max-width:650px){.equipment-loadout{grid-template-columns:repeat(2,minmax(0,1fr));}.equipment-filters label{flex:1 1 130px;}.equipment-filters select{max-width:100%;}.equipment-dialog{padding:12px;}.equipment-durability{font-size:10px!important;}}
 
 #equipment-durability-hud{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);max-width:94%;width:max-content;padding:3px 7px;border-radius:6px;background:rgba(8,17,31,.8);color:#bce5ff;z-index:40;pointer-events:none;white-space:normal;text-align:center;}
+
+/* Ver.1.4.0 — finite world, fixed HUD and camera. */
+#game-area {--stage-color:#b0c9ff;background:#10151f;}
+#game-area::before {display:none;}
+#game-area::after {z-index:2;box-shadow:inset 0 0 80px 10px #0008;}
+#game-area.world-awakened::after {box-shadow:inset 0 0 95px 18px #8537ad80;}
+#world-layer {position:absolute;left:0;top:0;isolation:isolate;will-change:transform;}
+#world-map {position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:url('arena_atlas.png');background-size:300% 300%;background-repeat:no-repeat;background-color:#202c38;}
+#world-map::before {content:'';position:absolute;inset:0;background:linear-gradient(#080d1840,#0a102650);pointer-events:none;}
+#world-map::after {content:'';position:absolute;inset:12px;border:3px solid var(--stage-color);opacity:.5;border-radius:18px;box-shadow:inset 0 0 22px #000b;}
+#world-hud {position:absolute;top:12px;right:12px;z-index:90;pointer-events:none;display:flex;align-items:flex-end;gap:6px;flex-direction:column;}
+#stage-location {font-size:12px;padding:5px 9px;border:1px solid #ffffff30;border-radius:7px;color:#edf5ff;background:#0d1526dc;}
+#world-minimap {position:relative;width:104px;height:76px;border:1px solid #ffffff60;border-radius:4px;background:#101a30c9;overflow:hidden;}
+#map-viewport {position:absolute;box-sizing:border-box;border:1px solid #b8d7ff80;background:#b8d7ff12;}
+#map-player,#map-boss {position:absolute;width:7px;height:7px;border-radius:50%;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 4px #fff;}
+#map-boss {background:#ff6577;box-shadow:0 0 5px #ff6577;width:9px;height:9px;}
+#world-banner {position:absolute;top:28%;left:5%;width:90%;z-index:95;display:flex;flex-direction:column;gap:10px;text-align:center;pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;text-shadow:0 2px 8px #000;}
+#world-banner.visible {opacity:1;transform:translateY(0);}
+#world-banner strong {font-size:clamp(22px,4vw,46px);letter-spacing:.14em;color:var(--stage-color);}
+#world-banner span {align-self:center;font-size:clamp(13px,2vw,18px);padding:8px 18px;background:#11182be3;border-top:1px solid var(--stage-color);border-bottom:1px solid var(--stage-color);}
+#world-banner.visible strong {animation:banner-arrive .4s ease-out;}
+#world-layer .world-spark {position:absolute;left:0;top:0;width:5px;height:5px;border-radius:50%;pointer-events:none;z-index:65;}
+.world-pulse {position:absolute;z-index:18;pointer-events:none;border:3px solid;border-radius:50%;animation:world-pulse .75s ease-out forwards;}
+.enemy-hit {animation:enemy-hit .13s ease-out;}
+@keyframes world-pulse {from {transform:translate(-50%,-50%) scale(.2);opacity:.7;}to {transform:translate(-50%,-50%) scale(1);opacity:0;}}
+@keyframes enemy-hit {from {filter:brightness(1.7);}to {filter:brightness(1);}}
+@keyframes banner-arrive {from {opacity:0;transform:translateY(-12px);}to {opacity:1;transform:translateY(0);}}
+#wave-stage-name {color:#b9d8e8;font-size:17px;letter-spacing:.08em;}
+
+/* Treasure reveal. Uses the same committed results as the equipment box. */
+.gacha-dialog {padding:0;width:min(960px,94vw);max-height:92dvh;overflow:auto;border:1px solid #9fa9d166;background:#0b1120;color:#f7f9ff;}
+.gacha-dialog::backdrop {background:#030817df;}
+.gacha-scene {position:relative;isolation:isolate;overflow:hidden;padding:26px 24px 24px;text-align:center;--rarity:#b4bdc9;background:radial-gradient(ellipse at 50% 25%,#25314a,#0b1120 65%);}
+.gacha-kicker {position:relative;letter-spacing:.25em;font-size:11px;color:#b1bed1;margin:0 0 10px;}
+.gacha-scene h2 {position:relative;color:var(--rarity);font-size:clamp(23px,4vw,34px);margin:8px 0;text-shadow:0 0 18px #111;}
+.gacha-chest {position:relative;width:240px;height:240px;max-width:64vw;max-height:64vw;margin:4px auto;background-image:url('gacha_chests.png');background-size:500% 200%;background-repeat:no-repeat;filter:drop-shadow(0 14px 16px #0008);}
+.gacha-rune {position:absolute;z-index:-1;left:50%;top:140px;width:310px;height:170px;transform:translateX(-50%);border:2px solid var(--rarity);border-radius:50%;opacity:.3;box-shadow:inset 0 0 30px var(--rarity),0 0 25px var(--rarity);}
+.gacha-rays {position:absolute;z-index:-1;left:calc(50% - 320px);top:-135px;width:640px;height:640px;opacity:0;background:repeating-conic-gradient(from 0deg,transparent 0deg 22deg,var(--rarity) 23deg 25deg,transparent 26deg 40deg);mask-image:radial-gradient(circle,#000 0,transparent 63%);}
+.is-charging .gacha-chest {animation:chest-charge .2s linear 4;}
+.is-charging .gacha-rune {opacity:.65;}
+.is-open .gacha-rays {opacity:.18;animation:reveal-rays 18s linear infinite;}
+.is-open.grade-4 .gacha-rays,.is-open.grade-5 .gacha-rays {opacity:.35;}
+.is-open.grade-5 {background:radial-gradient(ellipse at 50% 20%,#473052,#152034 48%,#0b1120 78%);}
+.is-open.grade-5 .gacha-rune {border-color:#fff4bf;box-shadow:0 0 35px #df94ff,inset 0 0 40px #fff4bf;}
+#gacha-description {position:relative;color:#d4deed;margin:8px 0 16px;}
+#gacha-mythic {color:#ffe6a3;font-weight:bold;border:1px solid #d8ae60;padding:10px;background:#47321f80;}
+.gacha-controls {position:relative;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0;}
+.gacha-controls button {padding:12px 22px;min-height:44px;color:#eff6ff;background:#23314c;border:1px solid #8196b9;border-radius:10px;cursor:pointer;}
+#gacha-open,#gacha-done {background:linear-gradient(135deg,#6251aa,#324c84);border-color:#ad9fe4;font-weight:bold;}
+.gacha-controls button:disabled {opacity:.5;cursor:wait;}
+.gacha-controls button:focus-visible {outline:3px solid #b8e8ff;outline-offset:3px;}
+.gacha-reveal-cards {position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;text-align:left;}
+.gacha-reveal-card {padding:12px;background:#101b2cef;border:1px solid var(--rarity);border-radius:12px;min-width:0;}
+.gacha-reveal-card strong {display:block;color:var(--rarity);text-align:center;letter-spacing:.15em;}
+.gacha-reveal-card .equipment-icon {margin:8px auto;}
+.gacha-reveal-card p {font-size:12px;line-height:1.6;overflow-wrap:anywhere;}
+.reveal-animated {animation:reveal-card .4s ease-out both;}
+.gacha-scene [hidden],#map-boss[hidden] {display:none !important;}
+@keyframes chest-charge {0%,100%{transform:rotate(-2deg) translateY(0);}50%{transform:rotate(2deg) translateY(-4px);}}
+@keyframes reveal-rays {to{transform:rotate(360deg);}}
+@keyframes reveal-card {from{opacity:0;transform:translateY(18px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+.calm *, .lite-mode .gacha-scene *, .lite-mode #world-banner * {animation:none !important;transition:none !important;}
+.lite-mode .gacha-rays,.calm .gacha-rays {display:none;}
+@media(max-width:600px){
+ #world-hud{top:8px;right:8px;}#world-minimap{width:76px;height:56px;}#stage-location{font-size:10px;max-width:185px;}
+ .gacha-scene{padding:18px 12px;}.gacha-chest{width:190px;height:190px;}.gacha-rune{top:110px;width:245px;height:140px;}
+ .gacha-reveal-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}.gacha-reveal-card{padding:9px;}
+}
+@media(prefers-reduced-motion:reduce){
+ .gacha-scene *,#world-banner *,.world-pulse,.enemy-hit {animation:none !important;transition:none !important;}
+ .gacha-rays{display:none;}
+}
+
+.map-arrive {animation:map-arrive .55s ease-out;}
+@keyframes map-arrive {from {opacity:.45;}to {opacity:1;}}
+@media(prefers-reduced-motion:reduce){.map-arrive {animation:none;}}

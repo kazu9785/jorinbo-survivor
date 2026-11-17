@@ -60,7 +60,7 @@ function stageFillEnemies(force = false) {
     const now=gameNow();
     if (!force && now<stageNextSpawn) return;
     stageNextSpawn=now+900;
-    const cap=Math.min(getArenaSize().width<650?18:26,10+Math.floor(currentWave/5));
+    const cap=Math.min(getViewportSize().width<650?18:26,10+Math.floor(currentWave/5));
     let available=cap-enemies.filter(e=>e.type!=='treasure').length;
     available=Math.min(available,force?cap:4);
     while(available-->0 && stagePendingEnemies.length) spawnEnemy(stagePendingEnemies.shift());
@@ -77,7 +77,7 @@ function stageEnemyBullet(e, angle, speed = 3.6) {
     if (enemyBullets.length>=180) return;
     const element=document.createElement('div');
     element.classList.add('enemy-bullet','stage-enemy-bullet','stage-bullet-tier-'+e.strengthTier);
-    element.style.left=e.x+'px';element.style.top=e.y+'px';gameArea.appendChild(element);
+    element.style.left=e.x+'px';element.style.top=e.y+'px';worldLayer.appendChild(element);
     enemyBullets.push({element,x:e.x,y:e.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
         damage:Math.ceil(stageStats().damage*e.archetype.damage*(1+(e.strengthTier-1)*.2)),
         hitRadius:6,createdAt:gameNow(),lifetime:6000});

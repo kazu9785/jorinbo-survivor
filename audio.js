@@ -10,6 +10,15 @@
     } catch (_) {}
     let ctx, musicGain, effectsGain, master, timer, next = 0, step = 0, mode = 'menu';
     const voices = new Set(), cooldown = new Map();
+    let primed = false, audioChoiceMade = false;
+    function audioStatus() {
+        const el = document.getElementById('audio-status');
+        const supported = !!(window.AudioContext || window.webkitAudioContext);
+        const blocked = !ctx || ctx.state !== 'running';
+        if (el) el.textContent = !supported ? 'このブラウザでは音声を利用できません。' : settings.muted ? 'ミュート中' : settings.music === 0 && settings.effects === 0 ? '音量が0です。スライダーで調整してください。' : blocked ? '音声が停止中です。再開ボタンをタップしてください。' : mode === 'silent' ? '一時停止・待機中' : '音声の再生準備ができています。';
+        const recovery = document.getElementById('audio-recovery');
+        if (recovery) recovery.classList.toggle('hidden', !supported || !audioChoiceMade || settings.muted || document.hidden || mode === 'silent' || !blocked);
+    }
     const tracks = {
         menu: { bpm: 90, roots: [48, 53, 55, 50], melody: [0,7,12,7,3,7,10,7], type: 'sine' },
         battle: { bpm: 128, roots: [45, 41, 48, 43], melody: [12,7,10,7,15,12,10,7], type: 'triangle' },
@@ -52,11 +61,17 @@
         }
     }
     function stopVoices() {
-        for (const o of voices) { try { o.stop(); } catch (_) {} }
+        for (const o of voices) { try { o.stop(); o.disconnect(); } catch (_) {} }
+        // 中断中はonendedが届かない場合もあるので、発音枠を確実に解放する。
+        voices.clear();
     }
     async function unlock() {
+        if (document.hidden || !audioChoiceMade || settings.muted) { audioStatus(); return; }
         try {
-            if (!ctx) {
+            if (!ctx || ctx.state === 'closed') {
+                stopVoices();
+                if (timer !== undefined) clearInterval(timer);
+                cooldown.clear(); primed = false; next = 0;
                 const Audio = window.AudioContext || window.webkitAudioContext;
                 if (!Audio) return;
                 ctx = new Audio(); master = ctx.createGain();
@@ -64,23 +79,49 @@
                 const limiter = ctx.createDynamicsCompressor();
                 musicGain.connect(master); effectsGain.connect(master); master.connect(limiter); limiter.connect(ctx.destination);
                 volumes(); timer = setInterval(tick, 50);
+                const created = ctx;
+                ctx.onstatechange = () => {
+                    if (ctx !== created) return;
+                    if (ctx.state === 'running') { next = ctx.currentTime + 0.02; tick(); }
+                    audioStatus();
+                };
             }
-            if (ctx.state === 'suspended') await ctx.resume();
+            // タップ処理中に無音バッファを開始し、音声出力を準備する。
+            if (!primed || ctx.state !== 'running') {
+                if (ctx.createBuffer && ctx.createBufferSource) {
+                    const source = ctx.createBufferSource();
+                    source.buffer = ctx.createBuffer(1, 1, ctx.sampleRate || 44100);
+                    source.connect(ctx.destination);
+                    source.onended = () => source.disconnect();
+                    source.start(0);
+                }
+                primed = true;
+            }
+            // iOSの画面復帰ではsuspended以外にinterruptedになる場合がある。
+            audioStatus();
+            if (ctx.state !== 'running' && ctx.state !== 'closed') await ctx.resume();
             tick();
-        } catch (_) { /* Audio unavailable: gameplay remains usable. */ }
+        } catch (_) { /* 次のタップでもう一度試せる。 */ }
+        audioStatus();
     }
     function scene(value) {
-        if (mode === value || (!tracks[value] && value !== 'silent')) return;
+        if (!tracks[value] && value !== 'silent') return;
+        if (ctx && ctx.state !== 'running' && !document.hidden) void unlock();
+        if (mode === value) { tick(); audioStatus(); return; }
         mode = value; step = 0; next = ctx ? ctx.currentTime + 0.03 : 0;
-        stopVoices(); tick();
+        stopVoices(); tick(); audioStatus();
     }
     function effect(name, volume = 0.5) {
-        if (!ctx || ctx.state !== 'running' || settings.muted || document.hidden) return;
+        if (!audioChoiceMade || !ctx || ctx.state !== 'running' || settings.muted || document.hidden) return;
         const now = ctx.currentTime;
         const limit = { shot: 0.10, hit: 0.09, coin: 0.10, hurt: 0.16 }[name] || 0.05;
         if (now - (cooldown.get(name) ?? -10) < limit) return;
         cooldown.set(name, now);
         const patterns = {
+            gacha_charge: [[165,.35,'sine',0,330],[247,.35,'triangle',.13,494],[330,.3,'sine',.28,660]],
+            gacha_open: [[523,.16,'triangle',0],[659,.2,'triangle',.10],[784,.35,'sine',.2]],
+            gacha_rare: [[523,.18,'triangle',0],[784,.22,'sine',.12],[1047,.45,'triangle',.25],[1319,.4,'sine',.35]],
+            gacha_legend: [[392,.2,'triangle',0],[523,.2,'triangle',.12],[659,.2,'triangle',.24],[784,.25,'triangle',.36],[1047,.6,'sine',.5],[1319,.6,'sine',.5]],
             boss_fan: [[260,0.20,'sawtooth',0,85],[390,0.16,'triangle',0.035,130]],
             boss_circle: [[220,0.38,'sine',0,880],[330,0.34,'triangle',0.06,990]],
             boss_spiral: [[180,0.18,'triangle',0,600],[240,0.18,'triangle',0.10,800],[320,0.22,'triangle',0.20,1100]],
@@ -104,29 +145,80 @@
         for (const [f,d,type,delay,end] of patterns[name] || patterns.confirm)
             tone(f,d,type,Math.min(1, Math.max(0, volume)) * (name === 'shot' || name === 'hit' ? 0.10 : 0.24),effectsGain,now+delay,end);
     }
-    window.GameAudio = { scene, effect };
-    document.addEventListener('pointerdown', unlock, { passive: true });
-    document.addEventListener('keydown', unlock);
+    window.GameAudio = { scene, effect, unlock };
+    // タッチ開始だけでなく、タップ完了時にもユーザー操作の中で再開を試す。
+    // キャプチャで受け、子要素のstopPropagationの影響を受けない。
+    for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+        document.addEventListener(type, unlock, { capture: true, passive: true });
+    }
+    function suspendForBackground() {
+        stopVoices();
+        if (!ctx || ctx.state === 'closed') return;
+        const backgroundContext = ctx;
+        backgroundContext.suspend().then(() => {
+            // suspend完了より先にページへ戻った場合も復帰させる。
+            if (!document.hidden && ctx === backgroundContext) void unlock();
+        }).catch(() => {});
+    }
     document.addEventListener('visibilitychange', () => {
-        if (!ctx) return;
-        if (document.hidden) { stopVoices(); ctx.suspend().catch(() => {}); }
-        else unlock();
+        if (document.hidden) suspendForBackground();
+        else if (ctx) void unlock();
     });
-    window.addEventListener('pagehide', () => { stopVoices(); if (ctx) ctx.suspend().catch(() => {}); });
-    window.addEventListener('pageshow', () => { if (ctx) unlock(); });
+    window.addEventListener('pagehide', suspendForBackground);
+    window.addEventListener('pageshow', () => { if (ctx) void unlock(); });
     const panel = document.createElement('details');
     panel.id = 'audio-settings';
-    panel.innerHTML = '<summary aria-label="音量設定">♫ 音量</summary><div class="audio-options"><label><input id="audio-muted" type="checkbox"> ミュート</label><label>BGM <input id="audio-music" type="range" min="0" max="100" aria-label="BGM音量"></label><label>効果音 <input id="audio-effects" type="range" min="0" max="100" aria-label="効果音音量"></label><small>最初のクリック・タップで音が出ます</small></div>';
+    panel.innerHTML = '<summary aria-label="音量設定">♫ 音量</summary><div class="audio-options"><label><input id="audio-muted" type="checkbox"> ミュート</label><label>BGM <input id="audio-music" type="range" min="0" max="100" aria-label="BGM音量"></label><label>効果音 <input id="audio-effects" type="range" min="0" max="100" aria-label="効果音音量"></label><small id="audio-status" role="status">音声を準備しています</small><button id="audio-resume" type="button">音声を開始・再開</button><small>音が出ないときは上のボタンをタップ</small></div>';
     document.body.appendChild(panel);
     for (const key of ['muted', 'music', 'effects']) {
         const input = document.getElementById('audio-' + key);
         if (key === 'muted') input.checked = settings[key]; else input.value = settings[key];
         input.addEventListener('input', () => {
             settings[key] = key === 'muted' ? input.checked : Number(input.value);
-            volumes(); if (settings.muted) stopVoices();
+            void unlock(); volumes(); if (settings.muted) stopVoices(); audioStatus();
             try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (_) {}
         });
     }
+    async function restartAudio() {
+        // 状態がrunningでも出力が復帰しない端末向けに、手動操作で音声を作り直す。
+        const previous = ctx;
+        stopVoices();
+        if (timer !== undefined) clearInterval(timer);
+        timer = undefined; ctx = undefined; primed = false;
+        if (previous && previous.state !== 'closed') previous.close?.().catch(() => {});
+        await unlock();
+        effect('confirm');
+    }
+    document.getElementById('audio-resume').addEventListener('click', restartAudio);
+    const prompt = document.createElement('div');
+    prompt.className = 'audio-start-modal';
+    prompt.setAttribute('role', 'dialog');
+    prompt.setAttribute('aria-modal', 'true');
+    prompt.setAttribute('aria-labelledby', 'audio-choice-title');
+    prompt.innerHTML = '<div class="audio-start-card"><h2 id="audio-choice-title">音をつけて遊ぶ？</h2><p>あとから「♫ 音量」で変更できます。</p><button id="audio-start-on" type="button">音ありで開始</button><button id="audio-start-off" type="button">音なしで開始</button><p>音が聞こえない場合は本体の音量・消音設定・Bluetoothの接続先も確認してね。</p></div>';
+    document.body.appendChild(prompt);
+    const recovery = document.createElement('button');
+    recovery.id = 'audio-recovery'; recovery.type = 'button'; recovery.className = 'hidden';
+    recovery.textContent = '音声が停止中です · タップして再開';
+    document.body.appendChild(recovery);
+    recovery.addEventListener('click', restartAudio);
+    function chooseAudio(enabled) {
+        audioChoiceMade = true;
+        settings.muted = !enabled;
+        if (enabled && settings.music === 0 && settings.effects === 0) { settings.music = 25; settings.effects = 40; }
+        document.getElementById('audio-muted').checked = settings.muted;
+        document.getElementById('audio-music').value = settings.music;
+        document.getElementById('audio-effects').value = settings.effects;
+        try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (_) {}
+        prompt.remove();
+        // ユーザーのタップ処理の中で直接開始する。
+        if (enabled) void unlock();
+        else { volumes(); stopVoices(); }
+        audioStatus();
+    }
+    document.getElementById('audio-start-on').addEventListener('click', () => chooseAudio(true));
+    document.getElementById('audio-start-off').addEventListener('click', () => chooseAudio(false));
+    audioStatus();
     panel.addEventListener('pointerdown', e => e.stopPropagation());
     panel.addEventListener('pointerdown', unlock);
     panel.addEventListener('keydown', e => e.stopPropagation());

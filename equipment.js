@@ -129,9 +129,9 @@ function equipmentDrop(e){
  if(Math.random()>=chance)return false;
  const count=e.type==='boss'?5:e.type==='treasure'?3:1;
  gameData.equipment.crystals=Math.min(1000000000,gameData.equipment.crystals+count);
- const el=document.createElement('div');el.className='crystal-drop';el.style.left=e.x+'px';el.style.top=e.y+'px';
+ const el=document.createElement('div');el.className='crystal-drop world-transient';el.style.left=e.x+'px';el.style.top=e.y+'px';
  const img=document.createElement('img');img.src='summon_crystal.png';img.alt='召喚結晶';el.appendChild(img);
- const label=document.createElement('span');label.textContent='＋'+count;el.appendChild(label);gameArea.appendChild(el);setTimeout(()=>el.remove(),1000);updateEquipmentBalance();return true;
+ const label=document.createElement('span');label.textContent='＋'+count;el.appendChild(label);worldLayer.appendChild(el);setTimeout(()=>el.remove(),1000);updateEquipmentBalance();return true;
 }
 function updateEquipmentBalance(){document.querySelectorAll('.crystal-balance').forEach(el=>el.textContent=gameData.equipment.crystals);}
 function equipmentDescription(slot,g){return [`通常攻撃＋${g*8}％`,`スキル待ち時間−${g*3}％`,`最大HP＋${g*2}`,`移動速度＋${g*4}％`][slot];}
@@ -142,7 +142,7 @@ function equipmentWeightedIndex(weights){let r=Math.random()*weights.reduce((a,b
 function rollEquipmentAffixes(g){return Array.from({length:EQ_SKILL_SLOTS[g]},()=>{const pool=EQ_AFFIX_POOLS[equipmentWeightedIndex(EQ_AFFIX_WEIGHTS[g])];return pool[Math.floor(Math.random()*pool.length)];});}
 function equipmentMessage(text){document.getElementById('equipment-status').textContent=text;}
 function equipmentRoll(count=1){
- if(!canEditTraining()||![1,10].includes(count))return [];
+ if(gachaBusy||!canEditTraining()||![1,10].includes(count))return [];
  const d=gameData.equipment,cost=count*10;
  if(d.crystals<cost){equipmentMessage('召喚結晶が不足しています。');return [];}
  if(d.items.length+count>EQ_BOX_LIMIT){equipmentMessage(`ボックスがいっぱいです（最大${EQ_BOX_LIMIT}個）。先に売却か合成をしてください。結晶は消費していません。`);return [];}
@@ -234,8 +234,8 @@ function renderEquipment(){
   eqButton(actions,`売却 ${equipmentSaleValue(i)}G`,!editable||protectedItem,()=>sellEquipment(i.uid));card.appendChild(actions);area.appendChild(card);
  }
  if(!items.length)appendEqText(area,'条件に合う装備はありません。召喚するか、絞り込み条件を変更してください。');
- document.getElementById('equipment-roll').disabled=!editable||d.crystals<10||d.items.length>=EQ_BOX_LIMIT;
- document.getElementById('equipment-roll10').disabled=!editable||d.crystals<100||d.items.length+10>EQ_BOX_LIMIT;
+ document.getElementById('equipment-roll').disabled=gachaBusy||!editable||d.crystals<10||d.items.length>=EQ_BOX_LIMIT;
+ document.getElementById('equipment-roll10').disabled=gachaBusy||!editable||d.crystals<100||d.items.length+10>EQ_BOX_LIMIT;
 }
 function equipmentPercent(x){return Number(x.toFixed(8)).toString()+'％';}
 function renderEquipmentProbabilities(){
@@ -250,7 +250,7 @@ function renderEquipmentProbabilities(){
  Object.entries(EQ_AFFIXES).forEach(([id,a])=>{const tr=document.createElement('tr');[a.name,EQ_AFFIX_TIERS[a.tier],...[1,2,3,4,5].map(g=>equipmentPercent(EQ_AFFIX_WEIGHTS[g][a.tier]/100/EQ_AFFIX_POOLS[a.tier].length)),a.description(1)+'（表示はN時。グレードに比例）'].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.appendChild(td);});effects.appendChild(tr);});area.appendChild(effects);
  appendEqText(area,'例：特定のUR装備1種を引く確率は0.000625％。さらに指定した1枠に「覇王」が付く確率は、0.000625％ × (0.2％ ÷ 3) ＝ 約0.000000416667％です。表示は小数点以下8桁で丸めています。');
  appendEqText(area,'合計効果の上限：被ダメージ軽減75％、回避50％、会心80％、装備によるスキル待ち時間短縮80％。移動・連射は従来のゲーム上限も適用。会心は通常弾のみ。');
- appendEqText(area,'結晶ドロップ：通常8％・精鋭12％・希少18％で1個、ボス35％で5個、宝物スライム65％で3個。敵の強さの出現割合：通常75％・精鋭19％・希少6％。開発テストは結晶ドロップも耐久消費もありません。');
+ appendEqText(area,'結晶ドロップ：通常8％・精鋭12％・希少18％で1個、ボス35％で5個、宝物スライム65％で3個。既存敵の段階抽選：通常75％・精鋭19％・希少6％。追加敵は種族ごとに段階固定で、WAVEごとに解禁・出現比率が変化します。開発テストは結晶ドロップも耐久消費もありません。');
 }
 function initEquipmentUI(){
  const select=document.getElementById('equipment-character'),filter=document.getElementById('equipment-filter-character');
@@ -258,7 +258,7 @@ function initEquipmentUI(){
  select.addEventListener('change',()=>{equipmentViewedCharacter=select.value;renderEquipment();});
  ['equipment-filter-character','equipment-filter-slot','equipment-filter-grade','equipment-filter-affix','equipment-sort'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{equipmentPage=0;renderEquipment();}));
  document.getElementById('btn-equipment').addEventListener('click',()=>{if(!canEditTraining())return;equipmentViewedCharacter=gameData.character;select.value=equipmentViewedCharacter;equipmentPage=0;equipmentMessage('');document.getElementById('equipment-results').replaceChildren();renderEquipment();document.getElementById('equipment-dialog').showModal();});
- document.getElementById('equipment-roll').addEventListener('click',()=>equipmentRoll(1));document.getElementById('equipment-roll10').addEventListener('click',()=>equipmentRoll(10));
+ document.getElementById('equipment-roll').addEventListener('click',()=>summonEquipment(1));document.getElementById('equipment-roll10').addEventListener('click',()=>summonEquipment(10));
  document.getElementById('equipment-prev').addEventListener('click',()=>{equipmentPage=Math.max(0,equipmentPage-1);renderEquipment();});
  document.getElementById('equipment-next').addEventListener('click',()=>{equipmentPage++;renderEquipment();});
  document.getElementById('equipment-probabilities').addEventListener('click',()=>{renderEquipmentProbabilities();document.getElementById('equipment-probability-dialog').showModal();});

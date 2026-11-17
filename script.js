@@ -14,6 +14,7 @@ const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const gameClearScreen = document.getElementById('game-clear-screen');
 const gameArea = document.getElementById('game-area');
+const worldLayer = document.getElementById('world-layer');
 const player = document.getElementById('player');
 
 const totalCoinsDisplay = document.getElementById('total-coins');
@@ -284,6 +285,7 @@ function prepareWaveEvent() {
 
 function stopWaveEvent() {
     stagePendingEnemies = [];
+    clearWorldEffects();
     finishCombatSegment();
     combatSessionActive = false;
     clearPause();
@@ -319,19 +321,20 @@ function updateWaveEvent(now) {
     if (currentWaveEvent !== 'barrage' || now < nextBarrageTime) return;
     nextBarrageTime = now + 1800;
     if (enemyBullets.length > 180) return;
-    const width = gameArea.clientWidth || window.innerWidth;
+    const width = getViewportSize().width;
     const lanes = 12;
     const gap = Math.floor(Math.random() * (lanes - 2));
     for (let i = 0; i < lanes; i++) {
         if (i >= gap && i < gap + 3) continue;
         const element = document.createElement('div');
         element.classList.add('enemy-bullet', 'event-bullet');
-        const x = (i + 0.5) * width / lanes;
+        const x = cameraX + (i + 0.5) * width / lanes;
+        const y = Math.max(0,cameraY - 20);
         element.style.left = x + 'px';
-        element.style.top = '-20px';
-        gameArea.appendChild(element);
+        element.style.top = y + 'px';
+        worldLayer.appendChild(element);
         enemyBullets.push({
-            element, x, y: -20, vx: 0, vy: 2.5,
+            element, x, y, vx: 0, vy: 2.5,
             damage: 1, hitRadius: 16, createdAt: gameNow(), lifetime: 10000
         });
     }
@@ -715,7 +718,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.3.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.4.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -1343,6 +1346,7 @@ function updateBossArena(boss) {
     resetBossArena();
     gameArea.classList.add('arena-' + getBossType(boss).id);
     if (boss.bossPhase === 2) gameArea.classList.add('arena-awakened');
+    worldBossTheme(boss);
 }
 function updateBossIdentity(boss) {
     const info = getBossType(boss);
@@ -1363,7 +1367,7 @@ updateCoinDisplays();
 if(gameData.name && usernameInput) usernameInput.value = gameData.name;
 
 function getArenaSize() {
-    return { width: gameArea.clientWidth || window.innerWidth, height: gameArea.clientHeight || window.innerHeight };
+    return worldBounds();
 }
 function clampPlayerPosition() {
     const { width, height } = getArenaSize();
@@ -1377,6 +1381,7 @@ let movementPointerId = null;
 let lastTouchX = 0;
 let lastTouchY = 0;
 function stopTouchMovement() {
+    worldMouse = null;
     if (movementPointerId !== null && gameArea.hasPointerCapture(movementPointerId)) gameArea.releasePointerCapture(movementPointerId);
     movementPointerId = null;
     mouseX = playerX;
@@ -1393,6 +1398,7 @@ gameArea.addEventListener('pointerdown', e => {
     }
     if (movementPointerId !== null) return;
     document.body.classList.add('touch-controls');
+    worldMouse = null;
     movementPointerId = e.pointerId;
     lastTouchX = e.clientX;
     lastTouchY = e.clientY;
@@ -1405,8 +1411,8 @@ gameArea.addEventListener('pointermove', e => {
     if (!waveEventActive || isGameOver || isPaused) return;
     if (e.pointerType === 'mouse') {
         const rect = gameArea.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
+        worldMouse = {x:e.clientX-rect.left,y:e.clientY-rect.top};
+        worldPointerTarget();
     } else if (e.pointerId === movementPointerId) {
         // 相対移動なので指でキャラを隠さず、どこからでもドラッグできる。
         mouseX += (e.clientX - lastTouchX) * controlSettings.sensitivity;
@@ -1447,6 +1453,7 @@ function attemptSkill() {
         } else if (gameData.skills.equipped === 'satellite') {
             triggerSatellite();
         }
+        worldPulse(playerX,playerY,'#a9f5ff',190);
         trainingOnSkill();
         lastBombTime = now;
     }
@@ -1815,6 +1822,7 @@ function launchWaveSequence() {
     if (document.hidden) pauseGame();
     isGameOver = true;
     prepareWaveEvent();
+    prepareWorldWave();
     isBossPhase = false;
     clearBossAttackTimers();
     if(bossHud) bossHud.classList.add('hidden');
@@ -1852,6 +1860,7 @@ function startBattle() {
     const arena = getArenaSize();
     playerX = mouseX = arena.width / 2;
     playerY = mouseY = arena.height / 2;
+    updateWorldCamera();
     clampPlayerPosition();
     isGameOver = false;
     waveEventActive = true;
@@ -1905,8 +1914,7 @@ function simulateCombatStep() {
     const stats = getPlayerStats();
 
     if (!isNaN(mouseX) && !isNaN(mouseY)) {
-        playerX += (mouseX - playerX) * stats.moveSpeed;
-        playerY += (mouseY - playerY) * stats.moveSpeed;
+        worldMovePlayer(stats.moveSpeed);
     }
     clampPlayerPosition();
     updateTrainingCombat(oldPlayerX, oldPlayerY);
@@ -1929,6 +1937,8 @@ function simulateCombatStep() {
     if (!waveEventActive || isGameOver || isPaused) return;
     updateEnemies();
     updateHearts();
+    updateWorldCamera();
+    updateWorldEffects();
 
 }
 
@@ -1940,7 +1950,7 @@ function triggerInvoluteSphere() {
     for (let i = 0; i < sphereCount; i++) {
         const el = document.createElement('div');
         el.classList.add('involute-bullet');
-        gameArea.appendChild(el);
+        worldLayer.appendChild(el);
         let startAngle = (Math.PI * 2 / sphereCount) * i;
         involuteBullets.push({
             element: el, angle: startAngle, radius: 0, active: true
@@ -1952,7 +1962,7 @@ function triggerBomb() {
     playSound("skill");
     const effect = document.createElement('div');
     effect.classList.add('bomb-effect');
-    gameArea.appendChild(effect);
+    worldLayer.appendChild(effect);
     gameSetTimeout(() => effect.remove(), 1000);
 
     const level = gameData.skills.levels.bomb;
@@ -1975,12 +1985,12 @@ function triggerHighEnergyCircle() {
     const damage = (20 + (level - 1) * 10) * trainingSkillMultiplier();
 
     const el = document.createElement('div');
-    el.classList.add('energy-circle');
+    el.classList.add('energy-circle','world-transient');
     el.style.width = (radius * 2) + 'px';
     el.style.height = (radius * 2) + 'px';
     el.style.left = playerX + 'px';
     el.style.top = playerY + 'px';
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
 
     gameSetTimeout(() => el.remove(), 600);
 
@@ -2003,11 +2013,11 @@ function triggerSatellite() {
             const target = enemies[Math.floor(Math.random() * enemies.length)];
             
             const el = document.createElement('div');
-            el.classList.add('satellite-beam');
+            el.classList.add('satellite-beam','world-transient');
             el.style.left = (target.x + 30) + 'px';
             el.style.bottom = (getArenaSize().height - target.y) + 'px'; 
             
-            gameArea.appendChild(el);
+            worldLayer.appendChild(el);
             gameSetTimeout(() => el.remove(), 500);
 
             damageEnemy(target, damage);
@@ -2054,7 +2064,7 @@ function updateInvoluteBullets() {
                 hitEffect.style.borderRadius = '50%';
                 hitEffect.style.zIndex = '99';
                 hitEffect.style.pointerEvents = 'none';
-                gameArea.appendChild(hitEffect);
+                worldLayer.appendChild(hitEffect);
                 gameSetTimeout(() => hitEffect.remove(), 100);
             }
         }
@@ -2093,7 +2103,7 @@ function getTreasureBounds() {
 }
 
 function getTreasureSpawnPosition() {
-    const b = getTreasureBounds();
+    const b = worldVisibleBounds(35);
     const corners = [
         { x: b.left, y: b.top }, { x: b.right, y: b.top },
         { x: b.right, y: b.bottom }, { x: b.left, y: b.bottom }
@@ -2178,14 +2188,7 @@ function spawnEnemy(type) {
     hpBar.appendChild(hpFill);
     el.appendChild(hpBar);
 
-    let ex, ey;
-    if (Math.random() < 0.5) {
-        ex = Math.random() < 0.5 ? -50 : getArenaSize().width + 50;
-        ey = Math.random() * getArenaSize().height;
-    } else {
-        ex = Math.random() * getArenaSize().width;
-        ey = Math.random() < 0.5 ? -50 : getArenaSize().height + 50;
-    }
+    let {x:ex,y:ey} = worldSpawnPosition();
 
     let hp, speed, coinDrop, jumpOffset;
     let bossImageIndex = null;
@@ -2265,7 +2268,7 @@ function spawnEnemy(type) {
     el.style.left = ex + 'px';
     el.style.top = ey + 'px';
     
-    if(gameArea) gameArea.appendChild(el);
+    if(gameArea) worldLayer.appendChild(el);
 
     enemySpatialVersion++;
     enemies.push({ 
@@ -2302,7 +2305,7 @@ function fireBullet(damage, count, size) {
             el.style.height = size + 'px';
             el.style.left = playerX + 'px';
             el.style.top = playerY + 'px';
-            gameArea.appendChild(el);
+            worldLayer.appendChild(el);
 
             let offset = 0;
             if (count > 1) {
@@ -2327,7 +2330,7 @@ function enemyFireBullet(enemy) {
     el.classList.add('enemy-bullet');
     el.style.left = enemy.x + 'px';
     el.style.top = enemy.y + 'px';
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
 
     const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x);
     const vx = Math.cos(angle) * 5;
@@ -2346,7 +2349,7 @@ function golemFireBullet(enemy) {
     el.style.boxShadow = '0 0 10px #aaa';
     el.style.left = enemy.x + 'px';
     el.style.top = enemy.y + 'px';
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
 
     const angle = Math.atan2(playerY - enemy.y, playerX - enemy.x);
     const vx = Math.cos(angle) * 4;
@@ -2404,7 +2407,7 @@ function createBossBullet(boss, angle, speed, damage, options = {}) {
     el.style.height = size + 'px';
     el.style.left = boss.x + 'px';
     el.style.top = boss.y + 'px';
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
 
     enemyBullets.push({
         element: el,
@@ -2539,6 +2542,8 @@ function beginBossSecondPhase(boss) {
     if (bossHud) bossHud.classList.add('boss-hud-phase2');
     updateBossIdentity(boss);
     showBossAttackName('覚醒中…！');
+    worldBanner('AWAKENING',getBossType(boss).awakened);
+    worldPulse(boss.x,boss.y,ARENA_THEMES[worldTheme].color,240);
 }
 
 function bossAttackDoubleCircle(boss) {
@@ -2777,6 +2782,7 @@ function updateEnemies() {
         e.x += Math.cos(angle) * moveSpeed;
         e.y += Math.sin(angle) * moveSpeed;
         
+        clampWorldEnemy(e);
         e.element.style.left = e.x + 'px';
         e.element.style.top = e.y + 'px';
 
@@ -2819,6 +2825,9 @@ function damageEnemy(e, dmg) {
     if (!waveEventActive || isGameOver || isPaused || !enemies.includes(e)) return;
     if (e.type === 'boss' && gameNow() < e.transformingUntil) return;
     e.hp -= dmg;
+    if (e.type === 'boss' && !reducedEffects()) {
+        e.element.classList.remove('enemy-hit');void e.element.offsetWidth;e.element.classList.add('enemy-hit');
+    }
     if (e.type === 'boss' && e.bossPhase === 1 && e.hp <= e.maxHp * 0.5) {
         e.hp = e.maxHp * 0.5;
         beginBossSecondPhase(e);
@@ -2838,6 +2847,7 @@ function damageEnemy(e, dmg) {
 
 function killEnemy(e) {
     if (!enemies.includes(e)) return;
+    worldBurst(e.x,e.y,e.strengthTier===3?'#dab0ff':e.strengthTier===2?'#7edaff':'#ffc98b',e.type==='boss');
     enemySpatialVersion++;
     recordDefeat(e);
     playSound("coin");
@@ -2878,7 +2888,7 @@ function spawnHeart(x, y) {
     el.classList.add('heart-item');
     el.style.left = x + 'px';
     el.style.top = y + 'px';
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
     hearts.push({ element: el, x: x, y: y });
 }
 
@@ -2909,6 +2919,8 @@ function spawnBoss() {
     if(bossAttackName) bossAttackName.textContent = '攻撃準備中...';
     playSound("warning");
     spawnEnemy('boss');
+    const spawned=enemies.find(e=>e.type==='boss');
+    if(spawned) worldBanner('BOSS ENCOUNTER',getBossType(spawned).name+' ─ '+ARENA_THEMES[worldTheme].name);
     if(enemyCountText) enemyCountText.textContent = "BOSS";
 }
 
@@ -2982,20 +2994,20 @@ function gameOver(reason) {
 function showDamageText(x, y, txt) {
     if (liteMode && typeof txt === 'number') return;
     const el = document.createElement('div');
-    el.classList.add('damage-text');
+    el.classList.add('damage-text','world-transient');
     el.textContent = txt;
     el.style.left = x + 'px'; el.style.top = y + 'px';
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
     gameSetTimeout(() => el.remove(), 800);
 }
 
 function showCoinText(x, y, txt) {
     if (liteMode) return;
     const el = document.createElement('div');
-    el.classList.add('damage-text');
+    el.classList.add('damage-text','world-transient');
     el.style.color = '#ffd700'; el.textContent = `+${txt}G`;
     el.style.left = x + 'px'; el.style.top = (y-20) + 'px'; el.style.zIndex = 101;
-    gameArea.appendChild(el);
+    worldLayer.appendChild(el);
     gameSetTimeout(() => el.remove(), 800);
 }
 
@@ -3093,11 +3105,12 @@ function showBossWarning(boss, pattern) {
     el.className = 'boss-warning ' + (aimed ? 'boss-warning-cone' : 'boss-warning-ring');
     el.style.left = boss.x + 'px'; el.style.top = boss.y + 'px';
     if (aimed) el.style.transform = `rotate(${boss.telegraphAngle}rad)`;
-    gameArea.appendChild(el); bossWarnings.push(el);
+    worldLayer.appendChild(el); bossWarnings.push(el);
 }
 
 initTrainingUI();
 initEquipmentUI();
+initPresentation();
 
 // Called only from the home/login update action; the modal prevents changes while saving.
 async function prepareGameUpdate() {

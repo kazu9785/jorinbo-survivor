@@ -73,7 +73,7 @@ function equipmentReplace(item){
  const old=d.items[index],wire=encodeEquipment(item);d.items[index]=wire;d.equipped=d.equipped.map(w=>w===old?wire:w);return true;
 }
 function applyDeveloperEquipment(){
- const d=gameData.equipment=repairEquipment(gameData.equipment);d.crystals=Math.max(d.crystals,100000);
+ const d=gameData.equipment=repairEquipment(gameData.equipment);d.crystals=10000;
  for(let slot=0;slot<16;slot++)for(let grade=1;grade<=5;grade++){
   let i=equipmentItems().find(x=>x.slot===slot&&x.grade===grade);
   if(!i&&d.items.length<EQ_BOX_LIMIT&&d.nextId<=999999999){i={uid:d.nextId++,slot,grade,durability:EQ_MAX_DURABILITY[grade],skills:Array(EQ_SKILL_SLOTS[grade]).fill(10+slot%3)};d.items.push(encodeEquipment(i));}

@@ -847,3 +847,6 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .odds-grade-card h3{color:var(--rarity);margin:0;font-size:1rem;}.odds-grade-card p{margin:4px 0;font-size:.8rem;}.odds-grade-card .odds-value{font-size:clamp(15px,2.5vw,23px);font-weight:bold;color:#fff;}
 .odds-scroll{max-width:100%;overflow:auto;}.equipment-probability-scroll{overflow:visible;}
 @media(max-width:600px){.pop-guide-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}.odds-grade-grid{grid-template-columns:repeat(3,minmax(0,1fr));}.gacha-chest-grid.ten-chests{gap:3px;}.summon-chest{border-radius:8px;}}
+
+.summon-chest.chest-active { outline:2px solid var(--rarity); outline-offset:-2px; animation:chest-charge .2s linear 2; filter:drop-shadow(0 0 10px var(--rarity)); }
+.summon-chest.chest-opened { background-color:#ffffff10; }

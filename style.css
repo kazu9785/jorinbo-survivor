@@ -850,3 +850,7 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 
 .summon-chest.chest-active { outline:2px solid var(--rarity); outline-offset:-2px; animation:chest-charge .2s linear 2; filter:drop-shadow(0 0 10px var(--rarity)); }
 .summon-chest.chest-opened { background-color:#ffffff10; }
+
+.summon-chest.summon-item-revealed { background-image:none; display:grid; place-items:center; border:1px solid var(--rarity); box-sizing:border-box; background-color:#172338; filter:none; }
+.summon-item-revealed > .equipment-icon { width:86%; height:auto; aspect-ratio:1; margin:0; max-width:none; animation:summon-item-pop .3s ease-out; }
+@keyframes summon-item-pop { from { transform:scale(.65); opacity:0; } to { transform:scale(1); opacity:1; } }

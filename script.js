@@ -718,7 +718,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.4.4 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.4.5 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -956,7 +956,14 @@ function setAuthButtonsDisabled(disabled) {
     btnRegister.disabled = disabled;
 }
 
+function updateReleaseHistoryAccess(allowed) {
+    document.querySelectorAll('[data-info-dialog="release-guide"]').forEach(button => { button.hidden = !allowed; });
+    const dialog = document.getElementById('release-guide');
+    if (!allowed && dialog?.open) dialog.close();
+}
+
 function showAuthScreen() {
+    updateReleaseHistoryAccess(false);
     window.GameAudio?.scene("menu");
     document.getElementById('character-modal').classList.add('hidden');
     authScreen.classList.remove('hidden');
@@ -966,6 +973,7 @@ function showAuthScreen() {
 }
 
 function showHomeScreen() {
+    updateReleaseHistoryAccess(isDeveloper && !!auth?.currentUser);
     equipmentRun = null;
     updateEquipmentBalance();
     activeTraining = null;
@@ -1269,6 +1277,7 @@ if (isFirebaseConfigured && auth && db) {
         cloudReady = false;
         clearTimeout(cloudTimer); cloudTimer = null;
         isDeveloper = false;
+        updateReleaseHistoryAccess(false);
         if (!user) {
             currentUsername = '';
             showAuthScreen();

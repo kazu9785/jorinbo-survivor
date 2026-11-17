@@ -827,3 +827,5 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .overview-image-scroll { overflow: auto; border-radius: 12px; background: #10152b; }
 .overview-image-scroll img { display: block; width: 100%; min-width: 700px; height: auto; }
 .overview-image-scroll:focus-visible { outline: 3px solid #5fdcff; outline-offset: 3px; }
+
+[data-info-dialog="release-guide"][hidden] { display: none !important; }

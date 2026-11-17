@@ -7,6 +7,8 @@
         const dialog = document.getElementById(button.dataset.infoDialog);
         if (!dialog) return;
         button.addEventListener('click', () => {
+            if (button.dataset.infoDialog === 'release-guide' &&
+                !(typeof isDeveloper !== 'undefined' && isDeveloper && typeof auth !== 'undefined' && auth?.currentUser)) return;
             if (!dialog.open) { dialog.showModal(); dialog.scrollTop = 0; }
         });
     });

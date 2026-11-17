@@ -813,3 +813,10 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .map-arrive {animation:map-arrive .55s ease-out;}
 @keyframes map-arrive {from {opacity:.45;}to {opacity:1;}}
 @media(prefers-reduced-motion:reduce){.map-arrive {animation:none;}}
+
+/* Rare chest promotion: no strobing, two or three measured tier changes. */
+.is-promoting .gacha-chest {animation:promotion-float .65s ease-in-out infinite;}
+.is-promoting .gacha-rays {opacity:.28;animation:reveal-rays 9s linear infinite;}
+.is-promoting .gacha-rune {opacity:.7;transition:box-shadow .4s,border-color .4s;}
+@keyframes promotion-float {0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-9px) scale(1.05);}}
+@media(prefers-reduced-motion:reduce){.is-promoting * {animation:none !important;}}

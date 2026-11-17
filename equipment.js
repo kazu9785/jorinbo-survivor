@@ -240,6 +240,7 @@ function renderEquipment(){
 function equipmentPercent(x){return Number(x.toFixed(8)).toString()+'％';}
 function renderEquipmentProbabilities(){
  const area=document.getElementById('equipment-probability-content');area.replaceChildren();
+ renderPromotionProbabilities(area);
  const table=document.createElement('table');table.className='equipment-odds-table';
  const head=document.createElement('tr');['グレード','排出率','特定キャラ・部位1種','スキル枠','通常 / 希少 / 神話（1枠）','神話が1枠以上'].forEach(t=>{const th=document.createElement('th');th.textContent=t;head.appendChild(th);});table.appendChild(head);
  EQ_GRADES.forEach((name,index)=>{const g=index+1,w=EQ_AFFIX_WEIGHTS[g],p=w[2]/10000,row=document.createElement('tr');

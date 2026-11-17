@@ -229,7 +229,9 @@ function renderEquipment(){
   const card=document.createElement('button');card.type='button';card.className='equipment-icon-tile grade-'+i.grade;
   const label=equipmentName(i)+' / 耐久 '+i.durability+'/'+EQ_MAX_DURABILITY[i.grade]+(equipmentLocked(i.uid)?' / ロック中':'')+(saleSelection.has(i.uid)?' / 売却対象に選択中':'');
   card.title=label;card.setAttribute('aria-label',label);card.classList.toggle('sale-selected',saleSelection.has(i.uid));
-  card.appendChild(equipmentIcon(i.slot,i.grade));card.addEventListener('click',()=>openItemDetails(i.uid));area.appendChild(card);
+  card.classList.toggle('selection-mode',saleSelectionMode);
+  if(saleSelectionMode){card.setAttribute('aria-pressed',String(saleSelection.has(i.uid)));card.disabled=!editable||equipmentProtected(i.uid);}
+  card.appendChild(equipmentIcon(i.slot,i.grade));card.addEventListener('click',()=>{if(saleSelectionMode)toggleSaleItem(i.uid);else openItemDetails(i.uid);});area.appendChild(card);
  }
  updateSaleSummary();
  if(!items.length)appendEqText(area,'条件に合う装備はありません。召喚するか、絞り込み条件を変更してください。');

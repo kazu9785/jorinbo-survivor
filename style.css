@@ -931,3 +931,11 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 @media(hover:hover){.equipment-icon-tile:hover{transform:translateY(-2px);filter:brightness(1.15);}}
 @media(max-width:500px){#equipment-cards.equipment-icon-grid {grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:12px 4px;}.equipment-icon-tile {padding:3px;border-radius:10px;}}
 body.lite-mode .equipment-icon-tile {box-shadow:none;}
+
+/* Bulk selection is explicit and separate from inspecting an item. */
+#toggle-sale-mode[aria-pressed="true"] {background:#167152;color:white;border:2px solid #82ffd2;}
+#sale-mode-help {flex-basis:100%;color:#c4e4ff;}
+.equipment-icon-tile.selection-mode::after {content:'';position:absolute;right:5px;top:5px;width:20px;height:20px;box-sizing:border-box;border:2px solid #dce9ff;border-radius:6px;background:#111b30;}
+.equipment-icon-tile.selection-mode.sale-selected::after {content:'✓';display:grid;place-items:center;color:#062b20;background:#70ffd0;border-color:#70ffd0;font:bold 16px sans-serif;}
+.equipment-icon-tile.selection-mode:disabled {opacity:.4;cursor:not-allowed;filter:grayscale(.65);}
+.equipment-icon-tile.selection-mode:disabled::after {content:'−';display:grid;place-items:center;color:#ccd5e5;}

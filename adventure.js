@@ -17,7 +17,12 @@ function toggleEquipmentLock(uid){
  const locks=gameData.journey.locks;gameData.journey.locks=locks.includes(uid)?locks.filter(n=>n!==uid):[...locks,uid];
  saveData();renderEquipment();if(document.getElementById('item-detail-dialog').open)openItemDetails(uid);return true;
 }
-let saleSelection=new Set(),itemDetailUid=null;
+let saleSelection=new Set(),itemDetailUid=null,saleSelectionMode=false;
+function toggleSaleItem(uid){
+ if(!canEditTraining()||!equipmentFind(uid)||equipmentProtected(uid))return;
+ if(saleSelection.has(uid))saleSelection.delete(uid);else saleSelection.add(uid);
+ renderEquipment();
+}
 function equipmentDurabilityGauge(parent,item){
  const gauge=document.createElement('meter');gauge.className='durability-meter';gauge.min=0;gauge.max=EQ_MAX_DURABILITY[item.grade];gauge.low=gauge.max*.2;gauge.high=gauge.max*.5;gauge.optimum=gauge.max;gauge.value=item.durability;
  gauge.setAttribute('aria-label','耐久 '+item.durability+' / '+gauge.max);parent.appendChild(gauge);
@@ -32,6 +37,10 @@ function repairEquipmentGold(uid){
 }
 function selectedSaleItems(){return equipmentItems().filter(i=>saleSelection.has(i.uid)&&!equipmentProtected(i.uid));}
 function updateSaleSummary(){
+ const toggle=document.getElementById('toggle-sale-mode');
+ toggle.textContent=saleSelectionMode?'選択を終了する':'アイコンから選んで売却';
+ toggle.setAttribute('aria-pressed',String(saleSelectionMode));
+ document.getElementById('sale-mode-help').textContent=saleSelectionMode?'売りたいアイコンをタップ。もう一度タップすると選択解除できます。':'通常はアイコンをタップすると詳細を表示します。';
  const items=selectedSaleItems();document.getElementById('sale-summary').textContent=items.length+'個 / 合計 '+items.reduce((n,i)=>n+equipmentSaleValue(i),0)+'G';
  document.getElementById('sell-selected').disabled=!canEditTraining()||!items.length;
 }
@@ -130,6 +139,8 @@ function previewRareSummon(){
 }
 function initAdventureUI(){
  document.getElementById('btn-achievements').addEventListener('click',()=>{renderAchievements();document.getElementById('achievements-dialog').showModal();});
+ document.getElementById('toggle-sale-mode').addEventListener('click',()=>{if(!canEditTraining())return;saleSelectionMode=!saleSelectionMode;renderEquipment();});
+ document.getElementById('equipment-dialog').addEventListener('close',()=>{saleSelectionMode=false;saleSelection.clear();});
  document.getElementById('sell-selected').addEventListener('click',sellSelectedEquipment);
  document.getElementById('select-sale-filter').addEventListener('click',()=>{if(!canEditTraining())return;equipmentFilteredItems().filter(i=>!equipmentProtected(i.uid)).forEach(i=>saleSelection.add(i.uid));renderEquipment();});
  document.getElementById('clear-sale-selection').addEventListener('click',()=>{saleSelection.clear();renderEquipment();});

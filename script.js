@@ -258,7 +258,7 @@ function selectWaveReward(id) {
 const WAVE_EVENT_INTERVAL = 3;
 const WAVE_EVENTS = {
     coin: { name: 'コインラッシュ', description: 'このWAVEの撃破報酬が2倍！', coins: 2 },
-    rage: { name: '暴走WAVE', description: '敵速度1.3倍・ダメージ1.5倍！ 撃破報酬3倍', coins: 3 },
+    rage: { name: '暴走WAVE', description: '敵速度＋30％・ダメージ＋50％！ 撃破報酬3倍', coins: 3 },
     treasure: { name: '宝物スライム', description: '金色スライムを15秒以内に倒してボーナス！', coins: 1 },
     barrage: { name: '弾幕地獄', description: '通常敵は約60％。上から来る弾幕の隙間を避けよう！', coins: 1 }
 };
@@ -650,13 +650,13 @@ function upgradeComparison(key, includeRun = true) {
     try { gameData.upgrade[key] = level + 1; after = capture(); }
     finally { gameData.upgrade[key] = level; runUpgrades = originalRun; }
     const format = stats => {
-        const n = value => Number(value.toFixed(2));
+        const n = displayInteger;
         return { damage:`${Math.floor(stats.damage)}`, fireRate:`${n(1000 / stats.shotInterval)}発/秒`,
             speed:`追従率 ${n(stats.moveSpeed * 100)}％`, count:`${stats.bulletCount}発`,
             bulletSize:`${n(stats.bulletSize)}px`, maxHp:`${Math.floor(stats.maxHp)}` }[key];
     };
     const a = format(before), b = format(after);
-    return `${a} → ${b}${a === b ? '（効果上限）' : ''}`;
+    return `${a} → ${b}${a === b ? '（表示差なし・端数は非表示）' : ''}`;
 }
 
 // 非公開の育成データ。ランキングと分離し、世代番号で古い端末からの上書きを防ぐ。
@@ -727,7 +727,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.7.1 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.7.2 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -2403,7 +2403,7 @@ function getBossAttackStats(boss) {
     const info = getBossType(boss);
     return {
         speed: Math.min(6.2, 3.5 + currentWave * 0.13) * (boss?.bossPhase === 2 ? 1.15 : 1) * info.bulletSpeed,
-        damage: Math.ceil((2 + (currentWave - 1) * .075) * info.damage * routeMultipliers().damage)
+        damage: Math.ceil((2 + (currentWave - 1) * .105) * info.damage * routeMultipliers().damage)
     };
 }
 
@@ -2891,7 +2891,7 @@ function killEnemy(e) {
     enemySpatialVersion++;
     recordDefeat(e);
     playSound("coin");
-    const reward = Math.floor(trainingCoinReward(e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1))*routeMultipliers().coins);
+    const reward = stageCoinReward(Math.floor(trainingCoinReward(e.coinDrop * (WAVE_EVENTS[currentWaveEvent]?.coins || 1))*routeMultipliers().coins));
     
     sessionCoins += reward;
     if(gameCoinsDisplay) gameCoinsDisplay.textContent = sessionCoins;
@@ -3046,7 +3046,7 @@ function showCoinText(x, y, txt) {
     if (liteMode) return;
     const el = document.createElement('div');
     el.classList.add('damage-text','world-transient');
-    el.style.color = '#ffd700'; el.textContent = `+${txt}G`;
+    el.style.color = '#ffd700'; el.textContent = `+${displayInteger(txt)}G`;
     el.style.left = x + 'px'; el.style.top = (y-20) + 'px'; el.style.zIndex = 101;
     worldLayer.appendChild(el);
     gameSetTimeout(() => el.remove(), 800);
@@ -3073,7 +3073,7 @@ function applyControlSettings() {
     document.body.classList.toggle('skill-left', controlSettings.side === 'left');
     document.body.classList.toggle('skill-large', controlSettings.size === 'large');
     for (const key of ['side','size','sensitivity']) document.getElementById('control-' + key).value = controlSettings[key];
-    document.getElementById('control-sensitivity-value').textContent = controlSettings.sensitivity.toFixed(1) + '倍';
+    document.getElementById('control-sensitivity-value').textContent = displayInteger(controlSettings.sensitivity * 100) + '％';
 }
 for (const key of ['side','size','sensitivity']) document.getElementById('control-' + key).addEventListener('input', e => {
     controlSettings[key] = key === 'sensitivity' ? Number(e.target.value) : e.target.value;

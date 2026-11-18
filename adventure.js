@@ -56,7 +56,7 @@ function itemComparison(item){
  const start=Math.floor(item.slot/4)*4;
  const before=gameData.equipment.equipped.slice(start,start+4).map(decodeEquipment).map(i=>i?.durability>0?i:null),after=before.slice();after[item.slot%4]=item.durability>0?item:null;
  const a=equipmentStats(before),b=equipmentStats(after);
- return COMPARE_FIELDS.map(([key,label,scale,unit])=>({key,label,unit,value:Math.round((b[key]-a[key])*scale*100)/100}));
+ return COMPARE_FIELDS.map(([key,label,scale,unit])=>({key,label,unit,value:displayInteger((b[key]-a[key])*scale)}));
 }
 function itemDetailPanel(parent,title,fold=false){
  const panel=document.createElement(fold?'details':'section');panel.className='item-pop-panel';
@@ -83,12 +83,12 @@ function openItemDetails(uid){
  const skills=document.createElement('div');skills.className='item-skill-grid';effects.appendChild(skills);
  item.skills.forEach(id=>{const a=EQ_AFFIXES[id],card=document.createElement('div');card.className='item-skill-card skill-tier-'+a.tier;appendEqText(card,['✦','◆','★'][a.tier]+' '+a.name,'item-skill-name');appendEqText(card,a.description(item.grade),'item-skill-effect');itemDetailChip(card,EQ_AFFIX_TIERS[a.tier]);skills.appendChild(card);});
  const changes=itemComparison(item).filter(d=>d.value!==0),gain=changes.filter(d=>d.key==='cooldown'?d.value<0:d.value>0).length;
- const comparison=itemDetailPanel(area,'↔ 装備すると '+(changes.length?'↑'+gain+'項目 / ↓'+(changes.length-gain)+'項目':'能力差なし'),true);
+ const comparison=itemDetailPanel(area,'↔ 装備すると '+(changes.length?'↑'+gain+'項目 / ↓'+(changes.length-gain)+'項目':'表示上の差なし'),true);
  appendEqText(comparison,'比較：'+(current?SERIES_NAMES[equipmentSeries(current)]+' / '+EQ_GRADES[current.grade-1]+' #'+current.uid:'未装備'),'item-muted');
  const diffs=document.createElement('div');diffs.className='item-diff-grid';comparison.appendChild(diffs);
  changes.forEach(d=>itemDetailChip(diffs,d.label+' '+(d.value>0?'+':'')+d.value+(d.unit==='ポイント'?'pt':d.unit),(d.key==='cooldown'?d.value<0:d.value>0)?'stat-gain':'stat-loss'));
  if(current)appendEqText(comparison,'現在の特殊スキル：'+equipmentAffixText(current),'item-muted');
- appendEqText(comparison,'pt＝％補正の加算差。セット効果・装備上限を反映。育成・ゲーム側の速度上限は含みません。','item-muted');
+ appendEqText(comparison,'表示は小数点以下を切り捨て。pt＝％補正の加算差。セット効果・装備上限を反映。育成・ゲーム側の速度上限は含みません。','item-muted');
  const series=itemDetailPanel(area,'🔗 '+SERIES_NAMES[equipmentSeries(item)]+'セット',true);
  const start=Math.floor(item.slot/4)*4,items=gameData.equipment.equipped.slice(start,start+4).map(decodeEquipment),before=seriesCounts(items)[equipmentSeries(item)];items[item.slot%4]=item;
  const after=seriesCounts(items)[equipmentSeries(item)];appendEqText(series,'同シリーズ：現在 '+before+'部位 → 装備後 '+after+'部位','item-set-count');

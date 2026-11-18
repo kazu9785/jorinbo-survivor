@@ -1,3 +1,14 @@
+// Display only: truncate towards zero, stabilizing floating point noise.
+function displayInteger(value) {
+    const n=Number(value);
+    return Number.isFinite(n) ? Math.trunc(Number(n.toPrecision(14))) : 0;
+}
+// Expected reward is 70% of the old amount; randomize the fractional coin.
+function stageCoinReward(base) {
+    const scaled=Math.max(0,base)*0.7;
+    const whole=Math.floor(scaled+1e-9), fraction=Math.max(0,scaled-whole);
+    return whole+(fraction>0 && Math.random()<fraction ? 1 : 0);
+}
 // 100WAVE expansion. Loaded before script.js; combat helpers run only after startup.
 const NORMAL_WAVE_LIMIT = 100;
 const STAGE_ENEMIES = [
@@ -28,10 +39,10 @@ const EXTRA_BOSSES = [
 function stageStats(wave = currentWave) {
     const w = Math.max(1, Math.min(1000000, wave));
     return {
-        count:Math.min(180,8+Math.floor((w-1)*1.1)),
-        hp:(1+Math.max(0,w-10)*.022+Math.pow(Math.max(0,w-30)/70,1.4)*.9)*routeMultipliers().hp,
-        damage:(1+(w-1)*.055)*routeMultipliers().damage,
-        speed:1+Math.min(.55,(w-1)*.006),
+        count:Math.min(180,8+Math.floor((w-1)*1.35)),
+        hp:(1+Math.max(0,w-5)*.032+Math.pow(Math.max(0,w-20)/80,1.4)*1.15)*routeMultipliers().hp,
+        damage:(1+(w-1)*.075)*routeMultipliers().damage,
+        speed:1+Math.min(.55,(w-1)*.008),
         time:Math.min(240,50+Math.floor(w*1.5))
     };
 }
@@ -59,8 +70,8 @@ function stageFillEnemies(force = false) {
     if (!waveEventActive || isGameOver || isBossPhase || isPaused) return;
     const now=gameNow();
     if (!force && now<stageNextSpawn) return;
-    stageNextSpawn=now+900;
-    const cap=Math.min(getViewportSize().width<650?18:26,10+Math.floor(currentWave/5));
+    stageNextSpawn=now+700;
+    const cap=Math.min(getViewportSize().width<650?18:26,10+Math.floor(currentWave/4));
     let available=cap-enemies.filter(e=>e.type!=='treasure').length;
     available=Math.min(available,force?cap:4);
     while(available-->0 && stagePendingEnemies.length) spawnEnemy(stagePendingEnemies.shift());

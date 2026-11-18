@@ -19,7 +19,7 @@ const EQ_AFFIXES={
  1:{name:'鋭刃',tier:0,description:g=>`通常攻撃＋${g*3}％`,apply:(s,g)=>s.damage+=g*.03},
  2:{name:'集中',tier:0,description:g=>`スキル威力＋${g*5}％`,apply:(s,g)=>s.skill+=g*.05},
  3:{name:'生命',tier:0,description:g=>`最大HP＋${g*2}`,apply:(s,g)=>s.hp+=g*2},
- 4:{name:'速射',tier:0,description:g=>`連射速度＋${g*2.5}％`,apply:(s,g)=>s.fireRate+=g*.025},
+ 4:{name:'速射',tier:0,description:g=>`連射速度＋${displayInteger(g*2.5)}％`,apply:(s,g)=>s.fireRate+=g*.025},
  5:{name:'守護',tier:0,description:g=>`被ダメージ−${g*2}％`,apply:(s,g)=>s.reduction+=g*.02},
  6:{name:'疾風',tier:0,description:g=>`移動速度＋${g*2}％`,apply:(s,g)=>s.speed+=g*.02},
  7:{name:'竜殺し',tier:1,description:g=>`対ボス通常攻撃＋${g*12}％`,apply:(s,g)=>s.boss+=g*.12},
@@ -245,7 +245,7 @@ function renderEquipment(){
  document.getElementById('equipment-roll').disabled=gachaBusy||!editable||d.crystals<10||d.items.length>=EQ_BOX_LIMIT;
  document.getElementById('equipment-roll10').disabled=gachaBusy||!editable||d.crystals<100||d.items.length+10>EQ_BOX_LIMIT;
 }
-function equipmentPercent(x){return Number(x.toFixed(8)).toString()+'％';}
+function equipmentPercent(x){if(x<=0)return '0％';if(Number.isInteger(x))return x+'％';return '約'+Math.round(100/x).toLocaleString('ja-JP')+'分の1';}
 function renderEquipmentProbabilities(){
  const root=document.getElementById('equipment-probability-content');root.replaceChildren();
  const cards=document.createElement('div');cards.className='odds-grade-grid';
@@ -264,12 +264,12 @@ function renderEquipmentProbabilities(){
  const head=document.createElement('tr');['グレード','排出率','特定キャラ・部位1種','スキル枠','通常 / 希少 / 神話（1枠）','神話が1枠以上'].forEach(t=>{const th=document.createElement('th');th.textContent=t;head.appendChild(th);});table.appendChild(head);
  EQ_GRADES.forEach((name,index)=>{const g=index+1,w=EQ_AFFIX_WEIGHTS[g],p=w[2]/10000,row=document.createElement('tr');
   [name,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),equipmentPercent(EQ_GRADE_WEIGHTS[index]/1600),EQ_SKILL_SLOTS[g]+'枠',w.map(x=>equipmentPercent(x/100)).join(' / '),equipmentPercent((1-(1-p)**EQ_SKILL_SLOTS[g])*100)].forEach(t=>{const td=document.createElement('td');td.textContent=t;row.appendChild(td);});table.appendChild(row);});const gradeScroll=document.createElement('div');gradeScroll.className='odds-scroll';gradeScroll.appendChild(table);area.appendChild(gradeScroll);
- appendEqText(area,'全キャラ・全部位から抽選します（キャラ各25％、部位各25％、組み合わせ各6.25％）。1回も10回も同じ独立抽選で、確定枠・天井はありません。URの1回あたり確率は0.01％です。1万回で必ず出る意味ではありません。');
- appendEqText(area,'シリーズはグレード確定後に独立抽選。N〜SSRは各4シリーズ25％、URは各8シリーズ12.5％です。特定の装備はキャラ4×部位4×シリーズ数で均等抽選。例：特定のUR装備1種は0.000078125％です。再抽選は同グレードの1枠と同じ確率です。');
+ appendEqText(area,'全キャラ・全部位から抽選します（キャラ各25％、部位各25％、組み合わせ各16分の1）。1回も10回も同じ独立抽選で、確定枠・天井はありません。URの1回あたり確率は1万分の1です。1万回で必ず出る意味ではありません。');
+ appendEqText(area,'シリーズはグレード確定後に独立抽選。N〜SSRは各4シリーズ25％、URは各8シリーズ・各8分の1です。特定の装備はキャラ4×部位4×シリーズ数で均等抽選。例：特定のUR装備1種は128万分の1です。再抽選は同グレードの1枠と同じ確率です。');
  appendEqText(area,'特殊スキルは各枠で独立抽選。同じスキルが重複することもあり、効果は加算されます。グレード別に枠数と効果量が増えます。下の確率は「そのグレードの装備に付く、1枠あたりの個別スキル確率」です。');
  const effects=document.createElement('table');effects.className='equipment-odds-table';const h=document.createElement('tr');['スキル','分類','N','R','SR','SSR','UR','効果（g＝グレード番号1～5）'].forEach(t=>{const th=document.createElement('th');th.textContent=t;h.appendChild(th);});effects.appendChild(h);
  Object.entries(EQ_AFFIXES).forEach(([id,a])=>{const tr=document.createElement('tr');[a.name,EQ_AFFIX_TIERS[a.tier],...[1,2,3,4,5].map(g=>equipmentPercent(EQ_AFFIX_WEIGHTS[g][a.tier]/100/EQ_AFFIX_POOLS[a.tier].length)),a.description(1)+'（表示はN時。グレードに比例）'].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.appendChild(td);});effects.appendChild(tr);});const effectScroll=document.createElement('div');effectScroll.className='odds-scroll';effectScroll.appendChild(effects);area.appendChild(effectScroll);
- appendEqText(area,'例：特定のUR装備1種を引く確率は0.000078125％。さらに指定した1枠に「覇王」が付く確率は、0.000078125％ × (0.2％ ÷ 3) ＝ 約0.000000052083％です。表示は小数点以下8桁で丸めています。');
+ appendEqText(area,'例：特定のUR装備1種に、指定した1枠の「覇王」が付く確率は19億2000万分の1。小数になる確率は約○分の1で表示しています。抽選確率自体は変更していません。');
  appendEqText(area,'合計効果の上限：被ダメージ軽減75％、回避50％、会心80％、装備によるスキル待ち時間短縮80％。移動・連射は従来のゲーム上限も適用。会心は通常弾のみ。');
  appendEqText(area,'結晶ドロップ：通常8％・精鋭12％・希少18％で1個、ボス35％で5個、宝物スライム65％で3個。既存敵の段階抽選：通常75％・精鋭19％・希少6％。追加敵は種族ごとに段階固定で、WAVEごとに解禁・出現比率が変化します。開発テストは結晶ドロップも耐久消費もありません。');
 }

@@ -1,6 +1,6 @@
 /* Series, saved loadouts and crafting. Existing equipment wire IDs remain unchanged. */
 const SERIES_NAMES=['紅焔','氷晶','翠森','迅雷','聖光','常闇','星詠','竜王'];
-const SERIES_HELP=['通常攻撃 +2/4/6%','被ダメージ軽減 +1.5/3/4.5ポイント','WAVE開始HP回復 +1/2/3','移動 +1/2/3%・連射 +1.5/3/4.5%','WAVE開始シールド +2/4/6','会心率 +1.5/3/4.5ポイント','スキル待ち時間 -1/2/3%・結晶ドロップ率 +1/2/3ポイント','対ボス通常攻撃 +3/6/9%・HP +1/2/3'];
+const SERIES_HELP=['通常攻撃 +2/4/6%','被ダメージ軽減 +1/3/4ポイント','WAVE開始HP回復 +1/2/3','移動 +1/2/3%・連射 +1/3/4%','WAVE開始シールド +2/4/6','会心率 +1/3/4ポイント','スキル待ち時間 -1/2/3%・結晶ドロップ率 +1/2/3ポイント','対ボス通常攻撃 +3/6/9%・HP +1/2/3'];
 function defaultForge(){return {dust:0,seen:[],series:[],presets:Array(12).fill('')};}
 function unpackPreset(w){
  if(typeof w!=='string'||!w)return null;
@@ -116,7 +116,7 @@ function proposeEquipment(){
  const area=document.getElementById('auto-equipment-comparison');area.replaceChildren();
  after.forEach((i,n)=>appendEqText(area,EQ_SLOTS[n]+'：'+(before[n]?equipmentName(before[n]):'未装備')+' → '+(i?equipmentName(i):'未装備')));
  const a=equipmentStats(before),b=equipmentStats(after);
- COMPARE_FIELDS.forEach(([key,label,scale,unit])=>{const d=Math.round((b[key]-a[key])*scale*100)/100;if(d)appendEqText(area,label+' '+(d>0?'+':'')+d+unit);});
+ COMPARE_FIELDS.forEach(([key,label,scale,unit])=>{const d=displayInteger((b[key]-a[key])*scale);if(d)appendEqText(area,label+' '+(d>0?'+':'')+d+unit);});
  appendEqText(area,seriesSummary(after));appendEqText(area,'簡易評価による候補です。特殊スキル・セット効果を考慮しますが、最適解を保証するものではありません。結晶集めは星詠セットを優先し、なければ移動・火力を評価します。');
  document.getElementById('auto-equipment-dialog').showModal();
 }

@@ -162,25 +162,44 @@ function trainingUpgrade(id,route) {
     if (!gate || (p.bestWave<gate.wave && p.uses<gate.uses) || gameData.coins<gate.cost) return false;
     gameData.coins-=gate.cost;p.levels[route]++;saveData();renderTraining();return true;
 }
+const TRAINING_VISUALS = {
+ balance:[['⚔️','当て続けて火力アップ'],['⚖️','WAVEごとに攻守を選ぶ'],['💰','コイン集めが得意']],
+ power:[['🔮','大きな魔法で一掃'],['⌛','スキルを早く使える'],['🔥','スキルの後も攻める']],
+ speed:[['🎯','遠くから大ダメージ'],['💨','動きながら連射'],['🐉','ボスへの切り札']],
+ tank:[['🛡️','シールドで身を守る'],['💥','受けた攻撃に反撃'],['💚','HPと回復で粘る']]
+};
 function renderTraining() {
-    const id=trainingViewedCharacter, p=getTrainingProgress(id);
-    document.getElementById('training-summary').textContent=`${CHARACTERS[id].name} ｜最高到達WAVE ${p.bestWave} ｜使用 ${p.uses}回 ｜所持 ${gameData.coins}G`;
-    const cards=document.getElementById('training-cards');cards.replaceChildren();
-    for (const route of TRAINING_ROUTES[id]) {
-        const level=p.levels[route.id], gate=TRAINING_GATES[level], card=document.createElement('article');card.className='training-card';
-        const title=document.createElement('h3');title.textContent=`${route.name} Lv.${level}/5`;card.appendChild(title);
-        const desc=document.createElement('p');desc.textContent=level?route.effect(level):'未解放：まだ効果はありません。';card.appendChild(desc);
-        if(gate){
-            const preview=document.createElement('p');preview.textContent=`次のLv.${level+1}：${route.effect(level+1)}`;card.appendChild(preview);
-            const requirement=document.createElement('p');requirement.textContent=`条件：このキャラでWAVE ${gate.wave}以上 または ${gate.uses}回以上使用 ＋ ${gate.cost}G`;card.appendChild(requirement);
-            appendEqText(card,trainingNextGoal(id,route.id),'pop-note');
-            const satisfied=p.bestWave>=gate.wave||p.uses>=gate.uses;
-            const buy=document.createElement('button');buy.type='button';buy.textContent=!satisfied?'プレイ条件未達成':gameData.coins<gate.cost?'コイン不足':`${gate.cost}GでLv.${level+1}に育成`;
-            buy.disabled=!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
-        }
-        const equip=document.createElement('button');equip.type='button';equip.textContent=p.route===route.id?'選択中（次の挑戦に適用）':'このルートを選択';equip.disabled=!canEditTraining()||p.route===route.id||!level;
-        equip.addEventListener('click',()=>{if(!canEditTraining())return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
-    }
+ const id=trainingViewedCharacter,p=getTrainingProgress(id),character=CHARACTERS[id];
+ const hero=document.getElementById('training-summary');hero.replaceChildren();hero.className='training-hero';
+ const portrait=document.createElement('img');portrait.src=character.image;portrait.alt=character.name;hero.appendChild(portrait);
+ const info=document.createElement('div');hero.appendChild(info);
+ appendEqText(info,character.name,'training-hero-name');appendEqText(info,character.role,'training-tagline');
+ appendEqText(info,'🏁 WAVE '+p.bestWave+'　🎮 '+p.uses+'回','training-record');appendEqText(info,'🪙 '+gameData.coins+' G','training-wallet');
+ const cards=document.getElementById('training-cards');cards.replaceChildren();
+ for(const [index,route] of TRAINING_ROUTES[id].entries()){
+  const level=p.levels[route.id],gate=TRAINING_GATES[level],selected=p.route===route.id;
+  const card=document.createElement('article');card.className='training-card training-route-'+route.id+(selected?' route-selected':'');
+  const art=document.createElement('div');art.className='training-route-art';
+  const image=document.createElement('img');image.src=character.image;image.alt='';art.appendChild(image);
+  const icon=document.createElement('span');icon.className='training-route-icon';icon.textContent=TRAINING_VISUALS[id][index][0];icon.setAttribute('aria-hidden','true');art.appendChild(icon);
+  const badge=document.createElement('span');badge.className='training-route-badge';badge.textContent=selected?(level?'✓ 選択中':'選択中・未解放'):level?'解放済み':'未解放';art.appendChild(badge);card.appendChild(art);
+  const title=document.createElement('h3');title.textContent=route.name;card.appendChild(title);
+  appendEqText(card,TRAINING_VISUALS[id][index][1],'training-tagline');
+  const stars=document.createElement('div');stars.className='training-stars';stars.textContent='★'.repeat(level)+'☆'.repeat(5-level);stars.setAttribute('aria-label','レベル'+level+'、最大5');card.appendChild(stars);
+  const detail=document.createElement('details');const summary=document.createElement('summary');summary.textContent='✨ 効果を見る';detail.appendChild(summary);
+  appendEqText(detail,level?'現在：'+route.effect(level):'まだ効果はありません。');if(gate)appendEqText(detail,'次のLv.'+(level+1)+'：'+route.effect(level+1));card.appendChild(detail);
+  if(gate){
+   const satisfied=p.bestWave>=gate.wave||p.uses>=gate.uses;
+   const progress=document.createElement('div');progress.className='training-progress';
+   appendEqText(progress,satisfied?'✅ プレイ条件クリア':'🏁 WAVE '+gate.wave+' または '+gate.uses+'回使用');
+   const bar=document.createElement('progress');bar.max=1;bar.value=Math.min(1,Math.max(p.bestWave/gate.wave,p.uses/gate.uses));bar.setAttribute('aria-label','WAVEまたは使用回数の達成度');progress.appendChild(bar);
+   if(!satisfied)appendEqText(progress,'あとWAVE '+Math.max(0,gate.wave-p.bestWave)+' または '+Math.max(0,gate.uses-p.uses)+'回','training-hint');
+   appendEqText(progress,gameData.coins>=gate.cost?'🪙 '+gate.cost+' G · 準備OK':'🪙 '+gate.cost+' G · あと'+(gate.cost-gameData.coins)+' G');card.appendChild(progress);
+   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
+  } else appendEqText(card,'🏆 育成コンプリート！','training-max');
+  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!canEditTraining()||selected||!level;
+  equip.addEventListener('click',()=>{if(!canEditTraining())return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
+ }
 }
 function initTrainingUI() {
     const select=document.getElementById('training-character');

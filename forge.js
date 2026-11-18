@@ -90,11 +90,11 @@ function addForgeItemActions(area,item){
  const panel=itemDetailPanel(area,'⚒ 分解・スキル再抽選',true);
  const cost=item.grade*10,protectedItem=equipmentProtected(item.uid);
  const chips=document.createElement('div');panel.appendChild(chips);itemDetailChip(chips,'素材 '+gameData.forge.dust+'個');itemDetailChip(chips,'再抽選 '+cost+'個 / 枠');
- if(protectedItem)appendEqText(panel,'保護中の装備です。装備・ロック・保存セット・中断使用を解除すると操作できます。','item-pop-warning');
+ if(protectedItem)appendEqText(panel,'保護中のため操作できません。詳しくは装備の使い方へ。','item-pop-warning');
  const actions=document.createElement('div');actions.className='item-action-grid';panel.appendChild(actions);
  eqButton(actions,'分解 → 素材 '+[0,1,3,8,25,80][item.grade]+'個',!canEditTraining()||protectedItem,()=>disassembleEquipment(item.uid));
  item.skills.forEach((id,n)=>eqButton(actions,'枠'+(n+1)+' '+EQ_AFFIXES[id].name+' ↻',!canEditTraining()||protectedItem||gameData.forge.dust<cost,()=>rerollEquipment(item.uid,n)));
- appendEqText(panel,'再抽選は1枠だけ。同グレードのガチャと同じ確率。弱くなる・同じ結果になる場合もあります。分解した装備は戻せません。','item-muted');
+ appendEqText(panel,'再抽選は1枠だけ。弱くなることもあります。分解は取り消せません。','item-muted');
  eqButton(panel,'🎲 再抽選の確率',false,()=>{renderEquipmentProbabilities();document.getElementById('equipment-probability-dialog').showModal();});
 }
 
@@ -117,7 +117,7 @@ function proposeEquipment(){
  after.forEach((i,n)=>appendEqText(area,EQ_SLOTS[n]+'：'+(before[n]?equipmentName(before[n]):'未装備')+' → '+(i?equipmentName(i):'未装備')));
  const a=equipmentStats(before),b=equipmentStats(after);
  COMPARE_FIELDS.forEach(([key,label,scale,unit])=>{const d=displayInteger((b[key]-a[key])*scale);if(d)appendEqText(area,label+' '+(d>0?'+':'')+d+unit);});
- appendEqText(area,seriesSummary(after));appendEqText(area,'簡易評価による候補です。特殊スキル・セット効果を考慮しますが、最適解を保証するものではありません。結晶集めは星詠セットを優先し、なければ移動・火力を評価します。');
+ appendEqText(area,seriesSummary(after));appendEqText(area,'目的に合う装備の候補です。能力差を見て決めよう！');
  document.getElementById('auto-equipment-dialog').showModal();
 }
 function applyEquipmentProposal(){

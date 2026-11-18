@@ -1,3 +1,11 @@
+function openGameHelp(sectionId) {
+ const dialog=document.getElementById('play-guide');
+ if(!dialog)return;
+ if(!dialog.open)dialog.showModal();
+ const section=sectionId && document.getElementById(sectionId);
+ if(section){section.open=true;section.scrollIntoView({block:'start'});section.querySelector('summary')?.focus();}
+ else dialog.scrollTop=0;
+}
 /* The HTML version describes the displayed release, not an online update check. */
 (() => {
     'use strict';
@@ -9,6 +17,7 @@
         button.addEventListener('click', () => {
             if (button.dataset.infoDialog === 'release-guide' &&
                 !(typeof isDeveloper !== 'undefined' && isDeveloper && typeof auth !== 'undefined' && auth?.currentUser)) return;
+            if(button.dataset.infoDialog==='play-guide'){openGameHelp(button.dataset.guideSection);return;}
             if (!dialog.open) { dialog.showModal(); dialog.scrollTop = 0; }
         });
     });

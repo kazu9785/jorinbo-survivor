@@ -88,7 +88,7 @@ function openItemDetails(uid){
  const diffs=document.createElement('div');diffs.className='item-diff-grid';comparison.appendChild(diffs);
  changes.forEach(d=>itemDetailChip(diffs,d.label+' '+(d.value>0?'+':'')+d.value+(d.unit==='ポイント'?'pt':d.unit),(d.key==='cooldown'?d.value<0:d.value>0)?'stat-gain':'stat-loss'));
  if(current)appendEqText(comparison,'現在の特殊スキル：'+equipmentAffixText(current),'item-muted');
- appendEqText(comparison,'表示は小数点以下を切り捨て。pt＝％補正の加算差。セット効果・装備上限を反映。育成・ゲーム側の速度上限は含みません。','item-muted');
+ appendEqText(comparison,'緑はアップ、赤はダウン。端数は非表示。','item-muted');
  const series=itemDetailPanel(area,'🔗 '+SERIES_NAMES[equipmentSeries(item)]+'セット',true);
  const start=Math.floor(item.slot/4)*4,items=gameData.equipment.equipped.slice(start,start+4).map(decodeEquipment),before=seriesCounts(items)[equipmentSeries(item)];items[item.slot%4]=item;
  const after=seriesCounts(items)[equipmentSeries(item)];appendEqText(series,'同シリーズ：現在 '+before+'部位 → 装備後 '+after+'部位','item-set-count');
@@ -101,12 +101,12 @@ function openItemDetails(uid){
  eqButton(repairs,'同じ装備で合成',!canEditTraining()||item.durability>=EQ_MAX_DURABILITY[item.grade],()=>openEquipmentFusion(uid));
  appendEqText(repair,'所持金 '+gameData.coins+'G。合成は同キャラ・部位・グレード・シリーズ。素材は消費されます。','item-muted');
  const sale=itemDetailPanel(area,'🪙 売却・整理',true);
- if(equipmentProtected(uid))appendEqText(sale,'保護中：装備・ロック・保存セット・中断使用の登録を外すと売却できます。','item-pop-warning');
+ if(equipmentProtected(uid))appendEqText(sale,'保護中のため売却できません。詳しくは装備の使い方へ。','item-pop-warning');
  const sales=document.createElement('div');sales.className='item-action-grid';sale.appendChild(sales);
  eqButton(sales,saleSelection.has(uid)?'選択から外す':'まとめ売却に選ぶ',!canEditTraining()||equipmentProtected(uid),()=>{toggleSaleItem(uid);openItemDetails(uid);});
  eqButton(sales,'売却 '+equipmentSaleValue(item)+'G',!canEditTraining()||equipmentProtected(uid),()=>{if(sellEquipment(uid))document.getElementById('item-detail-dialog').close();});
  addForgeItemActions(area,item);
- const help=itemDetailPanel(area,'ⓘ 装備のルール',true);appendEqText(help,'WAVE開始ごとに耐久−1。最後の耐久1はそのWAVE中有効。装備変更は新しい挑戦から適用されます。');appendEqText(help,'装備ID：'+uid,'item-muted');
+ const help=itemDetailPanel(area,'ⓘ 装備のルール',true);appendEqText(help,'WAVE開始ごとに耐久−1。最後の耐久1はそのWAVE中有効。装備変更は新しい挑戦から適用されます。');appendEqText(help,'装備ID：'+uid,'item-muted');eqButton(help,'📖 装備の使い方',false,()=>openGameHelp('help-equipment'));
  const dialog=document.getElementById('item-detail-dialog');if(!dialog.open)dialog.showModal();
 }
 

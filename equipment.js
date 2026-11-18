@@ -123,12 +123,11 @@ function equipmentIncomingDamage(damage){
  const s=equipmentStats();if(s.evade&&Math.random()<s.evade){showDamageText(playerX,playerY,'回避');return 0;}
  const reduced=damage*(1-s.reduction),absorbed=Math.min(equipmentShield,reduced);equipmentShield-=absorbed;return reduced-absorbed;
 }
-function equipmentEnemyTier(type){if(type==='boss')return 4;if(type==='treasure')return 3;const r=Math.random();return r<.06?3:r<.25?2:1;}
+function equipmentEnemyTier(type){return type==='boss'?0:(LEGACY_ENEMY_TIERS[type]||1);}
 function equipmentDrop(e){
  if(gameMode==='test')return false;
- const tier=e.strengthTier||(e.type==='boss'?4:e.type==='treasure'?3:1),chance=e.type==='treasure'?.65:[0,.08,.12,.18,.35][tier];
+ const {chance,count}=enemyRewardProfile(e);
  if(Math.random()>=Math.min(1,(chance+equipmentStats().drop)*routeMultipliers().drops))return false;
- const count=e.type==='boss'?5:e.type==='treasure'?3:1;
  gameData.equipment.crystals=Math.min(1000000000,gameData.equipment.crystals+count);
  const el=document.createElement('div');el.className='crystal-drop world-transient';el.style.left=e.x+'px';el.style.top=e.y+'px';
  const img=document.createElement('img');img.src='summon_crystal.png';img.alt='召喚結晶';el.appendChild(img);

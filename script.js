@@ -605,12 +605,13 @@ function getCodexEntries() {
         { id:'rusher', name:'常林暴', image:'常林暴.png', detail:'HPは低めだが足が速く、接触ダメージが高い。' },
         { id:'treasure', name:'黄金スライム', image:'slime.png', detail:'最速で逃げ回る。攻撃はしない。15秒以内の撃破で大量コイン！' }
     ];
-    STAGE_ENEMIES.forEach((e,i)=>entries.push({id:e.id,name:e.name,atlas:i,detail:['','通常','精鋭','希少'][e.tier]+' ／ WAVE'+e.unlock+'〜 ／ '+e.detail}));
+    STAGE_ENEMIES.forEach((e,i)=>entries.push({id:e.id,name:e.name,atlas:i,tier:e.tier,detail:(e.rare?'◆ レア個体 ／ ':'')+'WAVE'+e.unlock+'〜 ／ '+e.detail}));
     BOSS_TYPES.forEach((boss, i) => {
         entries.push({ id:'boss_'+boss.id, name:boss.name, image:`boss${i+1}.png`, atlas:boss.atlas, bossAtlas:true, phase:1, detail:boss.detail+'。HP半分で第2形態へ。第1形態の撃破数は0のままです。' });
         entries.push({ id:'boss_'+boss.id+'_phase2', name:boss.awakened, image:`boss${i+1}_phase2.png`, atlas:boss.atlas, bossAtlas:true, phase:2, detail:boss.detail+'がさらに強化された姿。攻撃間隔と移動速度が変化する。' });
     });
-    return entries;
+    entries.forEach(e=>{e.tier=e.bossAtlas?6:(e.tier||LEGACY_ENEMY_TIERS[e.id]||1);});
+    return entries.sort((a,b)=>a.tier-b.tier);
 }
 function openCodex() {
     const container = document.getElementById('codex-list');
@@ -618,7 +619,9 @@ function openCodex() {
     const entries = getCodexEntries();
     gameData.codex ||= {};
     document.getElementById('codex-progress').textContent = `発見 ${entries.filter(e => Object.hasOwn(gameData.codex,e.id)).length} / ${entries.length}`;
+    let group=-1;
     entries.forEach(entry => {
+        if(group!==entry.tier){group=entry.tier;const heading=document.createElement('h3');heading.className='codex-tier-title';heading.textContent=group===6?'ボス':ENEMY_TIERS[group].name;container.appendChild(heading);}
         const seen = Object.hasOwn(gameData.codex, entry.id);
         const card = document.createElement('article');
         card.classList.add('codex-card');
@@ -727,7 +730,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.7.4 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.8.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -2165,7 +2168,7 @@ function getTreasureSpeed() {
     // 通常スライムのジャンプ中の3倍速・暴走倍率も含めて上回る。
     const fastest = Math.max((1.5 + Math.min(1.2, currentWave*.04))*3*1.16,
         (2.8 + Math.min(1.8, currentWave*.04))*1.2*1.16,
-        ...STAGE_ENEMIES.map(e=>e.speed*stageStats().speed*1.16*(e.move==='charge'?1.8:1)),
+        ...STAGE_ENEMIES.map(e=>e.speed*stageStats().speed*1.2*(e.move==='charge'?1.8:1)),
         ...BOSS_TYPES.map(info=>info.speed*info.phaseSpeed*stageStats().speed));
     return fastest * 1.3 * 1.15;
 }
@@ -2296,14 +2299,13 @@ function spawnEnemy(type) {
     
     const strengthTier = STAGE_ENEMY_MAP[type]?.tier || equipmentEnemyTier(type);
     if (type !== 'boss' && type !== 'treasure') {
-        hp = Math.ceil(hp * [0,1,1.45,2][strengthTier] * stageStats().hp);
-        speed *= [0,1,1.08,1.16][strengthTier];
-        if(strengthTier>1) {
-            el.classList.add('enemy-tier-'+strengthTier);
-            const badge=document.createElement('span');badge.className='enemy-tier-badge';
-            badge.textContent=strengthTier===2?'精鋭':'希少';el.appendChild(badge);
-        }
+        hp = Math.ceil(hp * [0,1,1.35,1.75,2.2,2.8][strengthTier] * stageStats().hp);
+        speed *= [0,1,1.05,1.1,1.15,1.2][strengthTier];
+        coinDrop=ENEMY_TIERS[strengthTier].coins*(archetype?.rare?2:1);
+        el.classList.add('enemy-tier-'+strengthTier);
+        if(archetype?.rare)el.classList.add('enemy-crystal-rare');
     }
+
     if (currentWaveEvent === 'rage') speed *= 1.3;
     el.style.left = ex + 'px';
     el.style.top = ey + 'px';

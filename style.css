@@ -999,3 +999,5 @@ body.lite-mode .equipment-icon-tile {box-shadow:none;}
 #training-dialog .training-buy{background:linear-gradient(110deg,#255ca8,#167f92);border-color:#71cee5;font-weight:bold;font-size:13px;}
 #training-dialog .training-equip{font-size:12px;}.training-max{margin-top:auto!important;color:#ffe082;font-weight:bold;}
 @media(max-width:700px){#training-summary.training-hero{padding:12px;gap:14px;}.training-hero-name{font-size:20px;}.training-hero img{width:85px;height:110px;}.training-route-art{min-height:105px;}.training-route-art img{height:115px;}.training-route-icon{right:25%;}}
+
+.codex-tier-title{grid-column:1/-1;border-bottom:1px solid #6082b2;padding:10px 0;color:#bfe9ff;}.enemy-tier-1{filter:none;}.enemy-tier-2{filter:drop-shadow(0 0 4px #66caff);}.enemy-tier-3{filter:drop-shadow(0 0 6px #b27dff);}.enemy-tier-4{filter:drop-shadow(0 0 8px #ff7b4b);}.enemy-tier-5{filter:drop-shadow(0 0 9px #ffd86e);}.enemy-crystal-rare{filter:drop-shadow(0 0 10px #9fffe8) drop-shadow(0 0 3px #fff);}.stage-bullet-tier-4{background:#ff875b;}.stage-bullet-tier-5{background:#ffe18c;}

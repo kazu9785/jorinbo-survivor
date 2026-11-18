@@ -45,7 +45,7 @@ function setWorldTheme(index,boss=false){
 }
 function worldBossTheme(boss){
     const info=getBossType(boss);
-    setWorldTheme(ARENA_THEMES.findIndex(t=>t.id===info.id),true);
+    setWorldTheme(ARENA_THEMES.findIndex(t=>t.id===(info.theme||info.id)),true);
     gameArea.classList.toggle('world-awakened',boss.bossPhase===2);
 }
 function updateWorldCamera(){

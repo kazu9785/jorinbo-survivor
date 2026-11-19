@@ -1018,3 +1018,60 @@ body.lite-mode .equipment-icon-tile {box-shadow:none;}
 .upgrade-scene-weapon{background-position:center top}.upgrade-scene-ability{background-position:center center}.upgrade-scene-skill{background-position:center bottom}
 #weapon-shop-screen .shop-container,#player-shop-screen .shop-container,#skill-shop-screen .shop-container{width:min(800px,100%)!important;background:linear-gradient(145deg,#161b34,#10111f);border-color:#6072bc;}
 @media(max-width:600px){.upgrade-scene{margin-bottom:10px;border-radius:9px}#weapon-shop-screen .shop-container,#player-shop-screen .shop-container,#skill-shop-screen .shop-container{padding:16px 12px}}
+
+/* 1.9.2: the panel itself scrolls; its header stays visible at the top. */
+.persistent-panel.persistent-panel {
+ padding:0!important; box-sizing:border-box; overflow:auto!important;
+ max-height:calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+ scroll-padding-top:100px; overscroll-behavior:contain; isolation:isolate;
+}
+.persistent-panel > .persistent-panel-header {
+ position:sticky; top:0; z-index:30; display:flex; align-items:center;
+ justify-content:space-between; gap:12px; padding:12px 16px; margin:0;
+ background:#151d32; border-bottom:1px solid #526586;
+ box-shadow:0 4px 14px #0005; text-align:left;
+}
+.persistent-panel > .persistent-panel-header h2 {
+ margin:0!important; min-width:0; font-size:clamp(15px,2vw,21px); line-height:1.5;
+ overflow-wrap:anywhere;
+}
+.persistent-panel > .persistent-panel-header form { margin:0; flex-shrink:0; }
+.persistent-panel .persistent-panel-header .persistent-close {
+ flex-shrink:0; width:auto; min-width:80px; min-height:44px; padding:8px 12px;
+ margin:0; font-size:14px; line-height:1.4; font-family:inherit; font-weight:bold;
+ border:1px solid #98b6da; border-radius:10px; background:#284364; color:#fff;
+ cursor:pointer; box-shadow:none; white-space:nowrap;
+}
+.persistent-panel .persistent-close:focus-visible {outline:3px solid #ffe082;outline-offset:2px;}
+.persistent-panel-content {padding:20px;min-width:0;}
+.persistent-panel-content .shop-items-grid {max-height:none;overflow:visible;padding-right:0;margin-bottom:0;}
+.skill-card-heading {display:flex;align-items:center;gap:12px;width:100%;text-align:left;min-width:0;}
+.skill-card-art {width:96px;height:96px;flex-shrink:0;object-fit:cover;border-radius:15px;border:1px solid #6887b5;box-shadow:0 4px 14px #0006;}
+.skill-card-copy {min-width:0;}
+#skill-items-container h3 {font-size:15px;line-height:1.5;overflow-wrap:anywhere;}
+#skill-items-container p {font-size:12px;line-height:1.6;color:#cedbf2;}
+@media(max-width:600px){
+ .persistent-panel > .persistent-panel-header {padding:10px 12px;gap:8px;}
+ .persistent-panel-content {padding:14px 12px;}
+ #skill-items-container {grid-template-columns:1fr;}
+ .skill-card-art {width:84px;height:84px;}
+ .persistent-panel .persistent-panel-header .persistent-close {font-size:12px;padding:8px;min-width:72px;}
+}
+/* Skill art sits beneath enemies / projectiles so hazards remain readable. */
+.skill-cast-visual {position:absolute;z-index:8;pointer-events:none;transform:translate(-50%,-50%);--skill-color:#80dfff;}
+.skill-cast-art {position:absolute;inset:0;background-size:contain;background-position:center;background-repeat:no-repeat;mix-blend-mode:screen;mask-image:radial-gradient(circle,#000 40%,transparent 72%);animation:skillArtReveal .75s ease-out both;}
+.skill-cast-sphere .skill-cast-art {animation:skillSpiralReveal .75s ease-out both;}
+.skill-cast-energy .skill-cast-art {animation:skillShockReveal .75s ease-out both;}
+.skill-cast-ring {position:absolute;inset:15%;border:2px solid var(--skill-color);border-radius:50%;box-shadow:0 0 14px var(--skill-color);animation:skillRingReveal .5s ease-out both;}
+.skill-target-impact .skill-cast-ring {border-color:#ffe08a;}
+.skill-laser-column {position:absolute;left:calc(50% - 5px);bottom:50%;height:480px;width:10px;background:linear-gradient(90deg,transparent,#7eeaff,#fff,#7eeaff,transparent);box-shadow:0 0 14px #53cfff;transform-origin:bottom center;animation:skillLaserReveal .5s ease-out both;}
+.skill-cast-quiet .skill-cast-art {animation:none;opacity:.45;}
+@keyframes skillArtReveal {0%{transform:scale(.5);opacity:0}25%{opacity:.7}100%{transform:scale(1.25);opacity:0}}
+@keyframes skillSpiralReveal {0%{transform:scale(.5) rotate(-45deg);opacity:0}25%{opacity:.7}100%{transform:scale(1.2) rotate(100deg);opacity:0}}
+@keyframes skillShockReveal {0%{transform:scale(.3);opacity:0}25%{opacity:.65}100%{transform:scale(1.5);opacity:0}}
+@keyframes skillRingReveal {0%{transform:scale(.4);opacity:0}20%{opacity:.65}100%{transform:scale(2);opacity:0}}
+@keyframes skillLaserReveal {0%{transform:scaleY(.2);opacity:0}20%{transform:scaleY(1);opacity:.7}100%{transform:scaleY(1);opacity:0}}
+.involute-bullet {background:radial-gradient(circle,#fff 5%,#9bffff 20%,#20dce8 40%,#00a6cc33 70%);box-shadow:0 0 12px #50efff;}
+body.lite-mode .skill-cast-art {animation:none;opacity:.4;}
+body.lite-mode .skill-cast-ring,body.lite-mode .skill-laser-column {display:none;}
+@media(prefers-reduced-motion:reduce){.skill-cast-art{animation:none;opacity:.4}.skill-cast-ring,.skill-laser-column{display:none}}

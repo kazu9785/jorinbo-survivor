@@ -1,19 +1,20 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>常林暴サバイバー</title>
-    <meta name="app-version" content="1.9.1">
-    <link rel="manifest" href="manifest.webmanifest?v=1.9.1">
-    <meta name="theme-color" content="#101827">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="常林暴">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.9.1">
-    <link rel="icon" type="image/png" href="icon-192.png?v=1.9.1">
-    <link rel="stylesheet" href="style.css?v=1.9.1">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@700&display=swap" rel="stylesheet">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<title>常林暴サバイバー</title>
+<meta content="1.9.2" name="app-version"/>
+<link href="manifest.webmanifest?v=1.9.2" rel="manifest"/>
+<meta content="#101827" name="theme-color"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="常林暴" name="apple-mobile-web-app-title"/>
+<link href="apple-touch-icon.png?v=1.9.2" rel="apple-touch-icon"/>
+<link href="icon-192.png?v=1.9.2" rel="icon" type="image/png"/>
+<link href="style.css?v=1.9.2" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;family=Roboto:wght@700&amp;display=swap" rel="stylesheet"/>
 <script>
 // An update token is shared by HTML, CSS and local JavaScript, including unchanged filenames.
 window.gameAssetUrl = function (path) {
@@ -29,338 +30,314 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 </script>
 </head>
 <body>
-
-    <div id="auth-screen">
-        <div class="auth-container">
-            <h1 class="game-title">常林暴<br>サバイバー</h1>
-            <h2 class="auth-title">PLAYER LOGIN</h2>
-            <p class="auth-help">名前とパスワードでログインしてください。<br>初めて遊ぶ人は「新規登録」を押します。</p>
-            <form id="auth-form" autocomplete="on">
-                <label class="auth-label" for="login-username">名前</label>
-                <input type="text" id="login-username" class="auth-input" maxlength="16" autocomplete="username" placeholder="2～16文字" required>
-                <label class="auth-label" for="login-password">パスワード</label>
-                <input type="password" id="login-password" class="auth-input" minlength="6" maxlength="64" autocomplete="current-password" placeholder="6文字以上" required>
-                <div class="auth-buttons">
-                    <button type="submit" id="btn-login" class="menu-btn battle-btn">ログイン</button>
-                    <button type="button" id="btn-register" class="menu-btn shop-btn">新規登録</button>
-                </div>
-            </form>
-            <div class="game-info-links">
-<button type="button" data-update-game>最新版に更新</button>
-<p class="update-inline-status" data-update-status role="status"></p>
-<button type="button" data-info-dialog="overview-guide">ゲーム概要</button>
-<button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide" hidden><span class="app-version">Ver.1.9.1</span> · 更新履歴</button>
+<div id="auth-screen">
+<div class="auth-container">
+<h1 class="game-title">常林暴<br/>サバイバー</h1>
+<h2 class="auth-title">PLAYER LOGIN</h2>
+<p class="auth-help">名前とパスワードでログインしてください。<br/>初めて遊ぶ人は「新規登録」を押します。</p>
+<form autocomplete="on" id="auth-form">
+<label class="auth-label" for="login-username">名前</label>
+<input autocomplete="username" class="auth-input" id="login-username" maxlength="16" placeholder="2～16文字" required="" type="text"/>
+<label class="auth-label" for="login-password">パスワード</label>
+<input autocomplete="current-password" class="auth-input" id="login-password" maxlength="64" minlength="6" placeholder="6文字以上" required="" type="password"/>
+<div class="auth-buttons">
+<button class="menu-btn battle-btn" id="btn-login" type="submit">ログイン</button>
+<button class="menu-btn shop-btn" id="btn-register" type="button">新規登録</button>
 </div>
-            <p id="auth-status" class="status-message" aria-live="polite"></p>
-            <button type="button" class="install-game-button">ホーム画面に追加</button>
-            <button id="btn-auth-ranking" class="ranking-open-btn">ランキングを見る</button>
-        </div>
-    </div>
-
-    <div id="home-screen" class="hidden">
-        <div class="home-container home-dashboard">
-            <header class="home-header">
-                <h1 class="game-title">常林暴<span>サバイバー</span></h1>
-                <div class="home-account-summary">
-                    <div class="login-user-card">ログイン中: <span id="current-user-name">-</span></div>
-                    <div class="coin-display">所持金: <span id="total-coins">0</span> G</div>
-                </div>
-            </header>
-            <div class="home-main">
-                <section class="home-character-panel" aria-label="選択中のキャラクター">
-                    <p class="home-section-label">選択中のキャラクター</p>
-                    <div class="selected-character"><img id="selected-character-image" src="player_balance.png" alt="冒険者"><span id="selected-character-name">冒険者（バランス型）</span></div>
-                    <p id="home-next-goal" class="pop-note"></p><button id="btn-equipment" class="menu-btn">装備ボックス</button><button id="btn-summon" class="menu-btn">召喚ガチャ（結晶 <span class="crystal-balance">0</span>）</button><button id="btn-training" class="menu-btn">キャラクター育成</button><button id="btn-character" class="menu-btn shop-btn">キャラクター選択</button>
-                </section>
-                <section class="home-play-panel" aria-label="モード選択とメニュー">
-                    <h2 class="home-section-label">⚔ 冒険</h2>
-                    <div class="home-mode-grid"><button id="btn-continue-run" class="menu-btn hidden">中断した挑戦を再開</button>
-                        <button id="btn-battle" class="menu-btn battle-btn">戦闘開始<small>WAVE1からWAVE100のクリアを目指す</small></button>
-                        <button id="btn-endless" class="menu-btn battle-btn hidden">エンドレスモードへ挑戦<small>WAVE101から開始</small></button>
-                    </div>
-                    <h2 class="home-section-label">✨ 育成・装備</h2>
-                    <div class="menu-grid home-tools-grid">
-                        <button id="btn-weapon" class="menu-btn shop-btn">武器強化</button>
-                        <button id="btn-player" class="menu-btn shop-btn">能力強化</button>
-                        <button id="btn-skill-shop" class="menu-btn shop-btn">スキル選択</button>
-                        
-                        
-                        
-                    </div>
-                </section>
-            </div>
-<section class="home-records"><h2 class="home-section-label">🏆 記録</h2><div class="menu-grid"><button id="btn-codex" class="menu-btn shop-btn">敵・ボス図鑑</button><button id="btn-last-result" class="menu-btn shop-btn">前回の戦闘結果</button><button id="btn-ranking" class="menu-btn ranking-btn">ランキング</button><button id="btn-achievements" class="menu-btn shop-btn" type="button">🏅 実績</button></div></section>
-            <footer class="home-footer">
+</form>
 <div class="game-info-links">
-<button type="button" data-update-game>最新版に更新</button>
-<p class="update-inline-status" data-update-status role="status"></p>
-<button type="button" data-info-dialog="overview-guide">ゲーム概要</button>
-<button type="button" data-info-dialog="play-guide">遊び方・用語ガイド</button>
-<button type="button" data-info-dialog="release-guide" hidden><span class="app-version">Ver.1.9.1</span> · 更新履歴</button>
+<button data-update-game="" type="button">最新版に更新</button>
+<p class="update-inline-status" data-update-status="" role="status"></p>
+<button data-info-dialog="overview-guide" type="button">ゲーム概要</button>
+<button data-info-dialog="play-guide" type="button">遊び方・用語ガイド</button>
+<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.2</span> · 更新履歴</button>
 </div>
-
-
-
+<p aria-live="polite" class="status-message" id="auth-status"></p>
+<button class="install-game-button" type="button">ホーム画面に追加</button>
+<button class="ranking-open-btn" id="btn-auth-ranking">ランキングを見る</button>
+</div>
+</div>
+<div class="hidden" id="home-screen">
+<div class="home-container home-dashboard">
+<header class="home-header">
+<h1 class="game-title">常林暴<span>サバイバー</span></h1>
+<div class="home-account-summary">
+<div class="login-user-card">ログイン中: <span id="current-user-name">-</span></div>
+<div class="coin-display">所持金: <span id="total-coins">0</span> G</div>
+</div>
+</header>
+<div class="home-main">
+<section aria-label="選択中のキャラクター" class="home-character-panel">
+<p class="home-section-label">選択中のキャラクター</p>
+<div class="selected-character"><img alt="冒険者" id="selected-character-image" src="player_balance.png"/><span id="selected-character-name">冒険者（バランス型）</span></div>
+<p class="pop-note" id="home-next-goal"></p><button class="menu-btn" id="btn-equipment">装備ボックス</button><button class="menu-btn" id="btn-summon">召喚ガチャ（結晶 <span class="crystal-balance">0</span>）</button><button class="menu-btn" id="btn-training">キャラクター育成</button><button class="menu-btn shop-btn" id="btn-character">キャラクター選択</button>
+</section>
+<section aria-label="モード選択とメニュー" class="home-play-panel">
+<h2 class="home-section-label">⚔ 冒険</h2>
+<div class="home-mode-grid"><button class="menu-btn hidden" id="btn-continue-run">中断した挑戦を再開</button>
+<button class="menu-btn battle-btn" id="btn-battle">戦闘開始<small>WAVE1からWAVE100のクリアを目指す</small></button>
+<button class="menu-btn battle-btn hidden" id="btn-endless">エンドレスモードへ挑戦<small>WAVE101から開始</small></button>
+</div>
+<h2 class="home-section-label">✨ 育成・装備</h2>
+<div class="menu-grid home-tools-grid">
+<button class="menu-btn shop-btn" id="btn-weapon">武器強化</button>
+<button class="menu-btn shop-btn" id="btn-player">能力強化</button>
+<button class="menu-btn shop-btn" id="btn-skill-shop">スキル選択</button>
+</div>
+</section>
+</div>
+<section class="home-records"><h2 class="home-section-label">🏆 記録</h2><div class="menu-grid"><button class="menu-btn shop-btn" id="btn-codex">敵・ボス図鑑</button><button class="menu-btn shop-btn" id="btn-last-result">前回の戦闘結果</button><button class="menu-btn ranking-btn" id="btn-ranking">ランキング</button><button class="menu-btn shop-btn" id="btn-achievements" type="button">🏅 実績</button></div></section>
+<footer class="home-footer">
+<div class="game-info-links">
+<button data-update-game="" type="button">最新版に更新</button>
+<p class="update-inline-status" data-update-status="" role="status"></p>
+<button data-info-dialog="overview-guide" type="button">ゲーム概要</button>
+<button data-info-dialog="play-guide" type="button">遊び方・用語ガイド</button>
+<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.2</span> · 更新履歴</button>
+</div>
 <details class="home-settings"><summary>⚙ 設定・アカウント</summary><div class="settings-grid"><details class="control-settings"><summary>スマホ操作設定</summary>
 <label>スキルボタンの位置 <select id="control-side"><option value="right">右</option><option value="left">左</option></select></label>
 <label>ボタンの大きさ <select id="control-size"><option value="normal">標準</option><option value="large">大きめ</option></select></label>
-<label>移動感度 <input id="control-sensitivity" type="range" min="0.5" max="2" step="0.1" value="1"><output id="control-sensitivity-value">100％</output></label>
+<label>移動感度 <input id="control-sensitivity" max="2" min="0.5" step="0.1" type="range" value="1"/><output id="control-sensitivity-value">100％</output></label>
 <small>この端末に保存されます。移動速度の上限は変わりません。</small></details>
-                <button type="button" class="install-game-button">ホーム画面に追加</button>
-                <label class="lite-option"><input id="lite-mode" type="checkbox"> 軽量モード <small>発光・数字・画面揺れを軽減</small></label>
-                <div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span><button id="btn-cloud-sync" type="button">同期</button></div>
-            <input type="text" id="username-input" class="name-input" readonly aria-label="ランキングに表示する名前">
-            <div class="account-actions">
-                <button id="btn-reset" class="reset-btn">データリセット</button>
-                <button id="btn-logout" class="logout-btn">ログアウト</button>
-                <button id="btn-delete-account" class="delete-account-btn">アカウント削除</button>
-            </div>
-</div></details>            </footer>
-            <div class="home-developer-area">
-            <button id="btn-developer" class="menu-btn hidden" type="button">開発者テスト</button>
-            <div id="developer-panel" class="hidden">
-                <h2>開発者テスト（ランキング対象外）</h2>
-                <label>開始WAVE <input id="dev-wave" type="number" min="1" max="999" value="1"></label>
-                <label>開始場面 <select id="dev-scene"><option value="wave">通常の敵から</option><option value="boss">ボス戦から</option></select></label>
-                <label>ボス <select id="dev-boss"><option value="random">ランダム</option><option value="fire">炎竜</option><option value="ice">氷竜</option><option value="forest">森竜</option><option value="dark">闇竜</option><option value="thunder">雷霆キリン</option><option value="sand">砂帝スコーピオン</option><option value="abyss">深海クラーケン</option><option value="moon">月影の死神</option><option value="phoenix">天翔フェニックス</option></select></label>
-                <label>ボス戦から開始する形態 <select id="dev-phase"><option value="1">第1形態</option><option value="2">第2形態</option></select></label>
-                <label>イベント <select id="dev-event"><option value="auto">通常の抽選</option><option value="none">なし</option><option value="coin">コインラッシュ</option><option value="rage">暴走WAVE</option><option value="treasure">宝物スライム</option><option value="barrage">弾幕地獄</option></select></label>
-                <p>指定したボス・イベントは次のWAVEにも適用。通常の戦闘開始で解除されます。</p>
-                <button id="btn-dev-start" class="menu-btn battle-btn" type="button">指定条件でテスト開始</button>
-            </div>
-            </div>
-        </div>
-    </div>
+<button class="install-game-button" type="button">ホーム画面に追加</button>
+<label class="lite-option"><input id="lite-mode" type="checkbox"/> 軽量モード <small>発光・数字・画面揺れを軽減</small></label>
+<div class="cloud-controls"><span id="cloud-status" role="status">クラウド準備中</span><button id="btn-cloud-sync" type="button">同期</button></div>
+<input aria-label="ランキングに表示する名前" class="name-input" id="username-input" readonly="" type="text"/>
+<div class="account-actions">
+<button class="reset-btn" id="btn-reset">データリセット</button>
+<button class="logout-btn" id="btn-logout">ログアウト</button>
+<button class="delete-account-btn" id="btn-delete-account">アカウント削除</button>
+</div>
+</div></details> </footer>
+<div class="home-developer-area">
+<button class="menu-btn hidden" id="btn-developer" type="button">開発者テスト</button>
+<div class="hidden" id="developer-panel">
+<h2>開発者テスト（ランキング対象外）</h2>
+<label>開始WAVE <input id="dev-wave" max="999" min="1" type="number" value="1"/></label>
+<label>開始場面 <select id="dev-scene"><option value="wave">通常の敵から</option><option value="boss">ボス戦から</option></select></label>
+<label>ボス <select id="dev-boss"><option value="random">ランダム</option><option value="fire">炎竜</option><option value="ice">氷竜</option><option value="forest">森竜</option><option value="dark">闇竜</option><option value="thunder">雷霆キリン</option><option value="sand">砂帝スコーピオン</option><option value="abyss">深海クラーケン</option><option value="moon">月影の死神</option><option value="phoenix">天翔フェニックス</option></select></label>
+<label>ボス戦から開始する形態 <select id="dev-phase"><option value="1">第1形態</option><option value="2">第2形態</option></select></label>
+<label>イベント <select id="dev-event"><option value="auto">通常の抽選</option><option value="none">なし</option><option value="coin">コインラッシュ</option><option value="rage">暴走WAVE</option><option value="treasure">宝物スライム</option><option value="barrage">弾幕地獄</option></select></label>
+<p>指定したボス・イベントは次のWAVEにも適用。通常の戦闘開始で解除されます。</p>
+<button class="menu-btn battle-btn" id="btn-dev-start" type="button">指定条件でテスト開始</button>
+</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="character-title" aria-modal="true" class="account-modal hidden" id="character-modal" role="dialog">
+<div class="character-panel persistent-panel"><header class="persistent-panel-header"><h2 id="character-title">キャラクター選択</h2><button aria-label="キャラクター選択を閉じる" class="back-btn persistent-close" id="btn-close-character">決定して戻る</button></header><div class="persistent-panel-content">
 
-    <div id="character-modal" class="account-modal hidden" role="dialog" aria-modal="true" aria-labelledby="character-title">
-        <div class="character-panel">
-            <h2 id="character-title">キャラクター選択</h2>
-            <p>好きなキャラを選ぼう！ 強化とスキルは共通です。</p>
-            <div id="character-cards"></div>
-            <button id="btn-close-character" class="back-btn">決定して戻る</button>
-        </div>
-    </div>
-    <div id="delete-account-modal" class="account-modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
-        <div class="account-modal-card">
-            <h2 id="delete-account-title">アカウント削除</h2>
-            <p class="delete-warning">
-                ログイン情報、ランキング、挑戦回数、コイン、強化データをすべて削除します。<br>
+<p>好きなキャラを選ぼう！ 強化とスキルは共通です。</p>
+<div id="character-cards"></div>
+
+</div></div>
+</div>
+<div aria-labelledby="delete-account-title" aria-modal="true" class="account-modal hidden" id="delete-account-modal" role="dialog">
+<div class="account-modal-card persistent-panel"><header class="persistent-panel-header"><h2 id="delete-account-title">アカウント削除</h2><button aria-label="アカウント削除を閉じる" class="back-btn persistent-close" id="btn-cancel-delete-account">キャンセル</button></header><div class="persistent-panel-content">
+
+<p class="delete-warning">
+                ログイン情報、ランキング、挑戦回数、コイン、強化データをすべて削除します。<br/>
                 この操作は取り消せません。
             </p>
-            <label class="auth-label" for="delete-account-password">確認のためパスワードを入力</label>
-            <input type="password" id="delete-account-password" class="auth-input" maxlength="64" autocomplete="current-password" placeholder="現在のパスワード">
-            <p id="delete-account-status" class="status-message" aria-live="polite"></p>
-            <div class="delete-account-actions">
-                <button id="btn-cancel-delete-account" class="back-btn">キャンセル</button>
-                <button id="btn-confirm-delete-account" class="delete-confirm-btn">完全に削除する</button>
-            </div>
-        </div>
-    </div>
+<label class="auth-label" for="delete-account-password">確認のためパスワードを入力</label>
+<input autocomplete="current-password" class="auth-input" id="delete-account-password" maxlength="64" placeholder="現在のパスワード" type="password"/>
+<p aria-live="polite" class="status-message" id="delete-account-status"></p>
+<div class="delete-account-actions">
 
-    <div id="ranking-screen" class="hidden">
-        <div class="ranking-container">
-            <h2 class="ranking-title">SHARED RANKING</h2>
-            <p class="ranking-help">全プレイヤーの共有ランキング</p>
-            <div class="ranking-filters"><label>モード<select id="ranking-mode-filter"><option value="all">全モード</option><option value="normal">通常</option><option value="endless">エンドレス</option></select></label><label>キャラ<select id="ranking-character-filter"><option value="all">全キャラ</option><option value="rookie">見習い</option><option value="balance">冒険者</option><option value="power">魔導士</option><option value="speed">レンジャー</option><option value="tank">重装騎士</option></select></label></div><p class="pop-note">冒険を終えると記録を更新。モード・キャラで絞り込めます。</p><div class="ranking-table-wrap">
-                <table class="ranking-table">
-                    <thead>
-                        <tr>
-                            <th>順位</th>
-                            <th>名前</th>
-                            <th>最高WAVE</th>
-                            <th>直近WAVE</th>
-                            <th>挑戦回数</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ranking-body"></tbody>
-                </table>
-            </div>
-            <p id="ranking-status" class="status-message" aria-live="polite"></p>
-            <button id="btn-back-ranking" class="back-btn">戻る</button>
-        </div>
-    </div>
+<button class="delete-confirm-btn" id="btn-confirm-delete-account">完全に削除する</button>
+</div>
+</div></div>
+</div>
+<div class="hidden" id="ranking-screen">
+<div class="ranking-container persistent-panel"><header class="persistent-panel-header"><h2 class="ranking-title">SHARED RANKING</h2><button aria-label="SHARED RANKINGを閉じる" class="back-btn persistent-close" id="btn-back-ranking">✕ 閉じる</button></header><div class="persistent-panel-content">
 
-    <div id="skill-shop-screen" class="hidden">
-        <div class="shop-container" style="width: 700px;">
-            <div class="upgrade-scene upgrade-scene-skill" role="img" aria-label="魔法の祭壇のイラスト"></div>
-            <h2 style="color: #ff9f43;">スキル選択・強化</h2>
-            <div class="coin-display-mini">所持金: <span id="skill-shop-coins">0</span> G</div>
-            
-            <div class="skill-info-text">装備中: <span id="current-equip-name" style="color:#00ffff;">なし</span></div>
+<p class="ranking-help">全プレイヤーの共有ランキング</p>
+<div class="ranking-filters"><label>モード<select id="ranking-mode-filter"><option value="all">全モード</option><option value="normal">通常</option><option value="endless">エンドレス</option></select></label><label>キャラ<select id="ranking-character-filter"><option value="all">全キャラ</option><option value="rookie">見習い</option><option value="balance">冒険者</option><option value="power">魔導士</option><option value="speed">レンジャー</option><option value="tank">重装騎士</option></select></label></div><p class="pop-note">冒険を終えると記録を更新。モード・キャラで絞り込めます。</p><div class="ranking-table-wrap">
+<table class="ranking-table">
+<thead>
+<tr>
+<th>順位</th>
+<th>名前</th>
+<th>最高WAVE</th>
+<th>直近WAVE</th>
+<th>挑戦回数</th>
+</tr>
+</thead>
+<tbody id="ranking-body"></tbody>
+</table>
+</div>
+<p aria-live="polite" class="status-message" id="ranking-status"></p>
 
-            <div id="skill-items-container" class="shop-items-grid"></div>
+</div></div>
+</div>
+<div class="hidden" id="skill-shop-screen">
+<div class="shop-container persistent-panel" style="width: 700px;"><header class="persistent-panel-header"><h2 style="color: #ff9f43;">スキル選択・強化</h2><button aria-label="スキル選択・強化を閉じる" class="back-btn persistent-close" id="btn-back-skill">✕ 閉じる</button></header><div class="persistent-panel-content">
+<div aria-label="魔法の祭壇のイラスト" class="upgrade-scene upgrade-scene-skill" role="img"></div>
 
-            <button id="btn-back-skill" class="back-btn">戻る</button>
-        </div>
-    </div>
+<div class="coin-display-mini">所持金: <span id="skill-shop-coins">0</span> G</div>
+<div class="skill-info-text">装備中: <span id="current-equip-name" style="color:#00ffff;">なし</span></div>
+<div class="shop-items-grid" id="skill-items-container"></div>
 
-    <div id="weapon-shop-screen" class="hidden">
-        <div class="shop-container">
-            <div class="upgrade-scene upgrade-scene-weapon" role="img" aria-label="武器工房のイラスト"></div>
-            <h2 id="weapon-shop-title">武器強化</h2>
-            <div class="coin-display-mini">所持金: <span id="weapon-shop-coins">0</span> G</div>
-            <div id="weapon-shop-items" class="shop-items-grid"></div>
-            <button id="btn-back-weapon" class="back-btn">戻る</button>
-        </div>
-    </div>
+</div></div>
+</div>
+<div class="hidden" id="weapon-shop-screen">
+<div class="shop-container persistent-panel"><header class="persistent-panel-header"><h2 id="weapon-shop-title">武器強化</h2><button aria-label="武器強化を閉じる" class="back-btn persistent-close" id="btn-back-weapon">✕ 閉じる</button></header><div class="persistent-panel-content">
+<div aria-label="武器工房のイラスト" class="upgrade-scene upgrade-scene-weapon" role="img"></div>
 
-    <div id="player-shop-screen" class="hidden">
-        <div class="shop-container">
-            <div class="upgrade-scene upgrade-scene-ability" role="img" aria-label="鍛錬場のイラスト"></div>
-            <h2 id="player-shop-title">能力強化</h2>
-            <div class="coin-display-mini">所持金: <span id="player-shop-coins">0</span> G</div>
-            <div id="player-shop-items" class="shop-items-grid"></div>
-            <button id="btn-back-player" class="back-btn">戻る</button>
-        </div>
-    </div>
+<div class="coin-display-mini">所持金: <span id="weapon-shop-coins">0</span> G</div>
+<div class="shop-items-grid" id="weapon-shop-items"></div>
 
-    <div id="reward-screen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
-        <div class="reward-panel">
-            <p>WAVE <span id="reward-wave">1</span> CLEAR!</p>
-            <h2 id="reward-title">強化を1つ選択</h2>
-            <p>1つ選んで無料強化！ 今回の冒険だけ有効。</p>
-            <div id="reward-cards"></div>
-            <p>選んだらショップで次の準備！</p>
-        </div>
-    </div>
-    <div id="wave-shop-screen" class="hidden">
-        <div class="shop-container">
-            <h2 style="color:#00ff00;">WAVE CLEAR!</h2>
-            <p id="run-upgrade-summary">今回の挑戦の強化：なし</p>
-            <p>次は WAVE <span id="next-wave-num">2</span></p>
-            <div class="coin-display-mini">所持金: <span id="wave-shop-coins">0</span> G</div>
-            <div id="wave-shop-items" class="shop-items-grid"></div>
-            <button id="btn-suspend-run" class="menu-btn">中断保存してホームへ</button>
-            <p>同じ端末・ブラウザ・アカウントで再開できます。</p>
-            <button id="btn-next-wave" class="menu-btn battle-btn">次へ進む </button>
-        </div>
-    </div>
+</div></div>
+</div>
+<div class="hidden" id="player-shop-screen">
+<div class="shop-container persistent-panel"><header class="persistent-panel-header"><h2 id="player-shop-title">能力強化</h2><button aria-label="能力強化を閉じる" class="back-btn persistent-close" id="btn-back-player">✕ 閉じる</button></header><div class="persistent-panel-content">
+<div aria-label="鍛錬場のイラスト" class="upgrade-scene upgrade-scene-ability" role="img"></div>
 
-    <div id="game-screen" class="hidden">
-        <div class="info-bar">
-            <button id="btn-pause" type="button">一時停止</button>
-            <div class="hud-item hp-box">HP: <span id="hp-display">10/10</span></div>
-            <div class="hud-item">WAVE: <span id="wave-display">1</span></div>
-            <div class="hud-item timer-box">TIME: <span id="timer">60</span></div>
-            <div class="hud-item">結晶: <span class="crystal-balance">0</span></div>
-            <div class="hud-item">COIN: <span id="game-coins">0</span></div>
-        </div>
+<div class="coin-display-mini">所持金: <span id="player-shop-coins">0</span> G</div>
+<div class="shop-items-grid" id="player-shop-items"></div>
 
-        <div id="boss-hud" class="hidden">
-            <div class="boss-name">WARNING: GIANT BOSS</div>
-            <div class="hp-bar-frame"><div id="boss-hp-bar"></div></div>
-            <div id="boss-attack-name" class="boss-attack-name">攻撃準備中...</div>
-        </div>
+</div></div>
+</div>
+<div aria-labelledby="reward-title" aria-modal="true" class="hidden" id="reward-screen" role="dialog">
+<div class="reward-panel">
+<p>WAVE <span id="reward-wave">1</span> CLEAR!</p>
+<h2 id="reward-title">強化を1つ選択</h2>
+<p>1つ選んで無料強化！ 今回の冒険だけ有効。</p>
+<div id="reward-cards"></div>
+<p>選んだらショップで次の準備！</p>
+</div>
+</div>
+<div class="hidden" id="wave-shop-screen">
+<div class="shop-container">
+<h2 style="color:#00ff00;">WAVE CLEAR!</h2>
+<p id="run-upgrade-summary">今回の挑戦の強化：なし</p>
+<p>次は WAVE <span id="next-wave-num">2</span></p>
+<div class="coin-display-mini">所持金: <span id="wave-shop-coins">0</span> G</div>
+<div class="shop-items-grid" id="wave-shop-items"></div>
+<button class="menu-btn" id="btn-suspend-run">中断保存してホームへ</button>
+<p>同じ端末・ブラウザ・アカウントで再開できます。</p>
+<button class="menu-btn battle-btn" id="btn-next-wave">次へ進む </button>
+</div>
+</div>
+<div class="hidden" id="game-screen">
+<div class="info-bar">
+<button id="btn-pause" type="button">一時停止</button>
+<div class="hud-item hp-box">HP: <span id="hp-display">10/10</span></div>
+<div class="hud-item">WAVE: <span id="wave-display">1</span></div>
+<div class="hud-item timer-box">TIME: <span id="timer">60</span></div>
+<div class="hud-item">結晶: <span class="crystal-balance">0</span></div>
+<div class="hud-item">COIN: <span id="game-coins">0</span></div>
+</div>
+<div class="hidden" id="boss-hud">
+<div class="boss-name">WARNING: GIANT BOSS</div>
+<div class="hp-bar-frame"><div id="boss-hp-bar"></div></div>
+<div class="boss-attack-name" id="boss-attack-name">攻撃準備中...</div>
+</div>
+<div id="bomb-hud">
+<button class="hidden" id="btn-dev-stop" type="button">テスト終了</button>
+<div class="bomb-label">SKILL [右クリック]</div>
+<div class="bomb-gauge-frame"><div id="bomb-gauge-bar"></div></div>
+<div id="game-skill-name" style="font-size:10px; color:#aaa; margin-top:5px;">SKILL</div>
+</div>
+<div aria-live="polite" class="hidden" id="wave-event-hud"></div>
+<div id="stage-route-hud" role="status"></div><div id="game-area"><div hidden="" id="tutorial-hint"><span id="tutorial-message"></span><button id="tutorial-skip" type="button">案内を終了</button></div>
+<div class="hud-item equipment-durability" id="equipment-durability-hud">装備なし</div>
+<div aria-live="off" id="training-hud"></div>
+<div id="world-layer"><div aria-hidden="true" id="world-map"></div><div id="player"></div></div>
+<div id="world-hud"><span id="stage-location"></span><div aria-label="現在地（白）とボス（赤）" id="world-minimap"><i id="map-viewport"></i><i id="map-player"></i><i hidden="" id="map-boss"></i></div></div>
+<div aria-live="polite" id="world-banner"><strong id="world-banner-title"></strong><span id="world-banner-subtitle"></span></div>
+</div>
+<div id="touch-control-bar">
+<span>画面をなぞって移動<br/>攻撃は自動</span>
+<button disabled="" id="btn-touch-skill" type="button">スキル発動</button>
+</div>
+<div class="hidden" id="wave-modal">
+<h2 id="wave-title">WAVE 1</h2><p id="wave-stage-name"></p>
+<h3 id="wave-event-title"></h3>
+<p id="wave-event-description">生き残れ...</p>
+</div>
+</div>
+<div aria-labelledby="pause-message" aria-modal="true" class="feature-modal hidden" id="pause-modal" role="dialog">
+<div class="feature-panel"><h2 id="pause-message">一時停止中</h2><p>ゲームは止まっています。ゆっくり休んでね。</p><button class="menu-btn battle-btn" id="btn-resume">3秒後に再開</button><p>PC：Escキーでも停止・再開</p></div>
+</div>
+<div aria-labelledby="codex-title" aria-modal="true" class="feature-modal hidden" id="codex-modal" role="dialog">
+<div class="feature-panel codex-panel persistent-panel"><header class="persistent-panel-header"><h2 id="codex-title">敵・ボス図鑑</h2><button aria-label="敵・ボス図鑑を閉じる" class="persistent-close" id="btn-close-codex">✕ 閉じる</button></header><div class="persistent-panel-content"><p id="codex-progress"></p><div id="codex-list"></div></div></div>
+</div>
+<div aria-labelledby="last-result-title" aria-modal="true" class="feature-modal hidden" id="last-result-modal" role="dialog">
+<div class="feature-panel persistent-panel"><header class="persistent-panel-header"><h2 id="last-result-title">前回の戦闘結果</h2><button aria-label="前回の戦闘結果を閉じる" class="menu-btn persistent-close" id="btn-close-result">✕ 閉じる</button></header><div class="persistent-panel-content"><p class="run-details" id="last-result-content"></p></div></div>
+</div>
+<div class="hidden" id="game-over-screen">
+<h1 class="dead-title">YOU DIED</h1>
+<div class="result-box">
+<p>到達 WAVE: <span id="result-wave"></span></p>
+<p>獲得コイン: <span class="gold-text" id="result-coins"></span> G</p>
+</div>
+<p class="run-details" id="result-details"></p>
+<div class="menu-grid">
+<button class="menu-btn battle-btn" id="btn-retry">もう一度</button>
+<button class="menu-btn back-btn" id="btn-return-home">ホームへ</button>
+</div>
+</div>
+<div class="hidden" id="game-clear-screen">
+<h1 class="clear-title">GAME CLEAR!</h1>
+<div class="result-box">
+<p>WAVE100クリア！ おめでとうございます！</p>
+<p>エンドレスモード解放！</p>
+<p>約4秒後にホームへ戻ります。</p>
+<p>獲得コイン: <span class="gold-text" id="clear-coins"></span> G</p>
+</div>
+<p class="run-details" id="clear-details"></p>
+<div class="menu-grid">
+<button class="menu-btn back-btn" id="btn-clear-home">ホームへ</button>
+</div>
+</div>
+<dialog aria-labelledby="training-title" class="persistent-panel" id="training-dialog"><header class="persistent-panel-header"><h2 id="training-title">キャラクター育成</h2><form method="dialog"><button aria-label="キャラクター育成を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
-        <div id="bomb-hud">
-            <button id="btn-dev-stop" type="button" class="hidden">テスト終了</button>
-            <div class="bomb-label">SKILL [右クリック]</div>
-            <div class="bomb-gauge-frame"><div id="bomb-gauge-bar"></div></div>
-            <div id="game-skill-name" style="font-size:10px; color:#aaa; margin-top:5px;">SKILL</div>
-        </div>
-        
-        <div id="wave-event-hud" class="hidden" aria-live="polite"></div>
-        <div id="stage-route-hud" role="status"></div><div id="game-area"><div id="tutorial-hint" hidden><span id="tutorial-message"></span><button type="button" id="tutorial-skip">案内を終了</button></div>
-            <div class="hud-item equipment-durability" id="equipment-durability-hud">装備なし</div>
-            <div id="training-hud" aria-live="off"></div>
-            <div id="world-layer"><div id="world-map" aria-hidden="true"></div><div id="player"></div></div>
-            <div id="world-hud"><span id="stage-location"></span><div id="world-minimap" aria-label="現在地（白）とボス（赤）"><i id="map-viewport"></i><i id="map-player"></i><i id="map-boss" hidden></i></div></div>
-            <div id="world-banner" aria-live="polite"><strong id="world-banner-title"></strong><span id="world-banner-subtitle"></span></div>
-        </div>
+<label>キャラクター <select id="training-character"></select></label>
+<div id="training-summary"></div>
+<p>条件達成＋コインで育成！ 効果が出るのは選んだ1ルートです。</p>
+<p>ルート変更は次の冒険から。切り替えは無料！</p>
+<div id="training-cards"></div>
+<details><summary>📖 育成のルール</summary><p>最高WAVEまたは使用回数のどちらかを達成し、コインを払うと育成できます。購入済みレベルは残ります。中断再開は保存時のルートとレベルを使います。開発テストは育成記録の対象外です。</p></details>
 
-        <div id="touch-control-bar">
-            <span>画面をなぞって移動<br>攻撃は自動</span>
-            <button id="btn-touch-skill" type="button" disabled>スキル発動</button>
-        </div>
-        <div id="wave-modal" class="hidden">
-            <h2 id="wave-title">WAVE 1</h2><p id="wave-stage-name"></p>
-            <h3 id="wave-event-title"></h3>
-            <p id="wave-event-description">生き残れ...</p>
-        </div>
-    </div>
+</div></dialog>
+<dialog aria-labelledby="adaptation-wave" id="adaptation-dialog">
+<h2 id="adaptation-wave">WAVEの補助を選択</h2>
+<button id="adaptation-attack" type="button">攻撃</button>
+<button id="adaptation-defense" type="button">防御</button>
+</dialog>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+<script data-game-src="firebase-config.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="audio.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="presentation.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="stages.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="equipment.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="training.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="adventure.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="forge.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="heroes.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="skill-effects.js?v=1.9.2" type="application/json"></script>
+<script data-game-src="script.js?v=1.9.2" type="application/json"></script>
+<dialog aria-labelledby="install-guide-title" class="persistent-panel" id="install-guide"><header class="persistent-panel-header"><h2 id="install-guide-title">ホーム画面に追加</h2><form method="dialog"><button aria-label="ホーム画面に追加を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
-    <div id="pause-modal" class="feature-modal hidden" role="dialog" aria-modal="true" aria-labelledby="pause-message">
-        <div class="feature-panel"><h2 id="pause-message">一時停止中</h2><p>ゲームは止まっています。ゆっくり休んでね。</p><button id="btn-resume" class="menu-btn battle-btn">3秒後に再開</button><p>PC：Escキーでも停止・再開</p></div>
-    </div>
-    <div id="codex-modal" class="feature-modal hidden" role="dialog" aria-modal="true" aria-labelledby="codex-title">
-        <div class="feature-panel codex-panel"><div class="feature-heading"><h2 id="codex-title">敵・ボス図鑑</h2><button id="btn-close-codex">閉じる</button></div><p id="codex-progress"></p><div id="codex-list"></div></div>
-    </div>
-    <div id="last-result-modal" class="feature-modal hidden" role="dialog" aria-modal="true" aria-labelledby="last-result-title">
-        <div class="feature-panel"><h2 id="last-result-title">前回の戦闘結果</h2><p id="last-result-content" class="run-details"></p><button id="btn-close-result" class="menu-btn">閉じる</button></div>
-    </div>
-    <div id="game-over-screen" class="hidden">
-        <h1 class="dead-title">YOU DIED</h1>
-        <div class="result-box">
-            <p>到達 WAVE: <span id="result-wave"></span></p>
-            <p>獲得コイン: <span id="result-coins" class="gold-text"></span> G</p>
-        </div>
-        <p id="result-details" class="run-details"></p>
-        <div class="menu-grid">
-            <button id="btn-retry" class="menu-btn battle-btn">もう一度</button>
-            <button id="btn-return-home" class="menu-btn back-btn">ホームへ</button>
-        </div>
-    </div>
+<p id="install-guide-text"></p>
+<p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
 
-    <div id="game-clear-screen" class="hidden">
-        <h1 class="clear-title">GAME CLEAR!</h1>
-        <div class="result-box">
-            <p>WAVE100クリア！ おめでとうございます！</p>
-            <p>エンドレスモード解放！</p>
-            <p>約4秒後にホームへ戻ります。</p>
-            <p>獲得コイン: <span id="clear-coins" class="gold-text"></span> G</p>
-        </div>
-        <p id="clear-details" class="run-details"></p>
-        <div class="menu-grid">
-            <button id="btn-clear-home" class="menu-btn back-btn">ホームへ</button>
-        </div>
-    </div>
+</div></dialog>
+<script data-game-src="install.js?v=1.9.2" type="application/json"></script>
+<dialog aria-labelledby="play-guide-title" class="game-info-dialog persistent-panel" id="play-guide"><header class="persistent-panel-header"><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button aria-label="遊び方・用語ガイドを閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
-    <dialog id="training-dialog" aria-labelledby="training-title">
-        <h2 id="training-title">キャラクター育成</h2>
-        <label>キャラクター <select id="training-character"></select></label>
-        <div id="training-summary"></div>
-        <p>条件達成＋コインで育成！ 効果が出るのは選んだ1ルートです。</p>
-        <p>ルート変更は次の冒険から。切り替えは無料！</p>
-        <div id="training-cards"></div>
-        <details><summary>📖 育成のルール</summary><p>最高WAVEまたは使用回数のどちらかを達成し、コインを払うと育成できます。購入済みレベルは残ります。中断再開は保存時のルートとレベルを使います。開発テストは育成記録の対象外です。</p></details>
-        <form method="dialog"><button type="submit">閉じる</button></form>
-    </dialog>
-    <dialog id="adaptation-dialog" aria-labelledby="adaptation-wave">
-        <h2 id="adaptation-wave">WAVEの補助を選択</h2>
-        <button id="adaptation-attack" type="button">攻撃</button>
-        <button id="adaptation-defense" type="button">防御</button>
-    </dialog>
-    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
-    <script type="application/json" data-game-src="firebase-config.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="audio.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="presentation.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="stages.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="equipment.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="training.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="adventure.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="forge.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="heroes.js?v=1.9.1"></script>
-    <script type="application/json" data-game-src="script.js?v=1.9.1"></script>
-    <dialog id="install-guide" aria-labelledby="install-guide-title">
-        <h2 id="install-guide-title">ホーム画面に追加</h2>
-        <p id="install-guide-text"></p>
-        <p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
-        <form method="dialog"><button type="submit">閉じる</button></form>
-    </dialog>
-    <script type="application/json" data-game-src="install.js?v=1.9.1"></script>
-<dialog id="play-guide" class="game-info-dialog" aria-labelledby="play-guide-title">
-    <header><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button type="submit" aria-label="遊び方を閉じる">閉じる</button></form></header>
-    <p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE100クリアを目指そう！</p>
-    <div class="pop-guide-grid">
-<article class="pop-card"><span class="pop-icon">🎯</span><h3>攻撃はおまかせ！</h3><p>敵や弾をかわして<br>ボスを倒そう</p></article>
-<article class="pop-card"><span class="pop-icon">🖱️</span><h3>PCで遊ぶ</h3><p>マウスで移動<br>右クリックでスキル</p></article>
-<article class="pop-card"><span class="pop-icon">📱</span><h3>スマホで遊ぶ</h3><p>ドラッグで移動<br>スキルボタンをタップ</p></article>
-<article class="pop-card"><span class="pop-icon">✨</span><h3>クリアしたら強化</h3><p>3択から1つ選ぶ！<br>ショップで次の準備</p></article>
-<article class="pop-card"><span class="pop-icon">💎</span><h3>結晶で装備召喚</h3><p>1回10個・10連100個<br>装備でさらに強く！</p></article>
-<article class="pop-card"><span class="pop-icon">🏆</span><h3>目指せ100WAVE</h3><p>クリアでエンドレス解放<br>101WAVEから挑戦！</p></article>
+<p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE100クリアを目指そう！</p>
+<div class="pop-guide-grid">
+<article class="pop-card"><span class="pop-icon">🎯</span><h3>攻撃はおまかせ！</h3><p>敵や弾をかわして<br/>ボスを倒そう</p></article>
+<article class="pop-card"><span class="pop-icon">🖱️</span><h3>PCで遊ぶ</h3><p>マウスで移動<br/>右クリックでスキル</p></article>
+<article class="pop-card"><span class="pop-icon">📱</span><h3>スマホで遊ぶ</h3><p>ドラッグで移動<br/>スキルボタンをタップ</p></article>
+<article class="pop-card"><span class="pop-icon">✨</span><h3>クリアしたら強化</h3><p>3択から1つ選ぶ！<br/>ショップで次の準備</p></article>
+<article class="pop-card"><span class="pop-icon">💎</span><h3>結晶で装備召喚</h3><p>1回10個・10連100個<br/>装備でさらに強く！</p></article>
+<article class="pop-card"><span class="pop-icon">🏆</span><h3>目指せ100WAVE</h3><p>クリアでエンドレス解放<br/>101WAVEから挑戦！</p></article>
 </div><p class="pop-note">❤️ HPゼロ・時間切れに注意！　⏸ 一時停止でひと休み</p>
 <h3>📖 気になるところをタップ</h3><details id="help-equipment"><summary>🛡 装備・修理・保護のルール</summary><p>☆ロックでお気に入りを保護。売却と合成素材から除外されます。詳細画面で売却対象に選択した品はまとめて売却でき、ページ外の選択も対象です。「比較・詳細」で装備の能力差を確認できます。</p><p>ゴールド修理は不足耐久1につきN1G・R2G・SR4G・SSR8G・UR16Gで全回復。ロック中も修理可能です。合成修理は従来どおり素材だけで行えます。</p><p>WAVE開始時に装備の耐久を1消費。そのWAVE中は効果が続き、耐久0の装備は次のWAVEから効果がなくなります。最大耐久はN60・R90・SR130・SSR180・UR250。破損しても装備は消えません。</p><p>合成は同じキャラ・部位・グレード・シリーズの装備が対象。残す装備の耐久＋素材の残り耐久を、最大耐久まで回復します。超過分は切り捨て。特殊スキルは残す装備のものを維持し、素材は消えます。</p><p>装備中・中断データで使用中の品は、売却や合成素材にできません。売却はゴールドへ換金（耐久が少ないと価格も下がります）。装備変更は新しい挑戦から適用。中断再開は保存時の装備を使用します。</p><p>同じ特殊スキルも重複して付き、効果は加算。全体上限は確率画面を確認してください。ボックス上限は500個で、空きが足りないと召喚できません。</p><p>保護の対象は、装備中・ロック中・保存セットに登録中・中断データで使用中の装備です。売却・分解・合成素材・特殊スキル再抽選をするには、その登録を外してください。</p><p>能力比較は装備とセット効果、装備側の上限を反映します。キャラ育成やゲーム側の速度上限は含みません。ptは％補正の差です。数値は小数部分を表示しませんが、内部では端数も計算します。「表示上の差なし」でも小さな変化がある場合があります。</p></details>
 <details><summary>🧩 装備セット・おまかせ装備</summary><p>キャラごとに装備4部位と育成ルートを3セット保存できます。保存中の装備は保護されます。セットを適用するには、登録した装備がそろい、耐久が残っている必要があります。</p><p>同シリーズは2・3・4部位で効果が強くなります。グレードが違っても有効ですが、破損品は数えません。表示される数値は各段階の合計です。</p><p>おまかせ装備は特殊スキルとセット効果を含めた簡易評価です。最強の組み合わせを保証するものではありません。結晶集めは星詠セットを優先し、候補がなければ移動速度と火力を評価します。</p></details>
@@ -374,55 +351,55 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <details><summary>💎 敵の段階と報酬</summary><p>野生種→猛威種→凶禍種→災厄種→終焉種の順で強くなります。WAVE1・11・26・46・71から順に登場。低い段階も出現します。戦闘中はオーラが目印です。</p><div class="guide-table-scroll"><table><thead><tr><th>段階</th><th>基本G</th><th>通常の結晶</th><th>レアの結晶</th></tr></thead><tbody><tr><td>野生種</td><td>2</td><td>8％ / 1個</td><td>35％ / 3個</td></tr><tr><td>猛威種</td><td>4</td><td>12％ / 1個</td><td>45％ / 4個</td></tr><tr><td>凶禍種</td><td>7</td><td>18％ / 2個</td><td>60％ / 6個</td></tr><tr><td>災厄種</td><td>11</td><td>25％ / 2個</td><td>75％ / 8個</td></tr><tr><td>終焉種</td><td>16</td><td>32％ / 3個</td><td>90％ / 12個</td></tr></tbody></table></div><p>通常敵の枠ごとに2％で、その段階のレア個体を抽選します。レアの基本Gは同段階の2倍。基本Gにはコイン調整（平均70％）・育成・イベント・ルート補正が適用されます。結晶の確率にも装備・ルート補正が加わります。</p><p>ボスは別枠で結晶45％・8個。黄金スライムは猛威種の特別枠で、結晶65％・3個と大量コインを維持します。開発テストは結晶ドロップ対象外です。</p></details>
 <details><summary>🆕 装備・実績・分類別ランキング</summary><p>装備は比較して選び、残したい品は☆ロック！ 不要品を選択してまとめて売却できます。ゴールド修理と合成修理を使い分けよう。</p><p>出撃前に未装備・破損・耐久5以下をお知らせ。育成画面では次の購入条件までの残りを表示します。</p><p>ホームの実績から条件達成済みの結晶報酬を受け取れます。各報酬は1回限り。全リセットすると受取履歴もリセットされます。</p><p>ランキングはモードとキャラで絞り込み可能。分類別はこの機能の導入後から記録します。旧記録は全体ランキングに残ります。</p></details>
 <details><summary>🎮 ゲームの流れ・マップ</summary>
-        <ol><li>名前とパスワードで登録・ログインする。</li><li>ホームでキャラ・スキルを選んで、通常モードを開始。</li><li>攻撃は自動。移動で敵や弾を避けよう。</li><li>通常の敵を倒すとボスが登場。HPが半分になると第2形態に変化。</li><li>ボス撃破後は3択強化を選び、ショップで準備して次のWAVEへ。</li></ol>
-        <p>広いマップを移動するとカメラが追従します。外周の境界線より先には進めません。右上のミニマップは白が自分、赤がボスです。PCはマウスの方向へ移動し、マウスをキャラに合わせるかゲーム画面の外へ出すと停止します。スマホは画面をなぞって移動します。</p>
-        <p>新ボスはWAVE15・30・45・60・75で初登場。WAVE100は覚醒フェニックスとの最終戦です。敵は分割出現し、残数にはこれから来る増援も含まれます。</p>
-        <p>HPが0になるか時間切れでゲームオーバー。通常WAVE100をクリアするとホームへ戻り、WAVE101から始まるエンドレスモードが解放されます。</p>
-    </details>
-    <details><summary>PC・スマホの操作と一時停止</summary>
-        <dl><dt>PCの移動</dt><dd>ゲーム画面内でマウスを動かすとキャラが追いかけます。</dd><dt>PCのスキル</dt><dd>マウスの右クリック。スペースキーでは発動しません。</dd><dt>スマホの移動</dt><dd>ゲーム画面を指でドラッグ。指を動かした方向へ移動します。</dd><dt>スマホのスキル</dt><dd>「スキル発動」ボタンをタップ。ホームでボタンの左右・大きさ・移動感度を変更できます。</dd><dt>一時停止</dt><dd>一時停止ボタン、またはPCのEscキー。別画面へ移った場合も自動停止します。再開操作後、3秒のカウントダウンで再開します。</dd></dl>
-    </details>
-    <details><summary>コイン・強化・スキルの違い</summary>
-        <dl><dt>コイン（G）</dt><dd>敵を倒すと獲得。武器・能力・スキル・キャラ育成に使います。</dd><dt>武器・能力・スキルの強化</dt><dd>通常セーブに残る強化です。次の挑戦でも使えます。</dd><dt>WAVEクリア時の3択強化</dt><dd>今回の挑戦だけ有効。新しい挑戦ではリセットされ、中断再開では引き継ぎます。</dd><dt>スキルの待ち時間</dt><dd>通常は発動後30秒。魔導士の速詠型で短縮できます。ゲージやボタンの残り秒数が目安です。</dd></dl>
-    </details>
-    <details><summary>キャラ別育成：解放条件と切り替え</summary>
-        <p>ホームの「キャラクター育成」から育成します。各キャラ3ルート、各ルート最大Lv.5。同時に発動するのは選択した1ルートです。</p>
-        <p><strong>そのキャラの最高到達WAVE、または使用回数</strong>のどちらかを満たし、コインを支払うとレベルアップできます。自動では上がらないので育成ボタンを押してください。</p>
-        <div class="guide-table-scroll"><table><caption>各レベルの購入条件</caption><thead><tr><th>Lv.</th><th>到達WAVE</th><th>または使用</th><th>コイン</th></tr></thead><tbody>
-        <tr><td>1</td><td>3以上</td><td>2回以上</td><td>100G</td></tr><tr><td>2</td><td>6以上</td><td>5回以上</td><td>300G</td></tr><tr><td>3</td><td>10以上</td><td>10回以上</td><td>700G</td></tr><tr><td>4</td><td>15以上</td><td>20回以上</td><td>1,500G</td></tr><tr><td>5</td><td>20以上</td><td>35回以上</td><td>3,000G</td></tr>
-        </tbody></table></div>
-        <p>ルートの切り替えは無料で購入済みレベルは残ります。変更は次の新しい挑戦から適用され、中断再開は保存時のルート・レベルを使います。キャラ別記録は育成機能の導入後から集計。中断再開では使用回数は増えません。</p>
-    </details>
-    <details><summary>中断保存・クラウド同期・データリセット</summary>
-        <p>WAVEクリア後に3択強化を選び、ショップで<strong>「中断保存してホームへ」</strong>を押すと次のWAVEから再開できます。</p>
-        <p>中断データは<strong>同じ端末・ブラウザ・アカウント</strong>で使います。戦闘中の中断保存には対応していません。再開時に中断データは消費されるため、再開後に画面を閉じても元の地点へは戻れません。次のWAVE間で再び保存してください。</p>
-        <p>コイン・恒久強化・キャラ育成はクラウド保存の対象。ホームの保存状態を確認し、保存失敗や別端末との競合が表示されたら「同期」の案内に従ってください。中断データと音量・操作・軽量モード設定は端末側に保存します。</p>
-        <p>データリセットではコイン・強化・キャラ育成・ランキング記録・挑戦回数・エンドレス解放も初期化されます。ブラウザのデータ削除でも端末内の中断データや設定は消えるので、更新のためにデータ削除はしないでください。</p>
-    </details>
-    <details><summary>イベント・ボス予告・用語</summary>
-        <dl><dt>WAVE</dt><dd>敵とボスを倒す1ステージの区切り。最高到達WAVEは到達記録で、クリア数とは異なります。</dd><dt>コインラッシュ</dt><dd>獲得コインが増えるイベント。</dd><dt>暴走WAVE</dt><dd>敵が強化されるイベント。接触や敵弾に注意。</dd><dt>宝物スライム</dt><dd>素早く逃げる特別な敵。制限時間内に倒してコインを狙おう。</dd><dt>弾幕地獄</dt><dd>追加の弾幕が発生するイベント。</dd><dt>ボス攻撃予告</dt><dd>黄色の扇形は狙い方向、リングは全方向・回転攻撃の目印。全ての危険範囲を示すものではなく、後続弾は方向が変わることもあります。</dd><dt>挑戦回数</dt><dd>新しい挑戦を開始した回数。ランキングは全体、育成画面はキャラ別の使用回数を表示します。</dd></dl>
-    </details>
-    <details><summary>音が出ない・動作が重いとき</summary>
-        <p>起動時に「音ありで開始」を選択。音が止まったら再開ボタン、または「♫ 音量」の「音声を開始・再開」をタップしてください。ミュート設定・BGMと効果音の音量、本体音量やBluetoothの接続先も確認できます。</p>
-        <p>動作が重い場合はホームの「軽量モード」をオン。数字・発光・画面揺れなどを減らします。敵の数・強さは変わりません。</p>
-    </details>
-    <details><summary>ホーム画面への追加・友達への共有</summary>
-        <p>ログイン画面やホームの「ホーム画面に追加」から端末別の案内を確認できます。共有するのは公開したゲームのURLです。ログイン・ランキングにはインターネット接続が必要です。</p>
-        <p>表示が古いときは「最新版に更新」を押してください。</p>
-    </details>
-    <form method="dialog" class="guide-bottom"><button type="submit">ガイドを閉じる</button></form>
-<details class="hero-guide"><summary>キャラ解放・専用攻撃について</summary><p>初めは見習い1体。キャラクター選択からコインで4体を解放できます。解放は買い切りで、ホームで自由に切り替えられます。</p><p>冒険者800G：5回ごとに強撃。魔導士1200G：小範囲攻撃。レンジャー1200G：2体貫通。重装騎士1500G：押し戻しと被ダメージ10％減。</p><p>専用育成はコインに加え、表示された到達WAVEまたは使用回数の条件が必要。選択したルートが次の挑戦から有効になります。見習いは攻撃・体力・移動を少しずつ伸ばせます。</p><p>見習いは冒険者の装備を共用します。旧バージョンの4体の専用育成・解放状態は今回一度リセットします。コイン・装備・記録は引き継ぎます。</p></details></dialog>
-<dialog id="overview-guide" class="game-info-dialog overview-dialog" aria-labelledby="overview-guide-title">
-    <header><h2 id="overview-guide-title">ゲーム概要</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
-    <p>最初は画像全体を表示します。「拡大」で細部を確認できます。</p>
-    <p class="overview-tools"><button type="button" id="overview-zoom" aria-pressed="false">拡大する</button> <a href="game-overview.png" target="_blank" rel="noopener">画像を別タブで開く・拡大する</a></p>
-    <div class="overview-image-scroll" tabindex="0" role="region" aria-label="ゲーム概要の説明画像。拡大中は縦横にスクロールできます。"><img src="game-overview.png" loading="lazy" decoding="async" alt="常林暴サバイバー はじめての冒険ガイド。操作、4キャラ、育成、イベント、装備ガチャ、合成、ランキングを紹介。文章の説明は遊び方・用語ガイドをご覧ください。"></div>
-    <form method="dialog" class="guide-bottom"><button type="submit">閉じる</button></form>
-</dialog>
-<dialog id="release-guide" class="game-info-dialog" aria-labelledby="release-guide-title">
-    <header><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button type="submit">閉じる</button></form></header>
-    <p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.9.1</strong></p>
-    <article><h3>Ver.1.9.1</h3><p>8方向の移動・攻撃モーション、歩行の連続動作、3つの強化画面の専用イラストを追加。初期発射間隔を約1秒に調整。</p></article>
+<ol><li>名前とパスワードで登録・ログインする。</li><li>ホームでキャラ・スキルを選んで、通常モードを開始。</li><li>攻撃は自動。移動で敵や弾を避けよう。</li><li>通常の敵を倒すとボスが登場。HPが半分になると第2形態に変化。</li><li>ボス撃破後は3択強化を選び、ショップで準備して次のWAVEへ。</li></ol>
+<p>広いマップを移動するとカメラが追従します。外周の境界線より先には進めません。右上のミニマップは白が自分、赤がボスです。PCはマウスの方向へ移動し、マウスをキャラに合わせるかゲーム画面の外へ出すと停止します。スマホは画面をなぞって移動します。</p>
+<p>新ボスはWAVE15・30・45・60・75で初登場。WAVE100は覚醒フェニックスとの最終戦です。敵は分割出現し、残数にはこれから来る増援も含まれます。</p>
+<p>HPが0になるか時間切れでゲームオーバー。通常WAVE100をクリアするとホームへ戻り、WAVE101から始まるエンドレスモードが解放されます。</p>
+</details>
+<details><summary>PC・スマホの操作と一時停止</summary>
+<dl><dt>PCの移動</dt><dd>ゲーム画面内でマウスを動かすとキャラが追いかけます。</dd><dt>PCのスキル</dt><dd>マウスの右クリック。スペースキーでは発動しません。</dd><dt>スマホの移動</dt><dd>ゲーム画面を指でドラッグ。指を動かした方向へ移動します。</dd><dt>スマホのスキル</dt><dd>「スキル発動」ボタンをタップ。ホームでボタンの左右・大きさ・移動感度を変更できます。</dd><dt>一時停止</dt><dd>一時停止ボタン、またはPCのEscキー。別画面へ移った場合も自動停止します。再開操作後、3秒のカウントダウンで再開します。</dd></dl>
+</details>
+<details><summary>コイン・強化・スキルの違い</summary>
+<dl><dt>コイン（G）</dt><dd>敵を倒すと獲得。武器・能力・スキル・キャラ育成に使います。</dd><dt>武器・能力・スキルの強化</dt><dd>通常セーブに残る強化です。次の挑戦でも使えます。</dd><dt>WAVEクリア時の3択強化</dt><dd>今回の挑戦だけ有効。新しい挑戦ではリセットされ、中断再開では引き継ぎます。</dd><dt>スキルの待ち時間</dt><dd>通常は発動後30秒。魔導士の速詠型で短縮できます。ゲージやボタンの残り秒数が目安です。</dd></dl>
+</details>
+<details><summary>キャラ別育成：解放条件と切り替え</summary>
+<p>ホームの「キャラクター育成」から育成します。各キャラ3ルート、各ルート最大Lv.5。同時に発動するのは選択した1ルートです。</p>
+<p><strong>そのキャラの最高到達WAVE、または使用回数</strong>のどちらかを満たし、コインを支払うとレベルアップできます。自動では上がらないので育成ボタンを押してください。</p>
+<div class="guide-table-scroll"><table><caption>各レベルの購入条件</caption><thead><tr><th>Lv.</th><th>到達WAVE</th><th>または使用</th><th>コイン</th></tr></thead><tbody>
+<tr><td>1</td><td>3以上</td><td>2回以上</td><td>100G</td></tr><tr><td>2</td><td>6以上</td><td>5回以上</td><td>300G</td></tr><tr><td>3</td><td>10以上</td><td>10回以上</td><td>700G</td></tr><tr><td>4</td><td>15以上</td><td>20回以上</td><td>1,500G</td></tr><tr><td>5</td><td>20以上</td><td>35回以上</td><td>3,000G</td></tr>
+</tbody></table></div>
+<p>ルートの切り替えは無料で購入済みレベルは残ります。変更は次の新しい挑戦から適用され、中断再開は保存時のルート・レベルを使います。キャラ別記録は育成機能の導入後から集計。中断再開では使用回数は増えません。</p>
+</details>
+<details><summary>中断保存・クラウド同期・データリセット</summary>
+<p>WAVEクリア後に3択強化を選び、ショップで<strong>「中断保存してホームへ」</strong>を押すと次のWAVEから再開できます。</p>
+<p>中断データは<strong>同じ端末・ブラウザ・アカウント</strong>で使います。戦闘中の中断保存には対応していません。再開時に中断データは消費されるため、再開後に画面を閉じても元の地点へは戻れません。次のWAVE間で再び保存してください。</p>
+<p>コイン・恒久強化・キャラ育成はクラウド保存の対象。ホームの保存状態を確認し、保存失敗や別端末との競合が表示されたら「同期」の案内に従ってください。中断データと音量・操作・軽量モード設定は端末側に保存します。</p>
+<p>データリセットではコイン・強化・キャラ育成・ランキング記録・挑戦回数・エンドレス解放も初期化されます。ブラウザのデータ削除でも端末内の中断データや設定は消えるので、更新のためにデータ削除はしないでください。</p>
+</details>
+<details><summary>イベント・ボス予告・用語</summary>
+<dl><dt>WAVE</dt><dd>敵とボスを倒す1ステージの区切り。最高到達WAVEは到達記録で、クリア数とは異なります。</dd><dt>コインラッシュ</dt><dd>獲得コインが増えるイベント。</dd><dt>暴走WAVE</dt><dd>敵が強化されるイベント。接触や敵弾に注意。</dd><dt>宝物スライム</dt><dd>素早く逃げる特別な敵。制限時間内に倒してコインを狙おう。</dd><dt>弾幕地獄</dt><dd>追加の弾幕が発生するイベント。</dd><dt>ボス攻撃予告</dt><dd>黄色の扇形は狙い方向、リングは全方向・回転攻撃の目印。全ての危険範囲を示すものではなく、後続弾は方向が変わることもあります。</dd><dt>挑戦回数</dt><dd>新しい挑戦を開始した回数。ランキングは全体、育成画面はキャラ別の使用回数を表示します。</dd></dl>
+</details>
+<details><summary>音が出ない・動作が重いとき</summary>
+<p>起動時に「音ありで開始」を選択。音が止まったら再開ボタン、または「♫ 音量」の「音声を開始・再開」をタップしてください。ミュート設定・BGMと効果音の音量、本体音量やBluetoothの接続先も確認できます。</p>
+<p>動作が重い場合はホームの「軽量モード」をオン。数字・発光・画面揺れなどを減らします。敵の数・強さは変わりません。</p>
+</details>
+<details><summary>ホーム画面への追加・友達への共有</summary>
+<p>ログイン画面やホームの「ホーム画面に追加」から端末別の案内を確認できます。共有するのは公開したゲームのURLです。ログイン・ランキングにはインターネット接続が必要です。</p>
+<p>表示が古いときは「最新版に更新」を押してください。</p>
+</details>
+
+<details class="hero-guide"><summary>キャラ解放・専用攻撃について</summary><p>初めは見習い1体。キャラクター選択からコインで4体を解放できます。解放は買い切りで、ホームで自由に切り替えられます。</p><p>冒険者800G：5回ごとに強撃。魔導士1200G：小範囲攻撃。レンジャー1200G：2体貫通。重装騎士1500G：押し戻しと被ダメージ10％減。</p><p>専用育成はコインに加え、表示された到達WAVEまたは使用回数の条件が必要。選択したルートが次の挑戦から有効になります。見習いは攻撃・体力・移動を少しずつ伸ばせます。</p><p>見習いは冒険者の装備を共用します。旧バージョンの4体の専用育成・解放状態は今回一度リセットします。コイン・装備・記録は引き継ぎます。</p></details></div></dialog>
+<dialog aria-labelledby="overview-guide-title" class="game-info-dialog overview-dialog persistent-panel" id="overview-guide"><header class="persistent-panel-header"><h2 id="overview-guide-title">ゲーム概要</h2><form method="dialog"><button aria-label="ゲーム概要を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
+
+<p>最初は画像全体を表示します。「拡大」で細部を確認できます。</p>
+<p class="overview-tools"><button aria-pressed="false" id="overview-zoom" type="button">拡大する</button> <a href="game-overview.png" rel="noopener" target="_blank">画像を別タブで開く・拡大する</a></p>
+<div aria-label="ゲーム概要の説明画像。拡大中は縦横にスクロールできます。" class="overview-image-scroll" role="region" tabindex="0"><img alt="常林暴サバイバー はじめての冒険ガイド。操作、4キャラ、育成、イベント、装備ガチャ、合成、ランキングを紹介。文章の説明は遊び方・用語ガイドをご覧ください。" decoding="async" loading="lazy" src="game-overview.png"/></div>
+
+</div></dialog>
+<dialog aria-labelledby="release-guide-title" class="game-info-dialog persistent-panel" id="release-guide"><header class="persistent-panel-header"><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button aria-label="更新履歴を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
+
+<p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.9.2</strong></p>
+<article><h3>Ver.1.9.2</h3><p>各画面の閉じるボタンを右上に常時表示。4種類のスキル専用イラストと、発動時の専用エフェクトを追加。</p></article><article><h3>Ver.1.9.1</h3><p>8方向の移動・攻撃モーション、歩行の連続動作、3つの強化画面の専用イラストを追加。初期発射間隔を約1秒に調整。</p></article>
 <article><h3>Ver.1.9.0</h3><p>見習い＋4体のコイン解放。キャラ固有弾、方向・攻撃・被弾モーション、専用育成を追加。旧4体の専用育成・解放をリセットし、見習いから開始。コイン・装備・記録は継続。Firestoreルールの更新が必要です。</p></article>
 <article><h3>Ver.1.8.0</h3><p>敵5段階・新敵55体・ボス計18体・段階別図鑑と報酬。既存の敵も継続登場。Firestoreルール更新が必要です。</p></article>
 <article><h3>Ver.1.7.4</h3><p>キャラ育成にイラスト・ルートアイコン・星レベル・条件ゲージを追加。</p></article>
@@ -433,43 +410,43 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <article><h3>Ver.1.6.3</h3><p>ボックスにアイコンを直接タップして複数選択できる売却モードを追加。</p></article>
 <article><h3>Ver.1.6.2</h3><p>ガチャとボックスを分離。ボックスをレア度別の枠付きアイコン表示に変更。</p></article>
 <article><h3>Ver.1.6.1</h3><p>PCホームをコンパクト化。概要画像の全体表示・拡大切替を追加。</p></article>
-    <article><h3>Ver.1.6.0</h3><ul><li>ホーム整理・装備比較・ロック・一括売却・ゴールド修理・耐久チェック・育成目標・実績・初回操作案内を追加。</li><li>キャラ別／モード別ランキング、開発者用レア演出プレビューを追加。</li><li>Firestoreルールの更新が必要です。</li></ul></article>
-    <article><h3>Ver.1.5.2</h3><ul><li>開封した宝箱を、その場で獲得装備の画像に切り替えるよう変更。</li></ul></article>
-    <article><h3>Ver.1.5.1</h3><ul><li>10連の宝箱を左上から1個ずつ開封。昇格演出も個別の順番で再生。</li></ul></article>
-    <article><h3>Ver.1.5.0</h3><ul><li>10連を5個×2段の個別宝箱に変更。昇格演出も宝箱ごとに抽選。</li><li>遊び方と排出率をカード中心の画面に変更。</li></ul></article>
-    <article><h3>Ver.1.4.5</h3><ul><li>更新履歴の表示を開発者ログイン時に限定。</li></ul></article>
-    <article><h3>Ver.1.4.4</h3><ul><li>ログイン画面とホームに「ゲーム概要」を追加。紹介画像を表示・拡大できます。</li></ul></article>
-    <article><h3>Ver.1.4.3</h3><ul><li>開発者プリセットの召喚結晶を10,000個に設定。</li></ul></article>
-    <article><h3>Ver.1.4.2</h3><ul><li>開封前の宝箱名・グレード表記を削除し、画像で分かる表示に変更。</li></ul></article>
-    <article><h3>Ver.1.4.1</h3><ul><li>宝箱のグレード表示と2〜3段階の昇格演出を追加。昇格先ごとの演出確率は開発者専用表示。装備の排出率は同じです。</li></ul></article>
-    <article><h3>Ver.1.4.0</h3><ul><li>9種類の新ステージ背景・端のある広いマップ・追従カメラ・ミニマップを追加。</li><li>グレード別宝箱と開封演出、レア獲得演出、ボス登場・覚醒・スキルの演出を追加。スキップ・軽量表示対応。</li></ul></article>
-    <article><h3>Ver.1.3.0</h3><ul><li>通常100WAVE・エンドレス101から。通常・精鋭・希少に5種ずつ敵を追加。覚醒する新ボス5体、段階的な難易度と増援を追加。</li><li>旧版で解放済みのエンドレスは引き継ぎます。新しい図鑑に対応するFirebaseルール更新が必要です。</li></ul></article>
-    <article><h3>Ver.1.2.0</h3><ul><li>全装備ガチャ、UR確率1万分の1、個別ボックス、ゴールド売却、耐久回復合成、ランダム特殊スキルと確率表示を追加。Firebaseルール更新が必要です。</li></ul></article>
-    <article><h3>Ver.1.1.0</h3><ul><li>敵の強さ段階・召喚結晶・ガチャ・80種類の装備と特殊効果を追加。Firebaseルールも更新してください。</li></ul></article>
-    <article><h3>Ver.1.0.5 <small>2026年10月22日</small></h3><ul><li>ホーム画面・ブラウザタブのゲームアイコンを変更。</li></ul></article>
-    <article><h3>Ver.1.0.4 <small>2026年10月21日</small></h3><ul><li>ホーム・ログイン画面に「最新版に更新」を追加。</li><li>保存確認後に最新の画面・CSS・JavaScriptを読み込み。通信失敗時は画面に留まります。</li></ul></article>
-    <article><h3>Ver.1.0.3 <small>2026年10月21日</small></h3><ul><li>クラウド保存ルールの評価上限超過を修正。Firebase側のルール更新も必要です。</li><li>新規登録時の成功表示を、保存が完了する前に出さないよう修正。</li></ul></article>
-    <article><h3>Ver.1.0.2（診断版）</h3><ul><li>同期・ログイン失敗時に処理名と保存形式の診断を表示。</li></ul></article>
-    <article><h3>Ver.1.0.1 <small>2026年10月20日</small></h3><ul><li>キャラクター育成・開発者テスト・戻るボタンの背景色と文字色を改善。</li><li>中断・再開・結果画面のボタンも暗い背景で読みやすく調整。</li></ul></article>
-    <article><h3>Ver.1.0.0 <small>2026年10月20日</small></h3>
-        <ul><li>ログイン前とホームに「遊び方・用語ガイド」を追加。</li><li>バージョン番号・更新履歴を表示。</li></ul>
-        <h3>このバージョンに含まれる主な機能</h3>
-        <p>通常20WAVE・エンドレス／4キャラ×3育成ルート／WAVEイベントと3択強化／ボス第2形態と攻撃予告／ランキング・クラウド保存／WAVE間の中断保存／スマホ操作設定・軽量モード／音声の開始・復帰案内／ホーム画面への追加。</p>
-    </article>
-    <details><summary>友達と画面やバージョンが違うとき</summary>
-        <ol><li>同じゲームのURLを開いているか確認。</li><li>戦闘中ならWAVE間で中断保存し、ホームへ戻る。</li><li>ホームまたはログイン画面の「最新版に更新」を押す。保存後に最新の画面とコードを読み直します。</li><li>ホーム画面から起動している場合はアプリを閉じて開き直すか、ブラウザでも同じURLを確認。</li><li>公開直後は少し待ってからもう一度確認。</li></ol>
-        <p>この番号は開いている画面のバージョンです。最新バージョンを自動確認する機能ではありません。端末内データが消えるので、ブラウザのデータ削除は不要です。</p>
-    </details>
-    <form method="dialog" class="guide-bottom"><button type="submit">閉じる</button></form>
-</dialog>
-<dialog id="equipment-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="equipment-title">
-<header><h2 id="equipment-title">装備ボックス</h2><form method="dialog"><button>閉じる</button></form></header>
+<article><h3>Ver.1.6.0</h3><ul><li>ホーム整理・装備比較・ロック・一括売却・ゴールド修理・耐久チェック・育成目標・実績・初回操作案内を追加。</li><li>キャラ別／モード別ランキング、開発者用レア演出プレビューを追加。</li><li>Firestoreルールの更新が必要です。</li></ul></article>
+<article><h3>Ver.1.5.2</h3><ul><li>開封した宝箱を、その場で獲得装備の画像に切り替えるよう変更。</li></ul></article>
+<article><h3>Ver.1.5.1</h3><ul><li>10連の宝箱を左上から1個ずつ開封。昇格演出も個別の順番で再生。</li></ul></article>
+<article><h3>Ver.1.5.0</h3><ul><li>10連を5個×2段の個別宝箱に変更。昇格演出も宝箱ごとに抽選。</li><li>遊び方と排出率をカード中心の画面に変更。</li></ul></article>
+<article><h3>Ver.1.4.5</h3><ul><li>更新履歴の表示を開発者ログイン時に限定。</li></ul></article>
+<article><h3>Ver.1.4.4</h3><ul><li>ログイン画面とホームに「ゲーム概要」を追加。紹介画像を表示・拡大できます。</li></ul></article>
+<article><h3>Ver.1.4.3</h3><ul><li>開発者プリセットの召喚結晶を10,000個に設定。</li></ul></article>
+<article><h3>Ver.1.4.2</h3><ul><li>開封前の宝箱名・グレード表記を削除し、画像で分かる表示に変更。</li></ul></article>
+<article><h3>Ver.1.4.1</h3><ul><li>宝箱のグレード表示と2〜3段階の昇格演出を追加。昇格先ごとの演出確率は開発者専用表示。装備の排出率は同じです。</li></ul></article>
+<article><h3>Ver.1.4.0</h3><ul><li>9種類の新ステージ背景・端のある広いマップ・追従カメラ・ミニマップを追加。</li><li>グレード別宝箱と開封演出、レア獲得演出、ボス登場・覚醒・スキルの演出を追加。スキップ・軽量表示対応。</li></ul></article>
+<article><h3>Ver.1.3.0</h3><ul><li>通常100WAVE・エンドレス101から。通常・精鋭・希少に5種ずつ敵を追加。覚醒する新ボス5体、段階的な難易度と増援を追加。</li><li>旧版で解放済みのエンドレスは引き継ぎます。新しい図鑑に対応するFirebaseルール更新が必要です。</li></ul></article>
+<article><h3>Ver.1.2.0</h3><ul><li>全装備ガチャ、UR確率1万分の1、個別ボックス、ゴールド売却、耐久回復合成、ランダム特殊スキルと確率表示を追加。Firebaseルール更新が必要です。</li></ul></article>
+<article><h3>Ver.1.1.0</h3><ul><li>敵の強さ段階・召喚結晶・ガチャ・80種類の装備と特殊効果を追加。Firebaseルールも更新してください。</li></ul></article>
+<article><h3>Ver.1.0.5 <small>2026年10月22日</small></h3><ul><li>ホーム画面・ブラウザタブのゲームアイコンを変更。</li></ul></article>
+<article><h3>Ver.1.0.4 <small>2026年10月21日</small></h3><ul><li>ホーム・ログイン画面に「最新版に更新」を追加。</li><li>保存確認後に最新の画面・CSS・JavaScriptを読み込み。通信失敗時は画面に留まります。</li></ul></article>
+<article><h3>Ver.1.0.3 <small>2026年10月21日</small></h3><ul><li>クラウド保存ルールの評価上限超過を修正。Firebase側のルール更新も必要です。</li><li>新規登録時の成功表示を、保存が完了する前に出さないよう修正。</li></ul></article>
+<article><h3>Ver.1.0.2（診断版）</h3><ul><li>同期・ログイン失敗時に処理名と保存形式の診断を表示。</li></ul></article>
+<article><h3>Ver.1.0.1 <small>2026年10月20日</small></h3><ul><li>キャラクター育成・開発者テスト・戻るボタンの背景色と文字色を改善。</li><li>中断・再開・結果画面のボタンも暗い背景で読みやすく調整。</li></ul></article>
+<article><h3>Ver.1.0.0 <small>2026年10月20日</small></h3>
+<ul><li>ログイン前とホームに「遊び方・用語ガイド」を追加。</li><li>バージョン番号・更新履歴を表示。</li></ul>
+<h3>このバージョンに含まれる主な機能</h3>
+<p>通常20WAVE・エンドレス／4キャラ×3育成ルート／WAVEイベントと3択強化／ボス第2形態と攻撃予告／ランキング・クラウド保存／WAVE間の中断保存／スマホ操作設定・軽量モード／音声の開始・復帰案内／ホーム画面への追加。</p>
+</article>
+<details><summary>友達と画面やバージョンが違うとき</summary>
+<ol><li>同じゲームのURLを開いているか確認。</li><li>戦闘中ならWAVE間で中断保存し、ホームへ戻る。</li><li>ホームまたはログイン画面の「最新版に更新」を押す。保存後に最新の画面とコードを読み直します。</li><li>ホーム画面から起動している場合はアプリを閉じて開き直すか、ブラウザでも同じURLを確認。</li><li>公開直後は少し待ってからもう一度確認。</li></ol>
+<p>この番号は開いている画面のバージョンです。最新バージョンを自動確認する機能ではありません。端末内データが消えるので、ブラウザのデータ削除は不要です。</p>
+</details>
+
+</div></dialog>
+<dialog aria-labelledby="equipment-title" class="game-info-dialog equipment-dialog persistent-panel" id="equipment-dialog"><header class="persistent-panel-header"><h2 id="equipment-title">装備ボックス</h2><form method="dialog"><button aria-label="装備ボックスを閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content">
+
 <p>召喚結晶 <strong class="crystal-balance">0</strong> 個 ｜ <span id="equipment-box-summary"></span></p>
-<p id="equipment-box-status" role="status"></p><p>アイコンをタップして性能・装備・修理・売却を確認できます。</p><button type="button" data-info-dialog="play-guide" data-guide-section="help-equipment">📖 装備の使い方</button>
-<h3>キャラ別の装備</h3><label>キャラ <select id="equipment-character"></select></label><div id="equipment-loadout" class="equipment-loadout"></div>
+<p id="equipment-box-status" role="status"></p><p>アイコンをタップして性能・装備・修理・売却を確認できます。</p><button data-guide-section="help-equipment" data-info-dialog="play-guide" type="button">📖 装備の使い方</button>
+<h3>キャラ別の装備</h3><label>キャラ <select id="equipment-character"></select></label><div class="equipment-loadout" id="equipment-loadout"></div>
 <details class="forge-panel"><summary>装備セット保存・おまかせ装備・シリーズ効果</summary>
 <p>装備と育成ルートを3セット保存。登録した装備は保護されます。</p><div id="loadout-presets"></div>
-<label>おまかせの目的 <select id="auto-equipment-goal"><option value="attack">火力重視</option><option value="guard">耐久重視</option><option value="crystal">結晶集め</option></select></label><button type="button" id="auto-equipment">候補と比較を表示</button>
+<label>おまかせの目的 <select id="auto-equipment-goal"><option value="attack">火力重視</option><option value="guard">耐久重視</option><option value="crystal">結晶集め</option></select></label><button id="auto-equipment" type="button">候補と比較を表示</button>
 <p id="series-active" style="white-space:pre-line"></p><p>同じシリーズを2〜4部位そろえると効果アップ！</p><p>錬成素材：<strong id="forge-dust">0</strong>個。装備詳細から分解・特殊スキル再抽選ができます。</p><p id="forge-status" role="status"></p></details>
 <h3>装備ボックス</h3>
 <div class="equipment-filters">
@@ -480,40 +457,40 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <label>並び順<select id="equipment-sort"><option value="type">部位→キャラ→グレード</option><option value="grade">グレードが高い順</option><option value="new">入手が新しい順</option><option value="durability">残り耐久の割合が低い順</option></select></label>
 </div>
 <div class="equipment-actions"><button id="equipment-prev" type="button">前へ</button><span id="equipment-page-label"></span><button id="equipment-next" type="button">次へ</button></div>
-<div class="bulk-sale-toolbar"><button type="button" id="toggle-sale-mode" aria-pressed="false">アイコンから選んで売却</button><small id="sale-mode-help"></small><button type="button" id="select-sale-filter">絞り込み中の全件を選択</button><button type="button" id="clear-sale-selection">選択解除</button><span id="sale-summary"></span><button type="button" id="sell-selected">選択品を売却</button><small>ページ外の選択も含みます。ロック・装備中・中断使用中は除外。</small></div><div id="equipment-cards" class="equipment-cards equipment-icon-grid"></div>
-</dialog>
-<dialog id="summon-menu-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="summon-menu-title"><header><h2 id="summon-menu-title">召喚ガチャ</h2><form method="dialog"><button>閉じる</button></form></header><p>召喚結晶 <strong class="crystal-balance">0</strong> 個</p><p>全キャラの装備が登場！ 入手した装備はボックスへ。</p>
+<div class="bulk-sale-toolbar"><button aria-pressed="false" id="toggle-sale-mode" type="button">アイコンから選んで売却</button><small id="sale-mode-help"></small><button id="select-sale-filter" type="button">絞り込み中の全件を選択</button><button id="clear-sale-selection" type="button">選択解除</button><span id="sale-summary"></span><button id="sell-selected" type="button">選択品を売却</button><small>ページ外の選択も含みます。ロック・装備中・中断使用中は除外。</small></div><div class="equipment-cards equipment-icon-grid" id="equipment-cards"></div>
+</div></dialog>
+<dialog aria-labelledby="summon-menu-title" class="game-info-dialog equipment-dialog persistent-panel" id="summon-menu-dialog"><header class="persistent-panel-header"><h2 id="summon-menu-title">召喚ガチャ</h2><form method="dialog"><button aria-label="召喚ガチャを閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content"><p>召喚結晶 <strong class="crystal-balance">0</strong> 個</p><p>全キャラの装備が登場！ 入手した装備はボックスへ。</p>
 <div class="equipment-actions"><button id="equipment-roll" type="button">1回召喚：結晶10個</button><button id="equipment-roll10" type="button">10回召喚：結晶100個</button><button id="equipment-probabilities" type="button">排出率・特殊スキル確率を見る</button></div>
-<p id="equipment-status" role="status" aria-live="polite"></p>
-<button type="button" id="dev-rare-summon" hidden>開発者：レア演出確定10連（保存なし）</button><div id="equipment-results" class="equipment-results" aria-live="polite"></div>
+<p aria-live="polite" id="equipment-status" role="status"></p>
+<button hidden="" id="dev-rare-summon" type="button">開発者：レア演出確定10連（保存なし）</button><div aria-live="polite" class="equipment-results" id="equipment-results"></div>
+</div></dialog>
+<dialog class="game-info-dialog persistent-panel" id="auto-equipment-dialog"><header class="persistent-panel-header"><h2>おまかせ装備の比較</h2><form method="dialog"><button aria-label="おまかせ装備の比較を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content"><div id="auto-equipment-comparison"></div><button id="apply-auto-equipment" type="button">この候補を装備</button></div></dialog>
+<dialog class="game-info-dialog" id="stage-route-dialog"><h2>次の10WAVEのルートを選択</h2><p>今回の挑戦中のみ有効。次の分岐で選び直せます。</p><button id="route-safe" type="button">安全ルート：敵HP・基礎ダメージ−10％／通常報酬</button><button id="route-risk" type="button">強敵ルート：敵HP＋25％・基礎ダメージ＋20％／コイン＋35％・結晶ドロップ確率×1.2</button></dialog>
+<dialog aria-labelledby="gacha-heading" class="game-info-dialog gacha-dialog" id="gacha-dialog">
+<div class="gacha-scene" id="gacha-scene">
+<div aria-hidden="true" class="gacha-rays"></div><div aria-hidden="true" class="gacha-rune"></div>
+<p class="gacha-kicker">SUMMON · 装備召喚</p><h2 id="gacha-heading">宝箱が現れた！</h2>
+<div class="gacha-chest-grid" id="gacha-chest-grid"></div>
+<div aria-label="召喚の宝箱" class="gacha-chest" hidden="" id="gacha-chest" role="img"></div>
+<p id="gacha-description" role="status"></p><p hidden="" id="gacha-mythic">✦ 神話スキル付き装備を獲得 ✦</p>
+<div class="gacha-controls"><button id="gacha-open" type="button">宝箱を開く</button><button id="gacha-skip" type="button">演出をスキップ</button><button hidden="" id="gacha-done" type="button">ボックスへ戻る</button></div>
+<div class="gacha-reveal-cards" hidden="" id="gacha-reveal-cards"></div>
+</div>
 </dialog>
-<dialog id="auto-equipment-dialog" class="game-info-dialog"><h2>おまかせ装備の比較</h2><div id="auto-equipment-comparison"></div><button type="button" id="apply-auto-equipment">この候補を装備</button><form method="dialog"><button>キャンセル</button></form></dialog>
-<dialog id="stage-route-dialog" class="game-info-dialog"><h2>次の10WAVEのルートを選択</h2><p>今回の挑戦中のみ有効。次の分岐で選び直せます。</p><button type="button" id="route-safe">安全ルート：敵HP・基礎ダメージ−10％／通常報酬</button><button type="button" id="route-risk">強敵ルート：敵HP＋25％・基礎ダメージ＋20％／コイン＋35％・結晶ドロップ確率×1.2</button></dialog>
-<dialog id="gacha-dialog" class="game-info-dialog gacha-dialog" aria-labelledby="gacha-heading">
-    <div id="gacha-scene" class="gacha-scene">
-        <div class="gacha-rays" aria-hidden="true"></div><div class="gacha-rune" aria-hidden="true"></div>
-        <p class="gacha-kicker">SUMMON · 装備召喚</p><h2 id="gacha-heading">宝箱が現れた！</h2>
-        <div id="gacha-chest-grid" class="gacha-chest-grid"></div>
-        <div hidden id="gacha-chest" class="gacha-chest" role="img" aria-label="召喚の宝箱"></div>
-        <p id="gacha-description" role="status"></p><p id="gacha-mythic" hidden>✦ 神話スキル付き装備を獲得 ✦</p>
-        <div class="gacha-controls"><button id="gacha-open" type="button">宝箱を開く</button><button id="gacha-skip" type="button">演出をスキップ</button><button id="gacha-done" type="button" hidden>ボックスへ戻る</button></div>
-        <div id="gacha-reveal-cards" class="gacha-reveal-cards" hidden></div>
-    </div>
-</dialog>
-<dialog id="equipment-fusion-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="equipment-fusion-title">
-<header><h2 id="equipment-fusion-title">合成素材を選択</h2><form method="dialog"><button>戻る</button></form></header><p id="equipment-fusion-summary" class="equipment-affixes"></p><div id="equipment-fusion-candidates" class="equipment-results"></div>
-</dialog>
-<dialog id="equipment-probability-dialog" class="game-info-dialog equipment-dialog" aria-labelledby="equipment-probability-title">
-<header><h2 id="equipment-probability-title">排出率・特殊スキルの付与確率</h2><form method="dialog"><button>閉じる</button></form></header><div class="equipment-probability-scroll" id="equipment-probability-content"></div>
-</dialog>
-<script type="application/json" data-game-src="guide.js?v=1.9.1"></script>
-<dialog id="update-game-dialog" class="game-info-dialog" aria-labelledby="update-game-title">
-<h2 id="update-game-title">最新版に更新</h2>
-<p id="update-game-status" role="status" aria-live="polite"></p>
+<dialog aria-labelledby="equipment-fusion-title" class="game-info-dialog equipment-dialog persistent-panel" id="equipment-fusion-dialog"><header class="persistent-panel-header"><h2 id="equipment-fusion-title">合成素材を選択</h2><form method="dialog"><button aria-label="合成素材を選択を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content">
+<p class="equipment-affixes" id="equipment-fusion-summary"></p><div class="equipment-results" id="equipment-fusion-candidates"></div>
+</div></dialog>
+<dialog aria-labelledby="equipment-probability-title" class="game-info-dialog equipment-dialog persistent-panel" id="equipment-probability-dialog"><header class="persistent-panel-header"><h2 id="equipment-probability-title">排出率・特殊スキルの付与確率</h2><form method="dialog"><button aria-label="排出率・特殊スキルの付与確率を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content">
+<div class="equipment-probability-scroll" id="equipment-probability-content"></div>
+</div></dialog>
+<script data-game-src="guide.js?v=1.9.2" type="application/json"></script>
+<dialog aria-labelledby="update-game-title" class="game-info-dialog persistent-panel" id="update-game-dialog"><header class="persistent-panel-header"><h2 id="update-game-title">最新版に更新</h2><button aria-label="最新版に更新を閉じる" class="persistent-close" id="update-game-close" type="button">✕ 閉じる</button></header><div class="persistent-panel-content">
+
+<p aria-live="polite" id="update-game-status" role="status"></p>
 <p>ログイン情報・コイン・育成データは残ります。公開直後は、反映まで少し待ってから再度お試しください。</p>
-<button type="button" id="update-game-close">閉じる</button>
-</dialog>
-<script type="application/json" data-game-src="update.js?v=1.9.1"></script>
+
+</div></dialog>
+<script data-game-src="update.js?v=1.9.2" type="application/json"></script>
 <script>
 (async () => {
     for (const source of document.querySelectorAll('script[data-game-src]')) {
@@ -534,7 +511,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
     }
 })();
 </script>
-<dialog id="item-detail-dialog" class="game-info-dialog"><header><h2>✨ 装備詳細</h2><form method="dialog"><button>閉じる</button></form></header><div id="item-detail-content"></div></dialog>
-<dialog id="achievements-dialog" class="game-info-dialog"><header><h2>🏅 実績と報酬</h2><form method="dialog"><button>閉じる</button></form></header><p>達成した実績から結晶を受け取ろう！ 各報酬は1回限りです。</p><div id="achievement-cards" class="pop-guide-grid"></div></dialog>
-<dialog id="preflight-dialog" class="game-info-dialog"><h2>🛡 出撃前チェック</h2><p>装備の状態を確認しよう。未装備でも出撃できます。</p><div id="preflight-notes"></div><button id="preflight-back" type="button">出撃をやめる</button><button id="preflight-go" type="button">このまま出撃</button></dialog></body>
+<dialog class="game-info-dialog persistent-panel" id="item-detail-dialog"><header class="persistent-panel-header"><h2>✨ 装備詳細</h2><form method="dialog"><button aria-label="✨ 装備詳細を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content"><div id="item-detail-content"></div></div></dialog>
+<dialog class="game-info-dialog persistent-panel" id="achievements-dialog"><header class="persistent-panel-header"><h2>🏅 実績と報酬</h2><form method="dialog"><button aria-label="🏅 実績と報酬を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content"><p>達成した実績から結晶を受け取ろう！ 各報酬は1回限りです。</p><div class="pop-guide-grid" id="achievement-cards"></div></div></dialog>
+<dialog class="game-info-dialog persistent-panel" id="preflight-dialog"><header class="persistent-panel-header"><h2>🛡 出撃前チェック</h2><button aria-label="🛡 出撃前チェックを閉じる" class="persistent-close" id="preflight-back" type="button">出撃をやめる</button></header><div class="persistent-panel-content"><p>装備の状態を確認しよう。未装備でも出撃できます。</p><div id="preflight-notes"></div><button id="preflight-go" type="button">このまま出撃</button></div></dialog></body>
 </html>

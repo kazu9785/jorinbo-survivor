@@ -744,7 +744,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.9.1 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.9.2 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -1503,7 +1503,7 @@ function attemptSkill() {
         } else if (gameData.skills.equipped === 'satellite') {
             triggerSatellite();
         }
-        worldPulse(playerX,playerY,'#a9f5ff',190);
+        // Each skill supplies its own color and visual cue.
         trainingOnSkill();
         if(!isDeveloper && gameData.journey.tutorial===1)completeTutorial();
         lastBombTime = now;
@@ -1675,7 +1675,7 @@ function renderSkillItems() {
         const itemDiv = document.createElement('div');
         itemDiv.classList.add('shop-item');
         
-        let html = `<h3>${skill.name}</h3><p>${skill.desc}</p>`;
+        let html = `<div class="skill-card-heading"><img class="skill-card-art" src="${gameAssetUrl(`skill_${skill.id}.png?v=1.9.2`)}" alt="" width="96" height="96" decoding="async"><div class="skill-card-copy"><h3>${skill.name}</h3><p>${skill.desc}</p></div></div>`;
         
         if (isOwned) {
             html += `<div class="lvl-display">Lv.${level}</div>`;
@@ -2003,6 +2003,7 @@ function simulateCombatStep() {
 
 function triggerInvoluteSphere() {
     playSound("skill");
+    skillCastVisual("sphere");
     const level = gameData.skills.levels.sphere;
     const sphereCount = 6 + (level - 1) * 2;
     
@@ -2019,10 +2020,7 @@ function triggerInvoluteSphere() {
 
 function triggerBomb() {
     playSound("skill");
-    const effect = document.createElement('div');
-    effect.classList.add('bomb-effect');
-    worldLayer.appendChild(effect);
-    gameSetTimeout(() => effect.remove(), 1000);
+    skillCastVisual("bomb");
 
     const level = gameData.skills.levels.bomb;
     const damage = (100 + (level - 1) * 50) * trainingSkillMultiplier();
@@ -2043,15 +2041,7 @@ function triggerHighEnergyCircle() {
     const radius = maxDim; 
     const damage = (20 + (level - 1) * 10) * trainingSkillMultiplier();
 
-    const el = document.createElement('div');
-    el.classList.add('energy-circle','world-transient');
-    el.style.width = (radius * 2) + 'px';
-    el.style.height = (radius * 2) + 'px';
-    el.style.left = playerX + 'px';
-    el.style.top = playerY + 'px';
-    worldLayer.appendChild(el);
-
-    gameSetTimeout(() => el.remove(), 600);
+    skillCastVisual("energy");
 
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
@@ -2062,6 +2052,7 @@ function triggerHighEnergyCircle() {
 
 function triggerSatellite() {
     playSound("skill");
+    skillCastVisual("satellite");
     const level = gameData.skills.levels.satellite;
     const beamCount = 2 + Math.floor(level / 2); 
     const damage = (30 + (level - 1) * 15) * trainingSkillMultiplier();
@@ -2071,13 +2062,7 @@ function triggerSatellite() {
             if (enemies.length === 0) break;
             const target = enemies[Math.floor(Math.random() * enemies.length)];
             
-            const el = document.createElement('div');
-            el.classList.add('satellite-beam','world-transient');
-            el.style.left = (target.x + 30) + 'px';
-            el.style.bottom = (getArenaSize().height - target.y) + 'px'; 
-            
-            worldLayer.appendChild(el);
-            gameSetTimeout(() => el.remove(), 500);
+            skillSatelliteImpact(target.x + 30, target.y + 30);
 
             damageEnemy(target, damage);
         }

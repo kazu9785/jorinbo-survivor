@@ -744,7 +744,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.9.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.9.1 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -1858,7 +1858,7 @@ function getPlayerStats() {
     let bSize = 10 + (sizeLevel - 1) * 4;
 
     return {
-        shotInterval: Math.max(50, Math.max(100, 500 - (rate - 1) * 40) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate),
+        shotInterval: Math.max(50, Math.max(100, 1000 - (rate - 1) * 60) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate),
         damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * (1+.02*trainingLevel('rookie','a')) * equipmentStats().damage,
         moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * (1+.02*trainingLevel('rookie','c')) * equipmentStats().speed),
         bulletCount: cnt + (runUpgrades.count || 0),

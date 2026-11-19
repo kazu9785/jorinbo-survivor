@@ -1011,3 +1011,10 @@ body.lite-mode .equipment-icon-tile {box-shadow:none;}
 @keyframes hero-impact {from{opacity:.95;transform:translate(-50%,-50%) rotate(var(--fx-angle)) scale(.65)}to{opacity:0;transform:translate(-50%,-50%) rotate(var(--fx-angle)) scale(1.15)}}
 .lite-mode .hero-fx {animation:none;opacity:.65;transform:translate(-50%,-50%)}
 @media(prefers-reduced-motion:reduce){.hero-fx{animation:none;transform:translate(-50%,-50%)}}
+
+/* 1.9.1 directional motion and illustrated upgrade screens */
+#hero-sprite,.hero-motion-layer {position:absolute;left:50%;top:50%;background-repeat:no-repeat;pointer-events:none;transform-origin:50% 90%;will-change:transform,opacity;}
+.upgrade-scene{width:100%;aspect-ratio:4.5/1;background-image:url('upgrade_scenes.png');background-size:100% 300%;background-repeat:no-repeat;border-radius:12px;margin-bottom:14px;border:1px solid #5469a2;box-sizing:border-box;}
+.upgrade-scene-weapon{background-position:center top}.upgrade-scene-ability{background-position:center center}.upgrade-scene-skill{background-position:center bottom}
+#weapon-shop-screen .shop-container,#player-shop-screen .shop-container,#skill-shop-screen .shop-container{width:min(800px,100%)!important;background:linear-gradient(145deg,#161b34,#10111f);border-color:#6072bc;}
+@media(max-width:600px){.upgrade-scene{margin-bottom:10px;border-radius:9px}#weapon-shop-screen .shop-container,#player-shop-screen .shop-container,#skill-shop-screen .shop-container{padding:16px 12px}}

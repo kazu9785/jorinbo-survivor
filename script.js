@@ -99,7 +99,8 @@ function getDefaultData() {
         coins: 0,
         endlessUnlocked: false,
         name: "HERO",
-        character: "balance",
+        character: "rookie",
+        roster: {version:1, owned:['rookie']},
         upgrade: { damage: 1, fireRate: 1, count: 1, bulletSize: 1, speed: 1, maxHp: 1 },
         skills: {
             owned: ['sphere'], 
@@ -121,26 +122,29 @@ let startingRun = false;
 
 // キャラクター選択はアカウント別にこのブラウザへ保存する。
 const CHARACTERS = {
-    balance: { name: '冒険者', role: 'バランス型', image: 'player_balance.png', hp: 10, damage: 1, speed: 1, detail: '基本HP10 ／ 攻撃・移動は標準' },
-    power: { name: '魔導士', role: '攻撃型', image: 'player_power.png', hp: 8, damage: 1.4, speed: 0.9, detail: '基本HP8 ／ 通常弾の攻撃力＋40％ ／ 移動−10％' },
-    speed: { name: 'レンジャー', role: 'スピード型', image: 'player_speed.png', hp: 8, damage: 0.9, speed: 1.3, detail: '基本HP8 ／ 移動＋30％ ／ 通常弾の攻撃力−10％' },
-    tank: { name: '重装騎士', role: '耐久型', image: 'player_tank.png', hp: 16, damage: 1, speed: 0.8, detail: '基本HP16 ／ 移動−20％ ／ 攻撃は標準' }
+    rookie: {name:'見習い',role:'基礎型',image:'hero_rookie.png',hp:10,damage:1,speed:1,detail:'素直な単発射撃。育成で少しずつ成長。冒険者の装備を共用。'},
+    balance: { name: '冒険者', role: 'バランス型', image: 'hero_balance.png', hp: 12, damage: 1.15, speed: 1.05, detail: '青い斬撃。5回の射撃ごとに強撃。' },
+    power: { name: '魔導士', role: '攻撃型', image: 'hero_power.png', hp: 8, damage: 1.4, speed: 0.9, detail: '紫の魔法弾。命中時に周囲にも小ダメージ。' },
+    speed: { name: 'レンジャー', role: 'スピード型', image: 'hero_speed.png', hp: 8, damage: 0.9, speed: 1.3, detail: '緑の高速弾。敵を2体まで貫通。移動が得意。' },
+    tank: { name: '重装騎士', role: '耐久型', image: 'hero_tank.png', hp: 16, damage: 1, speed: 0.8, detail: '金の衝撃波。敵を押し戻す。被ダメージ10％減。' }
 };
 function getSelectedCharacter() {
-    return Object.hasOwn(CHARACTERS, gameData.character) ? CHARACTERS[gameData.character] : CHARACTERS.balance;
+    return Object.hasOwn(CHARACTERS, gameData.character) ? CHARACTERS[gameData.character] : CHARACTERS.rookie;
 }
 function getPlayerMaxHp() {
     return getSelectedCharacter().hp + ((gameData.upgrade.maxHp || 1) - 1) * 5 + (runUpgrades.maxHp || 0) * 5 + trainingHpBonus() + equipmentStats().hp;
 }
 function updateCharacterDisplay() {
     const character = getSelectedCharacter();
-    player.style.backgroundImage = `url('${character.image}')`;
+    player.style.backgroundImage = 'none';
+    heroSetPose(0);
     document.getElementById('selected-character-name').textContent = character.name + '（' + character.role + '）';
     document.getElementById('selected-character-image').src = character.image;
     document.getElementById('selected-character-image').alt = character.name;
 }
 function selectCharacter(id) {
     if (!Object.hasOwn(CHARACTERS, id) || homeScreen.classList.contains('hidden') || btnBattle.disabled) return;
+    if (!heroOwned(id) && !heroPurchase(id)) return;
     gameData.character = id;
     saveData();
     updateCharacterDisplay();
@@ -156,7 +160,8 @@ function renderCharacterCards() {
         const selected = gameData.character === id;
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', String(selected));
-        button.innerHTML = `<img src="${character.image}" alt=""><strong>${character.name}</strong><span>${character.role}</span><small>${character.detail}</small><b>${selected ? '選択中' : 'このキャラを選択'}</b>`;
+        button.innerHTML = `<img src="${character.image}" alt=""><strong>${character.name}</strong><span>${character.role}</span><small>${character.detail}</small><b>${!heroOwned(id) ? '🔓 解放 '+HERO_COSTS[id]+' G' : selected ? '選択中' : 'このキャラを選択'}</b>`;
+        button.disabled = !heroOwned(id) && gameData.coins < HERO_COSTS[id];
         button.addEventListener('click', () => selectCharacter(id));
         container.appendChild(button);
     }
@@ -353,16 +358,23 @@ function getSaveKey() {
 function repairGameData(saved) {
     if (!saved || !saved.upgrade) return getDefaultData();
 
+    const legacyHeroes = !saved.roster;
     const repaired = saved;
+    repaired.roster = repairRoster(saved.roster, true);
     repaired.journey = repairJourney(saved.journey);
     repaired.forge = repairForge(saved.forge);
-    repaired.training = repairTraining(saved.training);
+    repaired.training = legacyHeroes ? createDefaultTraining() : repairTraining(saved.training);
+    if (legacyHeroes) {
+        repaired.character='rookie';
+        try { localStorage.removeItem(getSaveKey()+'_checkpoint'); } catch (_) {}
+    }
     repaired.equipment = repairEquipment(saved.equipment);
     repaired.codex = repaired.codex && typeof repaired.codex === 'object' ? repaired.codex : {};
     repaired.records ||= { normal: 0, endless: 0 };
     repaired.lastResult ||= null;
     repaired.endlessUnlocked = repaired.endlessUnlocked === true;
-    if (!Object.hasOwn(CHARACTERS, repaired.character)) repaired.character = "balance";
+    if (!Object.hasOwn(CHARACTERS, repaired.character)) repaired.character = "rookie";
+    if (!repaired.roster.owned.includes(repaired.character)) repaired.character="rookie";
     if(!repaired.upgrade.count) repaired.upgrade.count = 1;
     if(!repaired.upgrade.maxHp) repaired.upgrade.maxHp = 1;
     if(!repaired.upgrade.bulletSize) repaired.upgrade.bulletSize = 1;
@@ -378,12 +390,13 @@ function repairGameData(saved) {
 // 上限なしの育成に対する、負荷を抑えた開発テスト用プリセット。
 function applyDeveloperPreset() {
     if (!isDeveloper) return;
+    gameData.roster={version:1,owned:[...HERO_IDS]};
     gameData.coins = Math.max(gameData.coins, 1000000);
     applyDeveloperEquipment();
     gameData.endlessUnlocked = true;
     gameData.training = repairTraining(gameData.training);
     for (const id of TRAINING_CHARACTERS) {
-        const p = gameData.training[id]; p.uses = Math.max(35,p.uses); p.bestWave = Math.max(20,p.bestWave); p.levels = {a:5,b:5,c:5};
+        const p = gameData.training[id]; p.uses = Math.max(100,p.uses); p.bestWave = Math.max(100,p.bestWave); p.levels = {a:5,b:5,c:5};
     }
     gameData.upgrade = { damage: 100, fireRate: 11, count: 10, bulletSize: 6, speed: 93, maxHp: 100 };
     gameData.skills.owned = ['sphere', 'bomb', 'energy', 'satellite'];
@@ -686,14 +699,15 @@ function saveDiagnosticFields(d) {
         return true;
     };
     const base = ['coins','endlessUnlocked','name','character','upgrade','skills'];
-    if (!keys(d, [...base,'codex','records','lastResult','training','equipment','journey','forge'], base, 'data')) return errors;
+    if (!keys(d, [...base,'codex','records','lastResult','training','equipment','journey','forge','roster'], base, 'data')) return errors;
     check(Number.isSafeInteger(d.coins) && d.coins >= 0, 'data.coins');
     if ('forge' in d) check(validForge(d.forge),'data.forge');
     if ('journey' in d) check(validJourney(d.journey),'data.journey');
     if ('equipment' in d) check(validEquipmentLocal(d.equipment),'data.equipment');
     check(typeof d.endlessUnlocked === 'boolean', 'data.endlessUnlocked');
     check(typeof d.name === 'string' && d.name.length <= 64, 'data.name');
-    const chars = ['balance','power','speed','tank'];
+    const chars = HERO_IDS;
+    if ('roster' in d) check(validRoster(d.roster),'data.roster');
     check(chars.includes(d.character), 'data.character');
     const upgrades = ['damage','fireRate','count','bulletSize','speed','maxHp'];
     if (keys(d.upgrade, upgrades, upgrades, 'data.upgrade')) upgrades.forEach(k => check(count(d.upgrade[k]) && d.upgrade[k] >= 1, 'data.upgrade.'+k));
@@ -730,7 +744,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.8.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.9.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -739,7 +753,7 @@ async function diagnosticTask(stage, work) {
 }
 
 function cloudDocument(data, revision) {
-    return { data:{...data,forge:packForge(repairForge(data.forge))}, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    return { data:{...data,roster:packRoster(repairRoster(data.roster)),forge:packForge(repairForge(data.forge))}, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 }
 async function loadCloudData(user) {
     cloudReady = false;
@@ -1845,8 +1859,8 @@ function getPlayerStats() {
 
     return {
         shotInterval: Math.max(50, Math.max(100, 500 - (rate - 1) * 40) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate),
-        damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * equipmentStats().damage,
-        moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * equipmentStats().speed),
+        damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * (1+.02*trainingLevel('rookie','a')) * equipmentStats().damage,
+        moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * (1+.02*trainingLevel('rookie','c')) * equipmentStats().speed),
         bulletCount: cnt + (runUpgrades.count || 0),
         bulletSize: bSize * (1 + (runUpgrades.bulletSize || 0) * 0.2)
     };
@@ -1895,6 +1909,7 @@ function launchWaveSequence() {
 }
 
 function startBattle() {
+    heroResetCombat();
     trainingOnWaveStart();
     equipmentWaveStart();
     document.body.style.cursor = 'none';
@@ -1961,6 +1976,7 @@ function simulateCombatStep() {
     }
     clampPlayerPosition();
     updateTrainingCombat(oldPlayerX, oldPlayerY);
+    heroUpdateMotion(oldPlayerX,oldPlayerY);
     player.style.left = playerX + 'px';
     player.style.top = playerY + 'px';
 
@@ -2330,40 +2346,7 @@ function spawnEnemy(type) {
     if (type === 'boss') updateBossIdentity(enemies[enemies.length - 1]);
 }
 
-function fireBullet(damage, count, size) {
-    if (enemies.length === 0) return;
-    let closest = null, minDist = Infinity;
-    enemies.forEach(e => {
-        const d = (e.x - playerX)**2 + (e.y - playerY)**2;
-        if (d < minDist) { minDist = d; closest = e; }
-    });
-
-    if (closest && minDist < 600 * 600) {
-        const baseAngle = Math.atan2(closest.y - playerY, closest.x - playerX);
-        for(let i=0; i<count; i++) {
-            const el = acquireBulletElement();
-            el.classList.add('bullet');
-            el.style.width = size + 'px';
-            el.style.height = size + 'px';
-            el.style.left = playerX + 'px';
-            el.style.top = playerY + 'px';
-            worldLayer.appendChild(el);
-
-            let offset = 0;
-            if (count > 1) {
-                const spread = 0.3; 
-                offset = -spread/2 + (spread / (count-1)) * i;
-            }
-
-            const angle = baseAngle + offset;
-            bullets.push({ 
-                element: el, x: playerX, y: playerY, 
-                vx: Math.cos(angle)*8, vy: Math.sin(angle)*8, damage: damage 
-            });
-        }
-        playSound("shot");
-    }
-}
+function fireBullet(damage, count, size) { heroFire(damage,count,size); }
 
 function enemyFireBullet(enemy) {
     if (enemyBullets.length >= 180) return;
@@ -2704,16 +2687,18 @@ function updateBullets() {
         b.x += b.vx; b.y += b.vy;
         b.element.style.left = b.x + 'px';
         b.element.style.top = b.y + 'px';
-        if (b.x < 0 || b.x > arena.width || b.y < 0 || b.y > arena.height) {
+        if (gameNow() > b.expiresAt || b.x < 0 || b.x > arena.width || b.y < 0 || b.y > arena.height) {
             releaseBulletElement(b.element); bullets.splice(i, 1); continue;
         }
         if (version !== enemySpatialVersion) { grid = buildEnemyGrid(); version = enemySpatialVersion; }
         for (const { enemy: e } of nearbyBulletTargets(grid, b.x, b.y)) {
             const hitR = e.type === 'boss' ? 70 : e.type === 'golem' ? 40 : 30;
-            if ((b.x - e.x)**2 + (b.y - e.y)**2 < hitR * hitR) {
-                damageEnemy(e, equipmentBulletDamage(e, trainingBulletDamage(e, b.damage)));
-                releaseBulletElement(b.element); bullets.splice(i, 1);
-                break;
+            if (!b.hit?.has(e) && (b.x - e.x)**2 + (b.y - e.y)**2 < hitR * hitR) {
+                if (e.type==='boss' && gameNow()<e.transformingUntil) continue;
+                b.hit.add(e);
+                heroHit(b,e);
+                if (--b.remaining<=0) {releaseBulletElement(b.element); bullets.splice(i,1);break;}
+                if (!waveEventActive || isGameOver || isPaused) break;
             }
         }
     }
@@ -2840,12 +2825,14 @@ function updateEnemies() {
 function takePlayerDamage(dmg) {
     if (isGameOver || !waveEventActive) return;
     if (currentWaveEvent === 'rage') dmg = Math.ceil(dmg * 1.5);
+    if (gameData.character==='tank') dmg*=.9;
     dmg = equipmentIncomingDamage(dmg);
     if (dmg <= 0) { updateHpDisplay(); return; }
     dmg = trainingIncomingDamage(dmg);
     if (dmg <= 0) { updateHpDisplay(); return; }
     playerCurrentHp = Math.max(0, Math.round((playerCurrentHp - dmg) * 1000) / 1000);
     updateHpDisplay();
+    heroHurtUntil=gameNow()+220;
     playSound("hurt");
     
     if (!liteMode) {
@@ -3086,7 +3073,7 @@ applyControlSettings();
 function readCheckpoint() {
     try {
         const c = JSON.parse(localStorage.getItem(getSaveKey() + '_checkpoint') || 'null');
-        if (!c || c.version !== 1 || !['normal','endless'].includes(c.mode) || !Number.isInteger(c.wave) || c.wave < 1 || (c.mode === 'normal' && c.wave >= NORMAL_WAVE_LIMIT) || !Object.hasOwn(CHARACTERS,c.character) || !c.upgrades || !c.record) return null;
+        if (!c || c.version !== 1 || !['normal','endless'].includes(c.mode) || !Number.isInteger(c.wave) || c.wave < 1 || (c.mode === 'normal' && c.wave >= NORMAL_WAVE_LIMIT) || !Object.hasOwn(CHARACTERS,c.character) || !heroOwned(c.character) || !c.upgrades || !c.record) return null;
         return c;
     } catch (_) { return null; }
 }

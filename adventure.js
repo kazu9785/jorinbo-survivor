@@ -115,7 +115,7 @@ function trainingNextGoal(id,route){
  const play=p.bestWave>=gate.wave||p.uses>=gate.uses;
  return (play?'プレイ条件達成':`あと${Math.max(0,gate.uses-p.uses)}回使用 または WAVE${gate.wave}到達（現在${p.bestWave}）`)+' ／ '+(gameData.coins>=gate.cost?'コイン準備OK':`あと${gate.cost-gameData.coins}G`);
 }
-function canTrainAny(){return TRAINING_CHARACTERS.some(id=>['a','b','c'].some(r=>{const p=gameData.training[id],g=TRAINING_GATES[p.levels[r]];return g&&(p.bestWave>=g.wave||p.uses>=g.uses)&&gameData.coins>=g.cost;}));}
+function canTrainAny(){return TRAINING_CHARACTERS.some(id=>heroOwned(id)&&['a','b','c'].some(r=>{const p=gameData.training[id],g=TRAINING_GATES[p.levels[r]];return g&&(p.bestWave>=g.wave||p.uses>=g.uses)&&gameData.coins>=g.cost;}));}
 function refreshAdventureHome(){
  document.getElementById('btn-training').textContent='キャラクター育成'+(canTrainAny()?' ● 強化可能':'');
  const count=ACHIEVEMENTS.filter(a=>!isDeveloper&&!gameData.journey.claimed.includes(a.id)&&a.progress()>=a.goal).length;
@@ -135,7 +135,7 @@ function renderAchievements(){
 }
 let preflightPending=false;
 async function confirmEquipmentReady(){
- const items=gameData.equipment.equipped.slice(EQ_CHARS.indexOf(gameData.character)*4,EQ_CHARS.indexOf(gameData.character)*4+4).map(decodeEquipment);
+ const items=gameData.equipment.equipped.slice(EQ_CHARS.indexOf(heroEquipmentCharacter())*4,EQ_CHARS.indexOf(heroEquipmentCharacter())*4+4).map(decodeEquipment);
  const notes=items.flatMap((item,i)=>!item?[EQ_SLOTS[i]+'：未装備']:item.durability===0?[EQ_SLOTS[i]+'：破損（効果なし）']:item.durability<=5?[EQ_SLOTS[i]+'：残り耐久'+item.durability]:[]);
  if(!notes.length)return true;
  const dialog=document.getElementById('preflight-dialog'),area=document.getElementById('preflight-notes');area.replaceChildren();notes.forEach(n=>appendEqText(area,n));
@@ -153,9 +153,9 @@ function tutorialTick(){
 }
 function completeTutorial(){gameData.journey.tutorial=2;document.getElementById('tutorial-hint').hidden=true;saveData();}
 let rankingRequest=0;
-const BOARD_KEYS=['normal','endless',...['balance','power','speed','tank'],...['normal','endless'].flatMap(m=>['balance','power','speed','tank'].map(c=>m+'_'+c))];
-function defaultBoards(){return Array(42).fill(0);}
-function repairedBoards(v){return Array.isArray(v)&&v.length===42&&v.every(n=>Number.isInteger(n)&&n>=0&&n<=1000000000)?v.slice():defaultBoards();}
+const BOARD_KEYS=['normal','endless',...['balance','power','speed','tank'],...['normal','endless'].flatMap(m=>['balance','power','speed','tank'].map(c=>m+'_'+c)),'rookie','normal_rookie','endless_rookie'];
+function defaultBoards(){return Array(51).fill(0);}
+function repairedBoards(v){return Array.isArray(v)&&[42,51].includes(v.length)&&v.every(n=>Number.isInteger(n)&&n>=0&&n<=1000000000)?v.concat(Array(51-v.length).fill(0)):defaultBoards();}
 function updateBoards(v,mode,character,wave=null){
  const b=repairedBoards(v);if(!['normal','endless'].includes(mode))return b;
  for(const k of [mode,character,mode+'_'+character]){const i=BOARD_KEYS.indexOf(k)*3;if(i<0)continue;if(wave===null)b[i+2]=Math.min(1000000000,b[i+2]+1);else{b[i]=Math.max(b[i],wave);b[i+1]=wave;}}

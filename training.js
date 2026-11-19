@@ -1,10 +1,11 @@
 /* Character training: persistent progress, one active route per run. */
-const TRAINING_CHARACTERS = ['balance', 'power', 'speed', 'tank'];
+const TRAINING_CHARACTERS = ['rookie','balance', 'power', 'speed', 'tank'];
 const TRAINING_GATES = [
     {wave:3, uses:2, cost:100}, {wave:6, uses:5, cost:300},
     {wave:10, uses:10, cost:700}, {wave:15, uses:20, cost:1500}, {wave:20, uses:35, cost:3000}
 ];
 const TRAINING_ROUTES = {
+    rookie:[{id:'a',name:'射撃練習',effect:l=>`通常弾の攻撃力＋${2*l}％。`},{id:'b',name:'体力づくり',effect:l=>`最大HP＋${l}。`},{id:'c',name:'足慣らし',effect:l=>`移動速度＋${2*l}％。`}],
     balance: [
         {id:'a',name:'連撃型',effect:l=>`通常弾の連続命中1回につき火力＋${2*l}％（最大10回・${20*l}％）。2秒間命中しないか被弾するとリセット。`},
         {id:'b',name:'適応型',effect:l=>`各WAVEで「通常弾＋${8*l}％」か「被ダメージ−${4*l}％」を選択。`},
@@ -60,7 +61,7 @@ function trainingStartRun(countUse=true) {
 function trainingLevel(character,route) {
     return activeTraining?.character===character && activeTraining.route===route ? activeTraining.level : 0;
 }
-function trainingHpBonus() { return trainingLevel('tank','c')*3; }
+function trainingHpBonus() { return trainingLevel('tank','c')*3+trainingLevel('rookie','b'); }
 function getSkillCooldown() { return bombCooldown*(1-.08*trainingLevel('power','b'))*equipmentStats().cooldown; }
 function trainingSkillMultiplier() { return (1+.15*trainingLevel('power','a'))*equipmentSkillMultiplier(); }
 function trainingSkillRadius() { return 1+.06*trainingLevel('power','a'); }
@@ -157,12 +158,13 @@ function canEditTraining() {
     return !homeScreen.classList.contains('hidden') && !startingRun && !preflightPending && !btnBattle.disabled && !cloudConflict;
 }
 function trainingUpgrade(id,route) {
-    if (!canEditTraining() || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
+    if (!canEditTraining() || !heroOwned(id) || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
     const p=getTrainingProgress(id),level=p.levels[route],gate=TRAINING_GATES[level];
     if (!gate || (p.bestWave<gate.wave && p.uses<gate.uses) || gameData.coins<gate.cost) return false;
     gameData.coins-=gate.cost;p.levels[route]++;saveData();renderTraining();return true;
 }
 const TRAINING_VISUALS = {
+ rookie:[['🎯','少しずつ火力アップ'],['💚','基礎体力をつける'],['👟','移動に慣れよう']],
  balance:[['⚔️','当て続けて火力アップ'],['⚖️','WAVEごとに攻守を選ぶ'],['💰','コイン集めが得意']],
  power:[['🔮','大きな魔法で一掃'],['⌛','スキルを早く使える'],['🔥','スキルの後も攻める']],
  speed:[['🎯','遠くから大ダメージ'],['💨','動きながら連射'],['🐉','ボスへの切り札']],
@@ -195,10 +197,10 @@ function renderTraining() {
    const bar=document.createElement('progress');bar.max=1;bar.value=Math.min(1,Math.max(p.bestWave/gate.wave,p.uses/gate.uses));bar.setAttribute('aria-label','WAVEまたは使用回数の達成度');progress.appendChild(bar);
    if(!satisfied)appendEqText(progress,'あとWAVE '+Math.max(0,gate.wave-p.bestWave)+' または '+Math.max(0,gate.uses-p.uses)+'回','training-hint');
    appendEqText(progress,gameData.coins>=gate.cost?'🪙 '+gate.cost+' G · 準備OK':'🪙 '+gate.cost+' G · あと'+(gate.cost-gameData.coins)+' G');card.appendChild(progress);
-   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
+   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!heroOwned(id)||!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
   } else appendEqText(card,'🏆 育成コンプリート！','training-max');
-  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!canEditTraining()||selected||!level;
-  equip.addEventListener('click',()=>{if(!canEditTraining())return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
+  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!heroOwned(id)||!canEditTraining()||selected||!level;
+  equip.addEventListener('click',()=>{if(!canEditTraining()||!heroOwned(id))return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
  }
 }
 function initTrainingUI() {

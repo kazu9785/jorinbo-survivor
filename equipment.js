@@ -80,9 +80,9 @@ function applyDeveloperEquipment(){
   if(i){i.durability=EQ_MAX_DURABILITY[grade];equipmentReplace(i);if(grade===5)d.equipped[slot]=encodeEquipment(i);}
  }
 }
-function equipmentCurrentIds(){return gameData.equipment.equipped.slice(EQ_CHARS.indexOf(gameData.character)*4,EQ_CHARS.indexOf(gameData.character)*4+4).map(w=>decodeEquipment(w)?.uid||null);}
+function equipmentCurrentIds(){return gameData.equipment.equipped.slice(EQ_CHARS.indexOf(heroEquipmentCharacter())*4,EQ_CHARS.indexOf(heroEquipmentCharacter())*4+4).map(w=>decodeEquipment(w)?.uid||null);}
 function equipmentSnapshotIds(snapshot){
- const start=EQ_CHARS.indexOf(gameData.character)*4;
+ const start=EQ_CHARS.indexOf(heroEquipmentCharacter())*4;
  return snapshot.map((id,s)=>{
   // v1.1 checkpoint design IDs, or v1.2 per-instance IDs.
   const i=typeof id==='number'?equipmentFind(id):typeof id==='string'&&EQ_IDS.includes(id)?equipmentItems().find(x=>`${x.slot}-${x.grade}`===id):null;
@@ -279,7 +279,7 @@ function initEquipmentUI(){
  EQ_CHARS.forEach(id=>{for(const target of [select,filter]){const o=document.createElement('option');o.value=id;o.textContent=CHARACTERS[id].name;target.appendChild(o);}});
  select.addEventListener('change',()=>{equipmentViewedCharacter=select.value;renderEquipment();});
  ['equipment-filter-character','equipment-filter-slot','equipment-filter-grade','equipment-filter-affix','equipment-sort'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{equipmentPage=0;renderEquipment();}));
- document.getElementById('btn-equipment').addEventListener('click',()=>{if(!canEditTraining())return;equipmentViewedCharacter=gameData.character;select.value=equipmentViewedCharacter;equipmentPage=0;equipmentMessage('');document.getElementById('equipment-results').replaceChildren();renderEquipment();document.getElementById('equipment-dialog').showModal();});
+ document.getElementById('btn-equipment').addEventListener('click',()=>{if(!canEditTraining())return;equipmentViewedCharacter=heroEquipmentCharacter();select.value=equipmentViewedCharacter;equipmentPage=0;equipmentMessage('');document.getElementById('equipment-results').replaceChildren();renderEquipment();document.getElementById('equipment-dialog').showModal();});
  document.getElementById('btn-summon').addEventListener('click',()=>{if(!canEditTraining())return;equipmentMessage('');document.getElementById('equipment-results').replaceChildren();renderEquipment();document.getElementById('summon-menu-dialog').showModal();});
  document.getElementById('equipment-roll').addEventListener('click',()=>summonEquipment(1));document.getElementById('equipment-roll10').addEventListener('click',()=>summonEquipment(10));
  document.getElementById('equipment-prev').addEventListener('click',()=>{equipmentPage=Math.max(0,equipmentPage-1);renderEquipment();});

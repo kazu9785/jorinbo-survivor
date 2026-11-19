@@ -118,6 +118,11 @@
         if (now - (cooldown.get(name) ?? -10) < limit) return;
         cooldown.set(name, now);
         const patterns = {
+            hero_rookie:[[760,.055,'triangle',0,250]],
+            hero_balance:[[560,.085,'triangle',0,1100]],
+            hero_power:[[420,.12,'sine',0,850]],
+            hero_speed:[[1400,.045,'triangle',0,450]],
+            hero_tank:[[140,.12,'triangle',0,65]],
             gacha_promote: [[330,.18,'triangle',0,660],[660,.22,'sine',.12,1320],[990,.25,'sine',.22]],
             gacha_charge: [[165,.35,'sine',0,330],[247,.35,'triangle',.13,494],[330,.3,'sine',.28,660]],
             gacha_open: [[523,.16,'triangle',0],[659,.2,'triangle',.10],[784,.35,'sine',.2]],

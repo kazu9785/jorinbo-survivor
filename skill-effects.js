@@ -15,10 +15,10 @@ function skillCastVisual(kind) {
     if(!Object.hasOwn(SKILL_VISUAL_COLORS,kind))return;
     const quiet=reducedEffects();
     const sizes={sphere:220,bomb:310,energy:330,satellite:150};
-    const el=skillVisualNode(kind,playerX,playerY,quiet?88:sizes[kind],quiet?260:800,quiet?'skill-cast-quiet':'');
+    const el=skillVisualNode(kind,playerX,playerY,quiet?88:sizes[kind],quiet?400:({sphere:800,bomb:1650,energy:2050,satellite:1850}[kind]),quiet?'skill-cast-quiet':'');
     if(!el)return;
     const art=document.createElement('div');art.className='skill-cast-art';
-    art.style.backgroundImage=`url("${gameAssetUrl('skill_'+kind+'.png?v=1.9.2')}")`;
+    art.style.backgroundImage=`url("${gameAssetUrl('skill_'+kind+'.png?v=1.9.3')}")`;
     el.appendChild(art);
     if(!quiet){
         for(let i=0;i<(kind==='energy'?3:1);i++){
@@ -29,7 +29,7 @@ function skillCastVisual(kind) {
 }
 function skillSatelliteImpact(x,y) {
     if(reducedEffects())return;
-    const el=skillVisualNode('satellite',x,y,110,550,'skill-target-impact');
+    const el=skillVisualNode('satellite',x,y,110,1650,'skill-target-impact');
     if(!el)return;
     const beam=document.createElement('i');beam.className='skill-laser-column';
     el.appendChild(beam);

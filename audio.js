@@ -10,7 +10,15 @@
     } catch (_) {}
     let ctx, musicGain, effectsGain, master, timer, next = 0, step = 0, mode = 'menu';
     const voices = new Set(), cooldown = new Map();
-    let primed = false, audioChoiceMade = false;
+    let primed = false, audioChoiceMade = false, noiseBuffer, lastTrack = '';
+    const active = id => {const el=document.getElementById(id);return !!el && (el.tagName==='DIALOG'?el.open:!el.classList.contains('hidden'));};
+    function currentTrack(){
+        if(mode!=='menu')return mode;
+        if(['gacha-dialog','summon-menu-dialog'].some(active))return 'gacha';
+        if(['skill-shop-screen','weapon-shop-screen','player-shop-screen','training-dialog','equipment-dialog'].some(active))return 'shop';
+        if(active('reward-screen'))return 'reward';
+        return 'menu';
+    }
     function audioStatus() {
         const el = document.getElementById('audio-status');
         const supported = !!(window.AudioContext || window.webkitAudioContext);
@@ -20,6 +28,10 @@
         if (recovery) recovery.classList.toggle('hidden', !supported || !audioChoiceMade || settings.muted || document.hidden || mode === 'silent' || !blocked);
     }
     const tracks = {
+        shop: { bpm: 98, roots:[48,55,53,55], melody:[12,16,19,16,14,19,21,19], type:'sine' },
+        gacha: { bpm: 112, roots:[45,53,48,52], melody:[12,19,24,22,19,15,12,7], type:'sine' },
+        reward: { bpm: 100, roots:[48,53,55,48], melody:[12,16,19,24,19,16,14,12], type:'triangle' },
+        victory: { bpm: 116, roots:[48,53,55,48], melody:[12,16,19,24,26,24,19,16], type:'triangle' },
         menu: { bpm: 90, roots: [48, 53, 55, 50], melody: [0,7,12,7,3,7,10,7], type: 'sine' },
         battle: { bpm: 128, roots: [45, 41, 48, 43], melody: [12,7,10,7,15,12,10,7], type: 'triangle' },
         boss: { bpm: 146, roots: [38, 39, 41, 37], melody: [12,13,7,10,12,7,15,13], type: 'sawtooth' },
@@ -43,20 +55,36 @@
         o.onended = () => { voices.delete(o); o.disconnect(); g.disconnect(); };
         o.start(when); o.stop(when + duration + 0.015);
     }
+    function noise(duration,level,bus,when,cutoff=1200) {
+        if(!ctx || voices.size>=48)return;
+        if(!noiseBuffer){noiseBuffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);const data=noiseBuffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;}
+        const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+        source.buffer=noiseBuffer;filter.type='lowpass';filter.frequency.setValueAtTime(cutoff,when);
+        gain.gain.setValueAtTime(0,when);gain.gain.linearRampToValueAtTime(level,when+.01);gain.gain.exponentialRampToValueAtTime(.0001,when+duration);
+        source.connect(filter);filter.connect(gain);gain.connect(bus);voices.add(source);
+        source.onended=()=>{voices.delete(source);source.disconnect();filter.disconnect();gain.disconnect()};
+        source.start(when);source.stop(when+duration+.02);
+    }
     const frequency = note => 440 * Math.pow(2, (note - 69) / 12);
     function tick() {
         if (!ctx || ctx.state !== 'running' || document.hidden || settings.muted || mode === 'silent') return;
-        const t = tracks[mode];
+        const selected=currentTrack(),t = tracks[selected];
+        if(lastTrack!==selected){lastTrack=selected;step=0;next=ctx.currentTime+.02;}
         if (next < ctx.currentTime) next = ctx.currentTime + 0.02;
         while (next < ctx.currentTime + 0.12) {
             const root = t.roots[Math.floor(step / 16) % 4], pos = step % 8;
-            tone(frequency(root + t.melody[pos]), 0.17, t.type, mode === 'menu' ? 0.15 : 0.075, musicGain, next);
+            tone(frequency(root + t.melody[pos]), 0.17, t.type, ['menu','shop','gacha'].includes(selected) ? 0.09 : 0.065, musicGain, next);
             if (step % 4 === 0) tone(frequency(root - 12), 0.32, 'triangle', 0.23, musicGain, next);
-            if (mode !== 'menu') {
+            if (['battle','boss','awakened'].includes(selected)) {
                 if (step % 4 === 0) tone(120, 0.12, 'sine', 0.35, musicGain, next, 38);
-                if (step % 4 === 2) tone(185, 0.055, 'triangle', 0.16, musicGain, next, 70);
-                tone(4200, 0.018, 'square', 0.009, musicGain, next, 1600);
+                if (step % 4 === 2) noise(.1,.10,musicGain,next,1800);
+                noise(.025,.025,musicGain,next,6500);
             }
+            if(step%8===0){
+                const major=['shop','reward','victory'].includes(selected);
+                for(const offset of [0,major?4:3,7])tone(frequency(root+offset),1.1,'sine',.025,musicGain,next);
+            }
+            if(selected==='gacha'&&step%4===2)tone(frequency(root+24),.5,'sine',.06,musicGain,next);
             next += 60 / t.bpm / 2; step++;
         }
     }
@@ -71,7 +99,7 @@
             if (!ctx || ctx.state === 'closed') {
                 stopVoices();
                 if (timer !== undefined) clearInterval(timer);
-                cooldown.clear(); primed = false; next = 0;
+                cooldown.clear(); primed = false; next = 0; noiseBuffer=null;
                 const Audio = window.AudioContext || window.webkitAudioContext;
                 if (!Audio) return;
                 ctx = new Audio(); master = ctx.createGain();
@@ -114,10 +142,17 @@
     function effect(name, volume = 0.5) {
         if (!audioChoiceMade || !ctx || ctx.state !== 'running' || settings.muted || document.hidden) return;
         const now = ctx.currentTime;
-        const limit = { shot: 0.10, hit: 0.09, coin: 0.10, hurt: 0.16 }[name] || 0.05;
+        const limit = name.startsWith('hero_') ? .09 : { shot: 0.10, hit: 0.09, coin: 0.10, hurt: 0.16 }[name] || 0.05;
         if (now - (cooldown.get(name) ?? -10) < limit) return;
         cooldown.set(name, now);
         const patterns = {
+            skill_sphere:[[420,.4,'sine',0,1100],[630,.5,'sine',.2,1500],[840,.65,'triangle',.4,420]],
+            skill_bomb:[[110,.8,'sine',0,30],[65,1.2,'triangle',.08,24]],
+            skill_energy:[[90,.7,'sine',0,700],[180,.8,'triangle',.12,1000],[900,1,'sine',.55,180]],
+            skill_satellite:[[1100,.35,'sine',0,1500],[2200,.6,'triangle',.2,180],[1600,.7,'sine',.5,300]],
+            upgrade:[[523,.12,'sine',0],[784,.16,'sine',.08],[1047,.25,'triangle',.16]],
+            ui_open:[[440,.07,'sine',0,660]],
+            ui_close:[[440,.07,'sine',0,260]],
             hero_rookie:[[760,.055,'triangle',0,250]],
             hero_balance:[[560,.085,'triangle',0,1100]],
             hero_power:[[420,.12,'sine',0,850]],
@@ -138,7 +173,8 @@
             boss_seeds: [[180,0.16,'triangle',0,95],[240,0.16,'triangle',0.13,110],[160,0.25,'triangle',0.26,65]],
             boss_power: [[55,0.42,'sine',0,35]],
             shot: [[760, 0.055, 'triangle', 0, 250]], hit: [[170, 0.035, 'triangle', 0, 80]],
-            hurt: [[150, 0.20, 'sawtooth', 0, 45]], coin: [[1100, 0.07, 'sine', 0], [1500, 0.1, 'sine', 0.055]],
+            guard: [[780,.12,'sine',0,390],[1170,.18,'triangle',.03,585]],
+            hurt: [[180,.20,'triangle',0,50],[75,.28,'sine',.02,35]], coin: [[1100, 0.07, 'sine', 0], [1500, 0.1, 'sine', 0.055]],
             heal: [[523,0.15,'sine',0],[659,0.15,'sine',0.09],[784,0.24,'sine',0.18]],
             warning: [[110,0.45,'sawtooth',0,220],[110,0.45,'sawtooth',0.5,330]],
             skill: [[110,0.5,'sawtooth',0,880],[880,0.4,'triangle',0.18,110]],
@@ -148,9 +184,23 @@
             start: [[330,0.12,'triangle',0],[660,0.25,'triangle',0.1]],
             confirm: [[660,0.1,'sine',0],[880,0.12,'sine',0.06]]
         };
-        for (const [f,d,type,delay,end] of patterns[name] || patterns.confirm)
-            tone(f,d,type,Math.min(1, Math.max(0, volume)) * (name === 'shot' || name === 'hit' ? 0.10 : 0.24),effectsGain,now+delay,end);
+        volume=Number.isFinite(volume)?Math.min(1,Math.max(0,volume)):.5;
+        if(name==='hurt')noise(.18,volume*.18,effectsGain,now,1400);
+        if(name==='hit')noise(.04,volume*.06,effectsGain,now,2200);
+        if(name==='skill_bomb')noise(1.35,volume*.24,effectsGain,now,900);
+        if(name==='skill_energy')noise(1.3,volume*.10,effectsGain,now,1800);
+        if(name==='skill_satellite')noise(.55,volume*.10,effectsGain,now+.2,3500);
+        if(name==='hero_tank')noise(.12,volume*.10,effectsGain,now,700);
+        const pattern=patterns[name] || (name.startsWith('boss_')?patterns.boss_breath:patterns.confirm);
+        for (const [f,d,type,delay,end] of pattern)
+            tone(f,d,type,Math.min(1, Math.max(0, volume)) * (name === 'shot' || name === 'hit' || name.startsWith('hero_') ? 0.10 : 0.24),effectsGain,now+delay,end);
     }
+    document.addEventListener('click', e=>{
+        const b=e.target.closest?.('button');if(!b||b.disabled||b.closest('#audio-settings,.audio-start-modal'))return;
+        if(b.classList.contains('persistent-close'))effect('ui_close',.25);
+        else if(b.id.startsWith('upgrade-')||b.classList.contains('training-buy'))effect('upgrade',.3);
+        else if(b.dataset.infoDialog||b.classList.contains('menu-btn')||['btn-equipment','btn-training'].includes(b.id))effect('ui_open',.2);
+    });
     window.GameAudio = { scene, effect, unlock };
     // タッチ開始だけでなく、タップ完了時にもユーザー操作の中で再開を試す。
     // キャプチャで受け、子要素のstopPropagationの影響を受けない。

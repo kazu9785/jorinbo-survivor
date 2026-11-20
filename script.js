@@ -744,7 +744,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.9.2 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.9.3 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -2002,7 +2002,7 @@ function simulateCombatStep() {
 }
 
 function triggerInvoluteSphere() {
-    playSound("skill");
+    playSound("skill_sphere");
     skillCastVisual("sphere");
     const level = gameData.skills.levels.sphere;
     const sphereCount = 6 + (level - 1) * 2;
@@ -2019,7 +2019,7 @@ function triggerInvoluteSphere() {
 }
 
 function triggerBomb() {
-    playSound("skill");
+    playSound("skill_bomb");
     skillCastVisual("bomb");
 
     const level = gameData.skills.levels.bomb;
@@ -2034,7 +2034,7 @@ function triggerBomb() {
 
 // ★ハイエナジーサークル (画面全体)
 function triggerHighEnergyCircle() {
-    playSound("skill");
+    playSound("skill_energy");
     const level = gameData.skills.levels.energy;
     // 画面全体を覆うほど大きな半径にする
     const maxDim = Math.max(getArenaSize().width, getArenaSize().height);
@@ -2051,7 +2051,7 @@ function triggerHighEnergyCircle() {
 }
 
 function triggerSatellite() {
-    playSound("skill");
+    playSound("skill_satellite");
     skillCastVisual("satellite");
     const level = gameData.skills.levels.satellite;
     const beamCount = 2 + Math.floor(level / 2); 
@@ -2812,9 +2812,9 @@ function takePlayerDamage(dmg) {
     if (currentWaveEvent === 'rage') dmg = Math.ceil(dmg * 1.5);
     if (gameData.character==='tank') dmg*=.9;
     dmg = equipmentIncomingDamage(dmg);
-    if (dmg <= 0) { updateHpDisplay(); return; }
+    if (dmg <= 0) { playSound("guard", .3); updateHpDisplay(); return; }
     dmg = trainingIncomingDamage(dmg);
-    if (dmg <= 0) { updateHpDisplay(); return; }
+    if (dmg <= 0) { playSound("guard", .3); updateHpDisplay(); return; }
     playerCurrentHp = Math.max(0, Math.round((playerCurrentHp - dmg) * 1000) / 1000);
     updateHpDisplay();
     heroHurtUntil=gameNow()+220;
@@ -2959,7 +2959,7 @@ function waveClear() {
 function gameClear() {
     finalizeRun('WAVE' + NORMAL_WAVE_LIMIT + 'クリア');
     renderRunResult('clear-details');
-    window.GameAudio?.scene("menu");
+    window.GameAudio?.scene("victory");
     stopWaveEvent();
     isGameOver = true;
     gameData.endlessUnlocked = true;

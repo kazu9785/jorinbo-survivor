@@ -173,7 +173,7 @@ const TRAINING_VISUALS = {
 function renderTraining() {
  const id=trainingViewedCharacter,p=getTrainingProgress(id),character=CHARACTERS[id];
  const hero=document.getElementById('training-summary');hero.replaceChildren();hero.className='training-hero';
- const portrait=document.createElement('img');portrait.src=character.image;portrait.alt=character.name;hero.appendChild(portrait);
+ hero.appendChild(heroPortrait(character));
  const info=document.createElement('div');hero.appendChild(info);
  appendEqText(info,character.name,'training-hero-name');appendEqText(info,character.role,'training-tagline');
  appendEqText(info,'🏁 WAVE '+p.bestWave+'　🎮 '+p.uses+'回','training-record');appendEqText(info,'🪙 '+gameData.coins+' G','training-wallet');
@@ -182,7 +182,7 @@ function renderTraining() {
   const level=p.levels[route.id],gate=TRAINING_GATES[level],selected=p.route===route.id;
   const card=document.createElement('article');card.className='training-card training-route-'+route.id+(selected?' route-selected':'');
   const art=document.createElement('div');art.className='training-route-art';
-  const image=document.createElement('img');image.src=character.image;image.alt='';art.appendChild(image);
+  art.appendChild(heroPortrait(character));
   const icon=document.createElement('span');icon.className='training-route-icon';icon.textContent=TRAINING_VISUALS[id][index][0];icon.setAttribute('aria-hidden','true');art.appendChild(icon);
   const badge=document.createElement('span');badge.className='training-route-badge';badge.textContent=selected?(level?'✓ 選択中':'選択中・未解放'):level?'解放済み':'未解放';art.appendChild(badge);card.appendChild(art);
   const title=document.createElement('h3');title.textContent=route.name;card.appendChild(title);

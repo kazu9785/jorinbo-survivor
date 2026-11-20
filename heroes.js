@@ -49,12 +49,14 @@ function heroUpdateMotion(x,y){
  if(now<heroHurtUntil){if(!quiet){lean+=Math.sin((heroHurtUntil-now)*.07)*5;bob+=2;} }
  heroDrawMotion(row,direction,bob,lean,recoil);
 }
-const HERO_CLEAR_PIXEL='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-function heroFixPortrait(img){
- const m=img.getAttribute('src')?.match(/(?:^|\/)hero_(rookie|balance|power|speed|tank)\.png(?:\?.*)?$/);if(!m)return;
- img.style.backgroundImage=`url('hero_${m[1]}.png')`;img.style.backgroundSize='400% 200%';img.style.backgroundPosition='0 0';img.style.backgroundRepeat='no-repeat';img.style.objectFit='contain';img.src=HERO_CLEAR_PIXEL;img.classList.add('hero-portrait');
+// All portrait slots show the standing frame of the same 4 × 2 sheet.
+// The adjacent text supplies the character's name; no placeholder <img> is needed.
+function heroPortrait(character, slot = document.createElement('span')) {
+    slot.classList.add('hero-portrait');
+    slot.setAttribute('aria-hidden', 'true');
+    slot.style.setProperty('--hero-sheet', `url("${gameAssetUrl(character.image)}")`);
+    return slot;
 }
-new MutationObserver(records=>{for(const r of records){if(r.type==='attributes'&&r.target.tagName==='IMG')heroFixPortrait(r.target);for(const n of r.addedNodes||[]){if(n.nodeType!==1)continue;if(n.tagName==='IMG')heroFixPortrait(n);n.querySelectorAll?.('img').forEach(heroFixPortrait);}}}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});
 function heroEffect(el,id,column){
  const row=HERO_IDS.indexOf(id);el.style.backgroundImage="url('hero_effects.png')";el.style.backgroundSize='400% 500%';el.style.backgroundPosition=`${column*100/3}% ${row*25}%`;
 }

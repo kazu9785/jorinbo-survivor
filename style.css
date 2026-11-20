@@ -1005,15 +1005,14 @@ body.lite-mode .equipment-icon-tile {box-shadow:none;}
 /* v1.9 hero sprites: preserve the existing player hitbox. */
 #hero-sprite {position:absolute;left:50%;top:50%;width:104px;height:104px;background-repeat:no-repeat;pointer-events:none;will-change:transform;}
 /* A real sprite, not a foreground <img>: Safari has no broken-image glyph to draw.
-   Preserve the slot dimensions on narrow screens; centre the square first cell. */
+   Keep the existing slot sizes and fit the full portrait, including the boots. */
 .hero-portrait {
     display:block; position:relative; flex:none; overflow:hidden; pointer-events:none;
     width:var(--portrait-height); height:var(--portrait-height);
 }
 .hero-portrait::before {
-    content:""; position:absolute; top:0; left:50%; transform:translateX(-50%);
-    width:var(--portrait-height); height:100%;
-    background:var(--hero-sheet) left top / 400% 200% no-repeat;
+    content:""; position:absolute; inset:0;
+    background:var(--hero-sheet) center bottom / contain no-repeat;
 }
 .hero-bullet {background-color:transparent!important;border-radius:0;box-shadow:none!important;background-repeat:no-repeat;}
 .hero-fx {position:absolute;z-index:24;pointer-events:none;background-repeat:no-repeat;animation:hero-impact .22s ease-out forwards;}

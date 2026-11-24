@@ -113,11 +113,11 @@ h1, h2, .menu-btn, .hud-item, .boss-name, .damage-text, .back-btn, .buy-btn, .re
 .bullet { width: 10px; height: 10px; background-color: #ffff00; position: absolute; border-radius: 50%; box-shadow: 0 0 5px #ffff00; z-index: 15; transform: translate(-50%, -50%); }
 
 /* 敵 */
-.enemy { width: 60px; height: 60px; position: absolute; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 16px; color: white; user-select: none; background-size: contain; background-repeat: no-repeat; background-position: center; z-index: 10; }
+.enemy { width: 60px; height: 60px; position: absolute; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 16px; color: white; user-select: none; background-size: contain; background-repeat: no-repeat; background-position: center; z-index: 10; }
 .enemy-minion { background-image: url('slime.png'); text-shadow: 1px 1px 2px #000; }
 .enemy-shooter { background-image: url('のび太.png'); width: 50px !important; height: 70px !important; z-index: 11; }
 .enemy-golem { background-image: url('ゴーレム.png'); width: 80px !important; height: 80px !important; z-index: 11; }
-.enemy-boss { width: 150px; height: 150px; background-color: rgba(255, 0, 0, 0.3); z-index: 50; color: transparent; font-size: 0; }
+.enemy-boss { width: 150px; height: 150px; background-color: transparent; border: 0; outline: 0; box-shadow: none; filter: drop-shadow(0 0 6px var(--stage-color, #ff9767)); z-index: 50; color: transparent; font-size: 0; }
 
 .enemy-bullet { width: 12px; height: 12px; background-color: #ff0000; position: absolute; border-radius: 50%; box-shadow: 0 0 8px #ff0000; z-index: 15; transform: translate(-50%, -50%); }
 .boss-fire { width: 24px; height: 24px; background: radial-gradient(circle, #ffeb3b, #ff5722); position: absolute; border-radius: 50%; box-shadow: 0 0 15px #ff5722; z-index: 16; transform: translate(-50%, -50%); pointer-events: none; }
@@ -355,7 +355,7 @@ button:disabled { cursor: wait; opacity: 0.6; }
 .character-card b { margin-top: auto; color: #8de8ff; }
 .character-card.selected { border-color: #5de8ff; background: #233e55; }
 .character-card:focus-visible { outline: 3px solid #ffdc65; outline-offset: 2px; }
-.enemy-rusher { background-image: url('常林暴.png'); width: 60px; height: 60px; filter: drop-shadow(0 0 5px #ff374d); }
+.enemy-rusher { background-image: url('常林暴.png?v=1.9.6'); width: 60px; height: 60px; filter: drop-shadow(0 0 5px #ff374d); }
 @media (max-width: 700px) { #character-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .character-card .hero-portrait { --portrait-height:120px; } }
 #home-screen { overflow-y: auto; }
 
@@ -692,7 +692,7 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .crystal-drop {position:absolute;display:flex;align-items:center;color:#a7f5ff;pointer-events:none;z-index:60;animation:crystal-rise 1s ease-out forwards;}
 .crystal-drop img {width:32px;height:32px;object-fit:contain;}
 @keyframes crystal-rise {to{transform:translateY(-60px);opacity:0;}}
-.enemy-tier-2 {outline:2px solid #57bcff;}.enemy-tier-3 {outline:3px solid #d590ff;}
+/* Tier colours follow the sprite silhouette (see the tier rules below). */
 .enemy-tier-badge {position:absolute;top:-25px;left:0;white-space:nowrap;background:#17233b;color:white;font-size:11px;padding:2px 4px;border-radius:4px;}
 
 /* 100WAVE expansion: equal-cell atlases; inline positions select each creature. */
@@ -700,7 +700,8 @@ body.touch-controls #audio-recovery { bottom:calc(90px + env(safe-area-inset-bot
 .enemy-boss.stage-sprite {background-color:transparent;}
 .codex-sprite {width:110px;height:110px;margin:0 auto;}
 .codex-sprite.undiscovered {filter:brightness(0);opacity:.5;}
-.stage-charge-warning {filter:brightness(1.65);outline:2px dashed #ffe596;}
+.enemy.stage-charge-warning {filter:brightness(1.65) drop-shadow(0 0 5px #ffe596);}
+body.lite-mode #game-area .enemy.stage-charge-warning {filter:brightness(1.55) !important;}
 .stage-bullet-tier-1 {background:#ffc46b;box-shadow:0 0 5px #ff963b;}
 .stage-bullet-tier-2 {background:#8ceaff;box-shadow:0 0 5px #50bbff;}
 .stage-bullet-tier-3 {background:#e4b0ff;box-shadow:0 0 5px #ca64ff;}

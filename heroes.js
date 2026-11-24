@@ -31,9 +31,10 @@ function heroDirectionSprite(direction){return {column:direction<=4?direction:8-
 function heroMotionLayer(id){
  let layer=document.getElementById(id);if(!layer){layer=document.createElement('div');layer.id=id;layer.className='hero-motion-layer';player.appendChild(layer);}return layer;
 }
+function heroDrawHeight(row){return row===4?80:88;}
 function heroPaintFrame(el,frame,bob,lean,recoil,opacity){
  const atlas=HERO_MOTION_FRAMES[frame.id],box=atlas.frames[frame.row*5+frame.column];
- const height=frame.row===4?80:88,scale=height/box[3];
+ const height=heroDrawHeight(frame.row),scale=height/box[3];
  Object.assign(el.style,{width:box[2]*scale+'px',height:height+'px',backgroundImage:heroArtBackground('motion_'+frame.id+'.png'),backgroundSize:`${atlas.size[0]*scale}px ${atlas.size[1]*scale}px`,backgroundPosition:`${-box[0]*scale}px ${-box[1]*scale}px`,opacity:String(opacity),transformOrigin:`${box[4]}% 90%`,transform:`translate(${-box[4]}%,-100%) translate(${recoil.x}px,${30+bob+recoil.y}px) rotate(${lean}deg) scaleX(${frame.flip?-1:1})`});
  el.classList.toggle('hero-hurt',gameNow()<heroHurtUntil);
 }
@@ -43,6 +44,8 @@ function heroDrawMotion(row,direction,bob=0,lean=0,recoil={x:0,y:0}){
  if(key!==heroMotionKey){heroMotionPrevious=heroMotionCurrent;heroMotionCurrent=frame;heroMotionKey=key;heroMotionChanged=now;}
  const blend=reducedEffects()?1:Math.min(1,(now-heroMotionChanged)/55);
  if(heroMotionPrevious&&blend<1){heroPaintFrame(previous,heroMotionPrevious,bob,lean,recoil,1-blend);heroPaintFrame(current,frame,bob,lean,recoil,blend);}else{previous.style.opacity='0';heroPaintFrame(current,frame,bob,lean,recoil,1);}
+ // During the short crossfade use the more visible sprite, not the union of two poses.
+ hitTrackHero(heroMotionPrevious&&blend<.5?heroMotionPrevious:frame,bob,lean,recoil);
 }
 let heroMotionCurrent=null;
 function heroSetPose(){heroMotionKey='';heroMotionCurrent=null;heroMotionPrevious=null;heroMotionLast=null;heroMotionPhase=0;heroDrawMotion(0,0);}
@@ -84,7 +87,7 @@ function heroFire(damage,count,size){
  if(!waveEventActive||isGameOver||isPaused||!enemies.length)return;
  let closest=null,dist=Infinity;for(const e of enemies){const d=(e.x-playerX)**2+(e.y-playerY)**2;if(d<dist){closest=e;dist=d;}}
  const id=gameData.character,range=id==='tank'?420:600;if(!closest||dist>range*range)return;
- const angle=Math.atan2(closest.y-playerY,closest.x-playerX);heroAttackAngle=angle;heroShotUntil=gameNow()+Math.min(160,getPlayerStats().shotInterval*.55);heroShots++;
+ const target=hitEnemyAim(closest),angle=Math.atan2(target.y-playerY,target.x-playerX);heroAttackAngle=angle;heroShotUntil=gameNow()+Math.min(160,getPlayerStats().shotInterval*.55);heroShots++;
  const strong=id==='balance'&&heroShots%5===0;
  const awakened=heroAscended()&&gameNow()-heroLastAwakened>=12000;
  const trained=(activeTraining?.level||0)>=3;
@@ -94,7 +97,7 @@ function heroFire(damage,count,size){
   const a=angle+(count>1?-.15+.3*i/(count-1):0),el=acquireBulletElement();el.className='bullet hero-bullet';
   const visual=Math.min(68,Math.max(id==='tank'?36:22,size*1.8));
   Object.assign(el.style,{width:visual+'px',height:visual+'px',left:playerX+'px',top:playerY+'px',transform:`translate(-50%,-50%) rotate(${a}rad)`});heroEffect(el,id,strong||trained?3:1);worldLayer.appendChild(el);
-  bullets.push({element:el,x:playerX,y:playerY,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,damage:damage*(strong?1.75:1),hero:id,hit:new Set(),remaining:id==='speed'?2:1,expiresAt:gameNow()+range/speed*1000/60});
+  bullets.push({element:el,x:playerX,y:playerY,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,damage:damage*(strong?1.75:1),hero:id,hitShape:hitPose('shot/'+id+'/'+(strong||trained?3:1),visual,visual,.5,.5,a),hit:new Set(),remaining:id==='speed'?2:1,expiresAt:gameNow()+range/speed*1000/60});
  }
  heroFx(id,0,playerX+Math.cos(angle)*22,playerY+Math.sin(angle)*22,angle,38);
  playSound('hero_'+id,.32);
@@ -102,14 +105,15 @@ function heroFire(damage,count,size){
   heroLastAwakened=gameNow();heroFx('balance',2,playerX,playerY,0,150);showDamageText(playerX,playerY-65,'覚醒！');
   playerCurrentHp=Math.min(playerMaxHp,playerCurrentHp+playerMaxHp*.15);updateHpDisplay();
   for(const b of enemyBullets)b.element.remove();enemyBullets=[];
-  for(const e of [...enemies])if(Math.hypot(e.x-playerX,e.y-playerY)<520)damageEnemy(e,damage*8);
+  for(const e of [...enemies])if(hitEnemyArea(e,playerX,playerY,520))damageEnemy(e,damage*8);
  }
 }
-function heroHit(b,e){
- const x=e.x,y=e.y;damageEnemy(e,equipmentBulletDamage(e,trainingBulletDamage(e,b.damage)));heroFx(b.hero,2,x,y,0,42);
+function heroHit(b,e,impact=hitEnemyAim(e)){
+ const {x,y}=impact;damageEnemy(e,equipmentBulletDamage(e,trainingBulletDamage(e,b.damage)));heroFx(b.hero,2,x,y,0,42);
  if(!waveEventActive||isGameOver||isPaused)return;
- if(b.hero==='power')for(const other of [...enemies])if(other!==e&&Math.hypot(other.x-x,other.y-y)<65)damageEnemy(other,b.damage*.3);
+ if(b.hero==='power')for(const other of [...enemies])if(other!==e&&hitEnemyArea(other,x,y,65))damageEnemy(other,b.damage*.3);
  if(b.hero==='tank'&&e.type!=='boss'&&enemies.includes(e)){
-  const a=Math.atan2(b.vy,b.vx),arena=getArenaSize();e.x=Math.max(25,Math.min(arena.width-25,e.x+Math.cos(a)*20));e.y=Math.max(25,Math.min(arena.height-25,e.y+Math.sin(a)*20));enemySpatialVersion++;
+  const a=Math.atan2(b.vy,b.vx),arena=getArenaSize();e.x=Math.max(25,Math.min(arena.width-25,e.x+Math.cos(a)*20));e.y=Math.max(25,Math.min(arena.height-25,e.y+Math.sin(a)*20));
+  e.hitPrevX=e.x;e.hitPrevY=e.y;e.element.style.left=e.x+'px';e.element.style.top=e.y+'px';enemySpatialVersion++;
  }
 }

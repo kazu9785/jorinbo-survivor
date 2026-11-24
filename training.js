@@ -138,7 +138,7 @@ function trainingCounterAttack() {
             Object.assign(ring.style,{left:x+'px',top:y+'px',width:radius*2+'px',height:radius*2+'px'});
             worldLayer.appendChild(ring); gameSetTimeout(()=>ring.remove(),350);
         }
-        for (const e of [...enemies]) if (Math.hypot(e.x-x,e.y-y)<=radius) damageEnemy(e,damage);
+        for (const e of [...enemies]) if (hitEnemyArea(e,x,y,radius)) damageEnemy(e,damage);
     },0);
 }
 function chooseTrainingAdaptation(launch) {

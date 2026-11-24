@@ -343,7 +343,7 @@ function updateWaveEvent(now) {
         worldLayer.appendChild(element);
         enemyBullets.push({
             element, x, y, vx: 0, vy: 2.5,
-            damage: 1, hitRadius: 16, createdAt: gameNow(), lifetime: 10000
+            damage: 1, hitRadius: 6, createdAt: gameNow(), lifetime: 10000
         });
     }
 }
@@ -453,27 +453,30 @@ function releaseBulletElement(el) {
     el.remove();
     if (bulletElementPool.length < 256) bulletElementPool.push(el);
 }
-// 通常弾の当たり判定を周辺セルだけに限定。判定半径・判定順は維持する。
+// Index every cell occupied by the enemy's silhouette over this tick, including large wings.
 let enemySpatialVersion = 0;
+const HIT_GRID_CELL = 96;
 function buildEnemyGrid() {
-    const cells = new Map();
-    enemies.forEach((enemy, order) => {
-        const key = Math.floor(enemy.x / 96) + ',' + Math.floor(enemy.y / 96);
-        if (!cells.has(key)) cells.set(key, []);
-        cells.get(key).push({ enemy, order });
+    const cells=new Map();
+    enemies.forEach((e,order)=>{
+        const shape=hitEnemyPose(e),px=e.hitPrevX??e.x,py=e.hitPrevY??e.y,entry={enemy:e,order,shape};
+        const x0=Math.floor((Math.min(px,e.x)+shape.l)/HIT_GRID_CELL),x1=Math.floor((Math.max(px,e.x)+shape.r)/HIT_GRID_CELL);
+        const y0=Math.floor((Math.min(py,e.y)+shape.t)/HIT_GRID_CELL),y1=Math.floor((Math.max(py,e.y)+shape.b)/HIT_GRID_CELL);
+        for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
+            const key=x+','+y;let bucket=cells.get(key);
+            if(!bucket){bucket=[];cells.set(key,bucket);}bucket.push(entry);
+        }
     });
     return cells;
 }
-function nearbyBulletTargets(cells, x, y) {
-    const candidates = [];
-    for (let cx = Math.floor((x - 70) / 96); cx <= Math.floor((x + 70) / 96); cx++) {
-        for (let cy = Math.floor((y - 70) / 96); cy <= Math.floor((y + 70) / 96); cy++) {
-            const cell = cells.get(cx + ',' + cy);
-            if (cell) candidates.push(...cell);
-        }
+function nearbyBulletTargets(cells,shape,x0,y0,x1,y1) {
+    const out=new Set();
+    const left=Math.floor((Math.min(x0,x1)+shape.l)/HIT_GRID_CELL),right=Math.floor((Math.max(x0,x1)+shape.r)/HIT_GRID_CELL);
+    const top=Math.floor((Math.min(y0,y1)+shape.t)/HIT_GRID_CELL),bottom=Math.floor((Math.max(y0,y1)+shape.b)/HIT_GRID_CELL);
+    for(let x=left;x<=right;x++)for(let y=top;y<=bottom;y++){
+        const bucket=cells.get(x+','+y);if(bucket)for(const entry of bucket)out.add(entry);
     }
-    candidates.sort((a, b) => b.order - a.order);
-    return candidates;
+    return out;
 }
 let frameLastTime = null, frameAccumulator = 0;
 function resetFrameClock() { frameLastTime = null; frameAccumulator = 0; }
@@ -615,7 +618,7 @@ function getCodexEntries() {
         { id:'minion', name:'スライム', image:'slime.png', detail:'跳ねる瞬間に急加速。接触するとダメージ。' },
         { id:'shooter', name:'遠距離兵', image:'のび太.png', detail:'離れた位置からプレイヤーを狙って射撃する。' },
         { id:'golem', name:'ゴーレム', image:'ゴーレム.png', detail:'高HP・低速。大きな弾を発射する。' },
-        { id:'rusher', name:'常林暴', image:'常林暴.png', detail:'HPは低めだが足が速く、接触ダメージが高い。' },
+        { id:'rusher', name:'常林暴', image:'常林暴.png?v=1.9.6', detail:'HPは低めだが足が速く、接触ダメージが高い。' },
         { id:'treasure', name:'黄金スライム', image:'slime.png', detail:'最速で逃げ回る。攻撃はしない。15秒以内の撃破で大量コイン！' }
     ];
     STAGE_ENEMIES.forEach((e,i)=>entries.push({id:e.id,name:e.name,atlas:i,tier:e.tier,detail:(e.rare?'◆ レア個体 ／ ':'')+'WAVE'+e.unlock+'〜 ／ '+e.detail}));
@@ -744,7 +747,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.9.5 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.9.6 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -1988,13 +1991,17 @@ function simulateCombatStep() {
     }
 
     updateBombGauge(now);
+    // Determine both ends of each enemy movement before testing this tick's shots.
+    // Newly fired enemy shots start moving next tick, as before.
+    const movingEnemyShots=enemyBullets.length;
+    updateEnemies(oldPlayerX,oldPlayerY,true);
     updateBullets();
     if (!waveEventActive || isGameOver || isPaused) return;
     updateInvoluteBullets();
     if (!waveEventActive || isGameOver || isPaused) return;
-    updateEnemyBullets();
+    updateEnemyBullets(oldPlayerX,oldPlayerY,movingEnemyShots);
     if (!waveEventActive || isGameOver || isPaused) return;
-    updateEnemies();
+    applyEnemyContacts(oldPlayerX,oldPlayerY);
     updateHearts();
     updateWorldCamera();
     updateWorldEffects();
@@ -2006,14 +2013,16 @@ function triggerInvoluteSphere() {
     skillCastVisual("sphere");
     const level = gameData.skills.levels.sphere;
     const sphereCount = 6 + (level - 1) * 2;
+    const radiusPx=20*trainingSkillRadius();
     
     for (let i = 0; i < sphereCount; i++) {
         const el = document.createElement('div');
         el.classList.add('involute-bullet');
+        el.style.width=el.style.height=radiusPx*2+'px';
         worldLayer.appendChild(el);
         let startAngle = (Math.PI * 2 / sphereCount) * i;
         involuteBullets.push({
-            element: el, angle: startAngle, radius: 0, active: true
+            element: el, angle: startAngle, radius: 0, active: true, x:playerX, y:playerY, hitRadius:radiusPx
         });
     }
 }
@@ -2062,7 +2071,8 @@ function triggerSatellite() {
             if (enemies.length === 0) break;
             const target = enemies[Math.floor(Math.random() * enemies.length)];
             
-            skillSatelliteImpact(target.x + 30, target.y + 30);
+            const center=hitEnemyAim(target);
+            skillSatelliteImpact(center.x,center.y);
 
             damageEnemy(target, damage);
         }
@@ -2076,10 +2086,12 @@ function updateInvoluteBullets() {
 
     for (let i = involuteBullets.length - 1; i >= 0; i--) {
         const b = involuteBullets[i];
+        const x0=b.x??playerX,y0=b.y??playerY;
         b.radius += expandSpeed;
         b.angle += rotationSpeed;
         const bx = playerX + Math.cos(b.angle) * b.radius;
         const by = playerY + Math.sin(b.angle) * b.radius;
+        b.x=bx;b.y=by;
         b.element.style.left = bx + 'px';
         b.element.style.top = by + 'px';
 
@@ -2092,10 +2104,7 @@ function updateInvoluteBullets() {
         for (let j = enemies.length - 1; j >= 0; j--) {
             const e = enemies[j];
             if (!e || !waveEventActive || isGameOver) break;
-            const dx = bx - e.x;
-            const dy = by - e.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 60 * trainingSkillRadius()) {
+            if (hitDisk(hitEnemyPose(e),x0-(e.hitPrevX??e.x),y0-(e.hitPrevY??e.y),bx-e.x,by-e.y,b.hitRadius)) {
                 damageEnemy(e, 5 * trainingSkillMultiplier()); 
                 if (liteMode) continue;
                 const hitEffect = document.createElement('div');
@@ -2323,6 +2332,7 @@ function spawnEnemy(type) {
         lastBossPattern: null,
         bossImageIndex: bossImageIndex,
         bossPhase: 1,
+        renderedBossPhase: 1,
         phase2Type: null,
         transformingUntil: 0,
         expiresAt: type === 'treasure' ? gameNow() + 15000 : null
@@ -2346,7 +2356,7 @@ function enemyFireBullet(enemy) {
     const vx = Math.cos(angle) * 5;
     const vy = Math.sin(angle) * 5;
 
-    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: Math.ceil(2 * stageStats().damage) * (1 + ((enemy.strengthTier || 1)-1)*.2) });
+    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, hitRadius:6, damage: Math.ceil(2 * stageStats().damage) * (1 + ((enemy.strengthTier || 1)-1)*.2) });
 }
 
 function golemFireBullet(enemy) {
@@ -2365,7 +2375,7 @@ function golemFireBullet(enemy) {
     const vx = Math.cos(angle) * 4;
     const vy = Math.sin(angle) * 4;
 
-    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, damage: Math.ceil(3 * stageStats().damage) * (1 + ((enemy.strengthTier || 1)-1)*.2) });
+    enemyBullets.push({ element: el, x: enemy.x, y: enemy.y, vx: vx, vy: vy, hitRadius:30, damage: Math.ceil(3 * stageStats().damage) * (1 + ((enemy.strengthTier || 1)-1)*.2) });
 }
 
 // ■■■ ボスのランダム攻撃 ■■■
@@ -2427,7 +2437,7 @@ function createBossBullet(boss, angle, speed, damage, options = {}) {
         vy: Math.sin(angle) * speed,
         damage: damage,
         curve: options.curve || 0,
-        hitRadius: size * 0.45,
+        hitRadius: size / 2,
         createdAt: gameNow(),
         lifetime: options.lifetime || 7000
     });
@@ -2531,6 +2541,7 @@ function beginBossSecondPhase(boss) {
     enemyBullets.forEach(b => b.element.remove());
     enemyBullets = [];
     boss.bossPhase = 2;
+    enemySpatialVersion++;
     recordEncounter(boss);
     window.GameAudio?.scene("awakened");
     playSound("warning");
@@ -2541,10 +2552,13 @@ function beginBossSecondPhase(boss) {
     boss.speed *= getBossType(boss).phaseSpeed;
     if (getBossType(boss).atlas != null) {
         stageSetSprite(boss.element, getBossType(boss).atlas, true, 2);
+        boss.renderedBossPhase=2;
     } else {
         const phaseImage = new Image();
         phaseImage.onload = () => {
-            if (isBossAlive(boss)) boss.element.style.backgroundImage = `url('boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1')`;
+            if (!isBossAlive(boss)) return;
+            boss.element.style.backgroundImage = `url('boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1')`;
+            boss.renderedBossPhase=2;enemySpatialVersion++;
         };
         phaseImage.src = `boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1`;
     }
@@ -2666,34 +2680,38 @@ function updateBullets() {
     if (!bullets.length) return;
     const arena = getArenaSize();
     let grid = buildEnemyGrid(), version = enemySpatialVersion;
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        if (!waveEventActive || isGameOver || isPaused) break;
-        const b = bullets[i];
-        b.x += b.vx; b.y += b.vy;
-        b.element.style.left = b.x + 'px';
-        b.element.style.top = b.y + 'px';
-        if (gameNow() > b.expiresAt || b.x < 0 || b.x > arena.width || b.y < 0 || b.y > arena.height) {
-            releaseBulletElement(b.element); bullets.splice(i, 1); continue;
+    for (let i=bullets.length-1;i>=0;i--) {
+        if(!waveEventActive||isGameOver||isPaused)break;
+        const b=bullets[i],x0=b.x,y0=b.y;
+        if(gameNow()>b.expiresAt){releaseBulletElement(b.element);bullets.splice(i,1);continue;}
+        b.x+=b.vx;b.y+=b.vy;b.element.style.left=b.x+'px';b.element.style.top=b.y+'px';
+        if(version!==enemySpatialVersion){grid=buildEnemyGrid();version=enemySpatialVersion;}
+        const hits=[];
+        for(const entry of nearbyBulletTargets(grid,b.hitShape,x0,y0,b.x,b.y)){
+            const e=entry.enemy;
+            if(b.hit.has(e)||(e.type==='boss'&&gameNow()<e.transformingUntil))continue;
+            const t=hitBodyTime(b.hitShape,x0,y0,b.x,b.y,entry.shape,e.hitPrevX??e.x,e.hitPrevY??e.y,e.x,e.y);
+            if(Number.isFinite(t))hits.push({e,t,order:entry.order});
         }
-        if (version !== enemySpatialVersion) { grid = buildEnemyGrid(); version = enemySpatialVersion; }
-        for (const { enemy: e } of nearbyBulletTargets(grid, b.x, b.y)) {
-            const hitR = e.type === 'boss' ? 70 : e.type === 'golem' ? 40 : 30;
-            if (!b.hit?.has(e) && (b.x - e.x)**2 + (b.y - e.y)**2 < hitR * hitR) {
-                if (e.type==='boss' && gameNow()<e.transformingUntil) continue;
-                b.hit.add(e);
-                heroHit(b,e);
-                if (--b.remaining<=0) {releaseBulletElement(b.element); bullets.splice(i,1);break;}
-                if (!waveEventActive || isGameOver || isPaused) break;
-            }
+        hits.sort((a,b)=>a.t-b.t||b.order-a.order);
+        for(const {e,t} of hits){
+            if(!enemies.includes(e)||(e.type==='boss'&&gameNow()<e.transformingUntil))continue;
+            b.hit.add(e);heroHit(b,e,{x:x0+(b.x-x0)*t,y:y0+(b.y-y0)*t});
+            if(bullets[i]!==b)break;
+            if(--b.remaining<=0){releaseBulletElement(b.element);bullets.splice(i,1);break;}
+            if(!waveEventActive||isGameOver||isPaused)break;
+        }
+        if(bullets[i]===b&&(b.x<0||b.x>arena.width||b.y<0||b.y>arena.height)){
+            releaseBulletElement(b.element);bullets.splice(i,1);
         }
     }
 }
 
-function updateEnemyBullets() {
-    const now = gameNow();
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        if (!waveEventActive || isGameOver) break;
-        const b = enemyBullets[i];
+function updateEnemyBullets(oldPlayerX=playerX,oldPlayerY=playerY,limit=enemyBullets.length) {
+    const now=gameNow(),hero=hitCurrentHero();
+    for(let i=Math.min(limit,enemyBullets.length)-1;i>=0;i--){
+        if(!waveEventActive||isGameOver)break;
+        const b=enemyBullets[i],x0=b.x,y0=b.y;
 
         // curveが設定されたボス弾は、毎フレーム進行方向を少し回転させる
         if (b.curve) {
@@ -2710,31 +2728,22 @@ function updateEnemyBullets() {
         b.element.style.left = b.x + 'px';
         b.element.style.top = b.y + 'px';
 
-        const expired = b.createdAt && now - b.createdAt > b.lifetime;
-        if (expired || b.x < -80 || b.x > getArenaSize().width + 80 || b.y < -80 || b.y > getArenaSize().height + 80) {
-            b.element.remove();
-            enemyBullets.splice(i, 1);
-            continue;
-        }
-
-        const dist = Math.sqrt((b.x - playerX)**2 + (b.y - playerY)**2);
-        let bulletRadius = b.hitRadius || 20;
-        if (!b.hitRadius && b.element.style.width === '60px') bulletRadius = 40;
-
-        if (dist < bulletRadius) {
-            takePlayerDamage(b.damage); 
-            b.element.remove();
-            enemyBullets.splice(i, 1);
+        const expired=b.createdAt!=null && now-b.createdAt>b.lifetime;
+        const hit=!expired&&hitDisk(hero.pose,x0-oldPlayerX-hero.x,y0-oldPlayerY-hero.y,
+                                   b.x-playerX-hero.x,b.y-playerY-hero.y,b.hitRadius??6);
+        if(hit||expired||b.x < -80||b.x>getArenaSize().width+80||b.y < -80||b.y>getArenaSize().height+80){
+            b.element.remove();enemyBullets.splice(i,1);
+            if(hit)takePlayerDamage(b.damage);
         }
     }
 }
 
-function updateEnemies() {
+function updateEnemies(oldPlayerX=playerX,oldPlayerY=playerY,deferContact=false) {
     stageFillEnemies();
     const now = gameNow();
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const e = enemies[i];
-        if (!waveEventActive || isGameOver) break;
+    for (let i=enemies.length-1;i>=0;i--){
+        const e=enemies[i];if(!waveEventActive||isGameOver)break;
+        e.hitPrevX=e.x;e.hitPrevY=e.y;
         if (e.type === 'boss' && now < (e.warningUntil || 0)) continue;
         if (e.type === 'treasure') {
             moveTreasure(e);
@@ -2751,10 +2760,12 @@ function updateEnemies() {
             e.jumpTimer++;
             const cycle = e.jumpTimer % 60;
             if (cycle > 40) {
-                moveSpeed = e.speed * 3.0; 
+                moveSpeed = e.speed * 3.0;
+                e.slimePose='leap';
                 e.element.style.transform = 'translate(-50%, -50%) scale(1.2)';
             } else {
                 moveSpeed = 0;
+                e.slimePose='squash';
                 e.element.style.transform = 'translate(-50%, -50%) scale(0.9, 0.8)';
             }
         } 
@@ -2798,12 +2809,22 @@ function updateEnemies() {
         e.element.style.left = e.x + 'px';
         e.element.style.top = e.y + 'px';
 
-        if (Math.sqrt((playerX - e.x)**2 + (playerY - e.y)**2) < (e.type === 'boss' ? 80 : 40)) {
-            if (now - lastDamageTime > 1000) {
-                takePlayerDamage(Math.ceil(stageStats().damage * (e.archetype?.damage || (e.type === 'rusher' ? 2 : e.type === 'boss' ? getBossType(e).damage : 1))) * (e.type === 'boss' ? 1 : 1 + ((e.strengthTier || 1)-1)*.2)); 
-                lastDamageTime = now;
-            }
-        }
+    }
+    if(!deferContact)applyEnemyContacts(oldPlayerX,oldPlayerY);
+}
+function applyEnemyContacts(oldPlayerX=playerX,oldPlayerY=playerY){
+    const now=gameNow();
+    if(!waveEventActive||isGameOver||isPaused||now-lastDamageTime<=1000)return;
+    const hero=hitCurrentHero();
+    for(let i=enemies.length-1;i>=0;i--){
+        const e=enemies[i];
+        if(e.type==='treasure'||(e.type==='boss'&&(now<(e.warningUntil||0)||now<e.transformingUntil)))continue;
+        const t=hitBodyTime(hero.pose,oldPlayerX+hero.x,oldPlayerY+hero.y,playerX+hero.x,playerY+hero.y,
+                    hitEnemyPose(e),e.hitPrevX??e.x,e.hitPrevY??e.y,e.x,e.y,true);
+        if(t===Infinity)continue;
+        lastDamageTime=now;
+        takePlayerDamage(Math.ceil(stageStats().damage*(e.archetype?.damage||(e.type==='rusher'?2:e.type==='boss'?getBossType(e).damage:1)))*(e.type==='boss'?1:1+((e.strengthTier||1)-1)*.2));
+        break;
     }
 }
 

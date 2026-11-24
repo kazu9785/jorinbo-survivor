@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <title>常林暴サバイバー</title>
-<meta content="1.9.6" name="app-version"/>
-<link href="manifest.webmanifest?v=1.9.6" rel="manifest"/>
+<meta content="1.9.7" name="app-version"/>
+<link href="manifest.webmanifest?v=1.9.7" rel="manifest"/>
 <meta content="#101827" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="常林暴" name="apple-mobile-web-app-title"/>
-<link href="apple-touch-icon.png?v=1.9.6" rel="apple-touch-icon"/>
-<link href="icon-192.png?v=1.9.6" rel="icon" type="image/png"/>
-<link href="style.css?v=1.9.6" rel="stylesheet"/>
+<link href="apple-touch-icon.png?v=1.9.7" rel="apple-touch-icon"/>
+<link href="icon-192.png?v=1.9.7" rel="icon" type="image/png"/>
+<link href="style.css?v=1.9.7" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;family=Roboto:wght@700&amp;display=swap" rel="stylesheet"/>
 <script>
 // An update token is shared by HTML, CSS and local JavaScript, including unchanged filenames.
@@ -50,7 +50,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p class="update-inline-status" data-update-status="" role="status"></p>
 <button data-info-dialog="overview-guide" type="button">ゲーム概要</button>
 <button data-info-dialog="play-guide" type="button">遊び方・用語ガイド</button>
-<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.6</span> · 更新履歴</button>
+<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.7</span> · 更新履歴</button>
 </div>
 <p aria-live="polite" class="status-message" id="auth-status"></p>
 <button class="install-game-button" type="button">ホーム画面に追加</button>
@@ -93,7 +93,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p class="update-inline-status" data-update-status="" role="status"></p>
 <button data-info-dialog="overview-guide" type="button">ゲーム概要</button>
 <button data-info-dialog="play-guide" type="button">遊び方・用語ガイド</button>
-<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.6</span> · 更新履歴</button>
+<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.7</span> · 更新履歴</button>
 </div>
 <details class="home-settings"><summary>⚙ 設定・アカウント</summary><div class="settings-grid"><details class="control-settings"><summary>スマホ操作設定</summary>
 <label>スキルボタンの位置 <select id="control-side"><option value="right">右</option><option value="left">左</option></select></label>
@@ -223,16 +223,14 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <div class="hidden" id="game-screen">
 <div class="info-bar">
 <button id="btn-pause" type="button">一時停止</button>
-<div class="hud-item hp-box">HP: <span id="hp-display">10/10</span></div>
-<div class="hud-item">WAVE: <span id="wave-display">1</span></div>
-<div class="hud-item timer-box">TIME: <span id="timer">60</span></div>
-<div class="hud-item">結晶: <span class="crystal-balance">0</span></div>
-<div class="hud-item">COIN: <span id="game-coins">0</span></div>
+<div class="hud-item hp-box" id="player-hp-meter" role="meter" aria-label="自分のHP" aria-valuemin="0" aria-valuemax="10" aria-valuenow="10">
+  <div class="player-hp-heading"><span>HP</span><strong class="health-number" id="hp-display">10/10</strong></div>
+  <div class="health-track" aria-hidden="true"><span class="health-fill" id="player-hp-bar"></span></div>
 </div>
-<div class="hidden" id="boss-hud">
-<div class="boss-name">WARNING: GIANT BOSS</div>
-<div class="hp-bar-frame"><div id="boss-hp-bar"></div></div>
-<div class="boss-attack-name" id="boss-attack-name">攻撃準備中...</div>
+<div class="hud-item wave-box">WAVE: <span id="wave-display">1</span></div>
+<div class="hud-item timer-box">TIME: <span id="timer">60</span></div>
+<div class="hud-item crystal-box">結晶: <span class="crystal-balance">0</span></div>
+<div class="hud-item battle-coins-box">COIN: <span id="game-coins">0</span></div>
 </div>
 <div id="bomb-hud">
 <button class="hidden" id="btn-dev-stop" type="button">テスト終了</button>
@@ -240,12 +238,22 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <div class="bomb-gauge-frame"><div id="bomb-gauge-bar"></div></div>
 <div id="game-skill-name" style="font-size:10px; color:#aaa; margin-top:5px;">SKILL</div>
 </div>
-<div aria-live="polite" class="hidden" id="wave-event-hud"></div>
-<div id="stage-route-hud" role="status"></div><div id="game-area"><div hidden="" id="tutorial-hint"><span id="tutorial-message"></span><button id="tutorial-skip" type="button">案内を終了</button></div>
+<div id="stage-route-hud" role="status"></div>
+<div class="combat-hud-anchor"><div class="combat-hud-layout">
+  <div class="combat-hud-center">
+    <div class="hidden" id="boss-hud">
+      <div class="boss-hp-heading"><span id="boss-phase">BOSS · 第1形態</span><strong class="boss-name"></strong><strong class="health-number" id="boss-hp-display"></strong></div>
+      <div class="hp-bar-frame health-track" id="boss-hp-meter" role="meter" aria-label="ボスのHP" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1"><span class="health-fill" id="boss-hp-bar"></span></div>
+      <div class="boss-notes"><span id="boss-trait"></span><span class="boss-attack-name" id="boss-attack-name">攻撃準備中...</span></div>
+    </div>
+    <div aria-live="polite" class="hidden" id="wave-event-hud"></div>
+  </div>
+  <div id="world-hud"><span id="stage-location"></span><div aria-label="現在地（白）とボス（赤）" id="world-minimap"><i id="map-viewport"></i><i id="map-player"></i><i hidden="" id="map-boss"></i></div></div>
+</div></div>
+<div id="game-area"><div hidden="" id="tutorial-hint"><span id="tutorial-message"></span><button id="tutorial-skip" type="button">案内を終了</button></div>
 <div class="hud-item equipment-durability" id="equipment-durability-hud">装備なし</div>
 <div aria-live="off" id="training-hud"></div>
 <div id="world-layer"><div aria-hidden="true" id="world-map"></div><div id="player"></div></div>
-<div id="world-hud"><span id="stage-location"></span><div aria-label="現在地（白）とボス（赤）" id="world-minimap"><i id="map-viewport"></i><i id="map-player"></i><i hidden="" id="map-boss"></i></div></div>
 <div aria-live="polite" id="world-banner"><strong id="world-banner-title"></strong><span id="world-banner-subtitle"></span></div>
 </div>
 <div id="touch-control-bar">
@@ -310,25 +318,25 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
-<script data-game-src="firebase-config.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="audio.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="presentation.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="stages.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="equipment.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="training.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="adventure.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="forge.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="collision.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="heroes.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="skill-effects.js?v=1.9.6" type="application/json"></script>
-<script data-game-src="script.js?v=1.9.6" type="application/json"></script>
+<script data-game-src="firebase-config.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="audio.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="presentation.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="stages.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="equipment.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="training.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="adventure.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="forge.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="collision.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="heroes.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="skill-effects.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="script.js?v=1.9.7" type="application/json"></script>
 <dialog aria-labelledby="install-guide-title" class="persistent-panel" id="install-guide"><header class="persistent-panel-header"><h2 id="install-guide-title">ホーム画面に追加</h2><form method="dialog"><button aria-label="ホーム画面に追加を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
 <p id="install-guide-text"></p>
 <p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
 
 </div></dialog>
-<script data-game-src="install.js?v=1.9.6" type="application/json"></script>
+<script data-game-src="install.js?v=1.9.7" type="application/json"></script>
 <dialog aria-labelledby="play-guide-title" class="game-info-dialog persistent-panel" id="play-guide"><header class="persistent-panel-header"><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button aria-label="遊び方・用語ガイドを閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
 <p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE100クリアを目指そう！</p>
@@ -399,7 +407,8 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 </div></dialog>
 <dialog aria-labelledby="release-guide-title" class="game-info-dialog persistent-panel" id="release-guide"><header class="persistent-panel-header"><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button aria-label="更新履歴を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
-<p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.9.6</strong></p>
+<p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.9.7</strong></p>
+<article><h3>Ver.1.9.7</h3><p>自分と敵の残りHPをバーと数値で表示。通常敵のバーは頭上を追いかけ、ボスのバーは画面上部に固定されます。</p></article>
 <article><h3>Ver.1.9.6</h3><p>ボスの四角い下地を取り除き、輪郭に沿うオーラに変更。弾と接触の当たり判定をキャラクター・敵・ボスの実際の姿に合わせました。</p></article>
 <article><h3>Ver.1.9.5</h3><p>操作キャラ5人の衣装を刷新。ホーム・キャラクター選択・育成の立ち絵と、戦闘中の歩行・攻撃が同じ装いになりました。</p></article>
 <article><h3>Ver.1.9.4</h3><p>スマホで立ち絵の上に「？」が出る不具合を修正。キャラクター選択・ホーム・育成に反映。</p></article>
@@ -487,14 +496,14 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <dialog aria-labelledby="equipment-probability-title" class="game-info-dialog equipment-dialog persistent-panel" id="equipment-probability-dialog"><header class="persistent-panel-header"><h2 id="equipment-probability-title">排出率・特殊スキルの付与確率</h2><form method="dialog"><button aria-label="排出率・特殊スキルの付与確率を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 <div class="equipment-probability-scroll" id="equipment-probability-content"></div>
 </div></dialog>
-<script data-game-src="guide.js?v=1.9.6" type="application/json"></script>
+<script data-game-src="guide.js?v=1.9.7" type="application/json"></script>
 <dialog aria-labelledby="update-game-title" class="game-info-dialog persistent-panel" id="update-game-dialog"><header class="persistent-panel-header"><h2 id="update-game-title">最新版に更新</h2><button aria-label="最新版に更新を閉じる" class="persistent-close" id="update-game-close" type="button">✕ 閉じる</button></header><div class="persistent-panel-content">
 
 <p aria-live="polite" id="update-game-status" role="status"></p>
 <p>ログイン情報・コイン・育成データは残ります。公開直後は、反映まで少し待ってから再度お試しください。</p>
 
 </div></dialog>
-<script data-game-src="update.js?v=1.9.6" type="application/json"></script>
+<script data-game-src="update.js?v=1.9.7" type="application/json"></script>
 <script>
 (async () => {
     for (const source of document.querySelectorAll('script[data-game-src]')) {

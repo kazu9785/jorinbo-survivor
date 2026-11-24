@@ -114,6 +114,6 @@ function heroHit(b,e,impact=hitEnemyAim(e)){
  if(b.hero==='power')for(const other of [...enemies])if(other!==e&&hitEnemyArea(other,x,y,65))damageEnemy(other,b.damage*.3);
  if(b.hero==='tank'&&e.type!=='boss'&&enemies.includes(e)){
   const a=Math.atan2(b.vy,b.vx),arena=getArenaSize();e.x=Math.max(25,Math.min(arena.width-25,e.x+Math.cos(a)*20));e.y=Math.max(25,Math.min(arena.height-25,e.y+Math.sin(a)*20));
-  e.hitPrevX=e.x;e.hitPrevY=e.y;e.element.style.left=e.x+'px';e.element.style.top=e.y+'px';enemySpatialVersion++;
+  e.hitPrevX=e.x;e.hitPrevY=e.y;positionEnemy(e);enemySpatialVersion++;
  }
 }

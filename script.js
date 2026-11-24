@@ -36,6 +36,16 @@ const hpDisplay = document.getElementById('hp-display');
 const enemyCountText = document.getElementById('enemy-count');
 const bossHud = document.getElementById('boss-hud');
 const bossHpBar = document.getElementById('boss-hp-bar');
+const playerHpMeter = {
+    hpFrame: document.getElementById('player-hp-meter'),
+    hpFill: document.getElementById('player-hp-bar'),
+    hpLabel: hpDisplay
+};
+const bossHpMeter = {
+    hpFrame: document.getElementById('boss-hp-meter'),
+    hpFill: bossHpBar,
+    hpLabel: document.getElementById('boss-hp-display')
+};
 const bossAttackName = document.getElementById('boss-attack-name');
 const waveModal = document.getElementById('wave-modal');
 const waveTitle = document.getElementById('wave-title');
@@ -292,6 +302,7 @@ function prepareWaveEvent() {
 }
 
 function stopWaveEvent() {
+    bossHud.classList.add('hidden');
     stagePendingEnemies = [];
     clearWorldEffects();
     finishCombatSegment();
@@ -303,7 +314,7 @@ function stopWaveEvent() {
     // ボーナス敵は通常敵の残数に含めない。消えてもWAVE進行を止めない。
     for (let i = enemies.length - 1; i >= 0; i--) {
         if (enemies[i].type === 'treasure') {
-            enemies[i].element.remove();
+            enemies[i].worldNode.remove();
             enemies.splice(i, 1);
         }
     }
@@ -320,7 +331,7 @@ function updateWaveEvent(now) {
             document.getElementById('wave-event-hud').textContent =
                 '宝物スライム：残り' + remaining + '秒 ／ 撃破で' + treasure.coinDrop + 'G';
             if (remaining === 0) {
-                treasure.element.remove();
+                treasure.worldNode.remove();
                 enemies.splice(enemies.indexOf(treasure), 1);
                 document.getElementById('wave-event-hud').textContent = '宝物スライムは逃げ出した！';
             }
@@ -747,7 +758,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.9.6 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.1.9.7 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -1404,8 +1415,9 @@ function updateBossArena(boss) {
 function updateBossIdentity(boss) {
     const info = getBossType(boss);
     updateBossArena(boss);
-    if (bossHud) bossHud.querySelector('.boss-name').textContent =
-        (boss.bossPhase === 2 ? '第2形態：' + info.awakened : info.name) + ' ／ ' + info.detail;
+    bossHud.querySelector('.boss-name').textContent = boss.bossPhase === 2 ? info.awakened : info.name;
+    document.getElementById('boss-phase').textContent = 'BOSS · 第' + boss.bossPhase + '形態';
+    document.getElementById('boss-trait').textContent = info.detail;
 }
 
 
@@ -1884,10 +1896,9 @@ function launchWaveSequence() {
     prepareWorldWave();
     isBossPhase = false;
     clearBossAttackTimers();
-    if(bossHud) bossHud.classList.add('hidden');
     if(bossAttackName) bossAttackName.textContent = '攻撃準備中...';
     
-    enemies.forEach(e => e.element.remove());
+    enemies.forEach(e => e.worldNode.remove());
     bullets.forEach(b => releaseBulletElement(b.element));
     enemyBullets.forEach(b => b.element.remove());
     involuteBullets.forEach(b => b.element.remove());
@@ -2226,21 +2237,36 @@ function moveTreasure(e) {
         e.y = best.y;
         e.escapeAngle = best.angle;
     }
-    e.element.style.left = e.x + 'px';
-    e.element.style.top = e.y + 'px';
+    positionEnemy(e);
+}
+
+function positionEnemy(enemy) {
+    enemy.worldNode.style.left = enemy.x + 'px';
+    enemy.worldNode.style.top = enemy.y + 'px';
+}
+
+function createEnemyHpMeter(name) {
+    const hpFrame = document.createElement('div');
+    const hpFill = document.createElement('span');
+    const hpLabel = document.createElement('span');
+    hpFrame.className = 'mini-hp-bar';
+    hpFrame.setAttribute('role', 'meter');
+    hpFrame.setAttribute('aria-label', name + 'のHP');
+    hpFrame.setAttribute('aria-valuemin', '0');
+    hpFill.className = 'health-fill';
+    hpLabel.className = 'mini-hp-value health-number';
+    hpFrame.append(hpFill, hpLabel);
+    return {hpFrame, hpFill, hpLabel};
+}
+
+function alignEnemyHpMeter(enemy) {
+    // The collision outline already accounts for transparent padding and the slime's jump.
+    enemy.hpFrame.style.top = (hitEnemyPose(enemy).t - 3) + 'px';
 }
 
 function spawnEnemy(type) {
     const el = document.createElement('div');
     el.classList.add('enemy');
-    
-    const hpBar = document.createElement('div');
-    hpBar.classList.add('mini-hp-bar');
-    const hpFill = document.createElement('div');
-    hpFill.classList.add('mini-hp-fill');
-    hpBar.appendChild(hpFill);
-    el.appendChild(hpBar);
-
     let {x:ex,y:ey} = worldSpawnPosition();
 
     let hp, speed, coinDrop, jumpOffset;
@@ -2301,9 +2327,7 @@ function spawnEnemy(type) {
         hp = Math.round((50 + currentWave * 30) * info.hp * stageStats().hp);
         speed = info.speed * stageStats().speed;
         bossMaxHp = hp;
-        updateBossHpBar(hp);
         coinDrop = info.reward + Math.floor(currentWave * 1.5);
-        hpBar.style.display = 'none';
         jumpOffset = 0;
     }
     
@@ -2317,14 +2341,11 @@ function spawnEnemy(type) {
     }
 
     if (currentWaveEvent === 'rage') speed *= 1.3;
-    el.style.left = ex + 'px';
-    el.style.top = ey + 'px';
-    
-    if(gameArea) worldLayer.appendChild(el);
-
-    enemySpatialVersion++;
-    enemies.push({ 
-        element: el, hpFill: hpFill, strengthTier: strengthTier,
+    const isBoss = type === 'boss';
+    const worldNode = isBoss ? el : document.createElement('div');
+    const meter = isBoss ? bossHpMeter : createEnemyHpMeter(archetype?.name || (type === 'treasure' ? '黄金スライム' : '敵'));
+    const enemy = {
+        element: el, worldNode, ...meter, strengthTier: strengthTier,
         archetype, spawnedAt:gameNow(), motionSeed:Math.random()*Math.PI*2, orbitDirection:Math.random()<.5?-1:1,
         x: ex, y: ey, hp: hp, maxHp: hp, type: type, speed: speed, coinDrop: coinDrop,
         jumpTimer: jumpOffset,
@@ -2336,9 +2357,22 @@ function spawnEnemy(type) {
         phase2Type: null,
         transformingUntil: 0,
         expiresAt: type === 'treasure' ? gameNow() + 15000 : null
-    });
-    recordEncounter(enemies[enemies.length - 1]);
-    if (type === 'boss') updateBossIdentity(enemies[enemies.length - 1]);
+    };
+    if (isBoss) {
+        updateBossIdentity(enemy);
+        updateBossHpBar(hp);
+    } else {
+        // One world position for both nodes. Only the artwork receives scale, glow or tint.
+        worldNode.className = 'enemy-anchor';
+        worldNode.append(el, enemy.hpFrame);
+        alignEnemyHpMeter(enemy);
+        renderHealthMeter(enemy, hp, hp);
+    }
+    positionEnemy(enemy);
+    worldLayer.appendChild(worldNode);
+    enemies.push(enemy);
+    enemySpatialVersion++;
+    recordEncounter(enemy);
 }
 
 function fireBullet(damage, count, size) { heroFire(damage,count,size); }
@@ -2757,6 +2791,7 @@ function updateEnemies(oldPlayerX=playerX,oldPlayerY=playerY,deferContact=false)
             moveSpeed = 0; // 専用移動で座標を更新済み。
         }
         else if (e.type === 'minion') {
+            const previousPose = e.slimePose;
             e.jumpTimer++;
             const cycle = e.jumpTimer % 60;
             if (cycle > 40) {
@@ -2768,6 +2803,7 @@ function updateEnemies(oldPlayerX=playerX,oldPlayerY=playerY,deferContact=false)
                 e.slimePose='squash';
                 e.element.style.transform = 'translate(-50%, -50%) scale(0.9, 0.8)';
             }
+            if (e.slimePose !== previousPose) alignEnemyHpMeter(e);
         } 
         else if (e.type === 'shooter') {
             const dist = Math.sqrt((playerX - e.x)**2 + (playerY - e.y)**2);
@@ -2806,8 +2842,7 @@ function updateEnemies(oldPlayerX=playerX,oldPlayerY=playerY,deferContact=false)
         e.y += Math.sin(angle) * moveSpeed;
         
         clampWorldEnemy(e);
-        e.element.style.left = e.x + 'px';
-        e.element.style.top = e.y + 'px';
+        positionEnemy(e);
 
     }
     if(!deferContact)applyEnemyContacts(oldPlayerX,oldPlayerY);
@@ -2852,8 +2887,24 @@ function takePlayerDamage(dmg) {
     } else trainingCounterAttack();
 }
 
+function renderHealthMeter(meter, current, maximum) {
+    const max = Math.max(1, maximum);
+    const hp = Math.max(0, Math.min(current, max));
+    const fraction = hp / max;
+    const belowOne = hp > 0 && hp < 1;
+    const value = belowOne ? '<1' : String(Math.floor(hp));
+    const limit = Math.floor(max);
+    const state = hp === 0 ? 'empty' : fraction <= 0.25 ? 'low' : fraction <= 0.5 ? 'mid' : 'high';
+    meter.hpFrame.setAttribute('data-health', state);
+    meter.hpFrame.setAttribute('aria-valuemax', String(max));
+    meter.hpFrame.setAttribute('aria-valuenow', String(hp));
+    meter.hpFrame.setAttribute('aria-valuetext', '残り' + (belowOne ? '1未満' : value) + '、最大' + limit);
+    meter.hpLabel.textContent = value + '/' + limit;
+    meter.hpFill.style.width = (fraction * 100) + '%';
+}
+
 function updateHpDisplay() {
-    if(hpDisplay) hpDisplay.textContent = `${Math.max(0,Math.floor(playerCurrentHp))}/${Math.floor(playerMaxHp)}`;
+    renderHealthMeter(playerHpMeter, playerCurrentHp, playerMaxHp);
 }
 
 function damageEnemy(e, dmg) {
@@ -2870,13 +2921,8 @@ function damageEnemy(e, dmg) {
     showDamageText(e.x, e.y, dmg);
     playSound("hit");
     
-    if (e.hpFill) {
-        let p = (e.hp / e.maxHp) * 100;
-        if(p < 0) p = 0;
-        e.hpFill.style.width = `${p}%`;
-    }
-
     if (e.type === 'boss') updateBossHpBar(e.hp);
+    else renderHealthMeter(e, e.hp, e.maxHp);
     if (e.hp <= 0) killEnemy(e);
 }
 
@@ -2901,7 +2947,7 @@ function killEnemy(e) {
         spawnHeart(e.x, e.y);
     }
 
-    e.element.remove();
+    e.worldNode.remove();
     const idx = enemies.indexOf(e);
     if (idx > -1) enemies.splice(idx, 1);
 
@@ -2946,11 +2992,7 @@ function updateHearts() {
 function spawnBoss() {
     window.GameAudio?.scene("boss");
     isBossPhase = true;
-    if (bossHud) {
-        bossHud.classList.remove('boss-hud-phase2');
-        bossHud.querySelector('.boss-name').textContent = 'WARNING: GIANT BOSS';
-    }
-    if(bossHud) bossHud.classList.remove('hidden');
+    bossHud.classList.remove('boss-hud-phase2', 'hidden');
     if(bossAttackName) bossAttackName.textContent = '攻撃準備中...';
     playSound("warning");
     spawnEnemy('boss');
@@ -3048,10 +3090,7 @@ function showCoinText(x, y, txt) {
 }
 
 function updateBossHpBar(hp) {
-    if(!bossHpBar) return;
-    let p = (hp / bossMaxHp) * 100;
-    if(p < 0) p = 0;
-    bossHpBar.style.width = `${p}%`;
+    renderHealthMeter(bossHpMeter, hp, bossMaxHp);
 }
 
 

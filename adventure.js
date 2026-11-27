@@ -115,12 +115,13 @@ function trainingNextGoal(id,route){
  const play=p.bestWave>=gate.wave||p.uses>=gate.uses;
  return (play?'プレイ条件達成':`あと${Math.max(0,gate.uses-p.uses)}回使用 または WAVE${gate.wave}到達（現在${p.bestWave}）`)+' ／ '+(gameData.coins>=gate.cost?'コイン準備OK':`あと${gate.cost-gameData.coins}G`);
 }
-function canTrainAny(){return TRAINING_CHARACTERS.some(id=>ownsTrainingFamily(id)&&['a','b','c'].some(r=>{const p=gameData.training[id],g=TRAINING_GATES[p.levels[r]];return g&&(p.bestWave>=g.wave||p.uses>=g.uses)&&gameData.coins>=g.cost;}));}
+function canTrainAny(){return TRAINING_CHARACTERS.some(id=>heroOwned(id)&&['a','b','c'].some(r=>{const p=gameData.training[id],g=TRAINING_GATES[p.levels[r]];return g&&(p.bestWave>=g.wave||p.uses>=g.uses)&&gameData.coins>=g.cost;}));}
 function refreshAdventureHome(){
  document.getElementById('btn-training').textContent='キャラクター育成'+(canTrainAny()?' ● 強化可能':'');
  const count=ACHIEVEMENTS.filter(a=>!isDeveloper&&!gameData.journey.claimed.includes(a.id)&&a.progress()>=a.goal).length;
  document.getElementById('btn-achievements').textContent='🏅 実績'+(count?' ● '+count+'件受取可能':'');
- const family=heroFamily(),p=gameData.training[family];document.getElementById('home-next-goal').textContent=TRAINING_ROUTES[family].find(r=>r.id===p.route).name+'：'+trainingNextGoal(family,p.route);
+ const id=gameData.character,p=gameData.training[id];
+ document.getElementById('home-next-goal').textContent=TRAINING_ROUTES[id].find(r=>r.id===p.route).name+'：'+trainingNextGoal(id,p.route);
 }
 function claimAchievement(id){
  if(isDeveloper||!canEditTraining())return false;const a=ACHIEVEMENTS.find(a=>a.id===id);

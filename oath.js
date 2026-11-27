@@ -35,7 +35,7 @@ const OATH_EQUIPMENT_SHARE = OATH_EQUIPMENT_WEIGHT / OATH_TOTAL;
 const OATH_RARITY = new Map(OATH_TIERS.flatMap((tier,index)=>tier.members.map(id=>[id,index+1])));
 
 function heroFamily(id=gameData.character) { return OATH_RECRUITS[id]?.family || id; }
-function ownsTrainingFamily(id) { return gameData.roster.owned.some(member=>heroFamily(member)===id); }
+
 function rollOathHero() {
     let ticket = Math.floor(Math.random()*OATH_TOTAL);
     if (ticket < OATH_EQUIPMENT_WEIGHT) return null;
@@ -70,7 +70,7 @@ function oathShowHero(id) {
     detail.replaceChildren(heroPortrait(character));
     appendEqText(detail,tier.name+' ／ '+character.role,'oath-rank');
     appendEqText(detail,character.detail);
-    appendEqText(detail,'共通の装備・育成　'+CHARACTERS[heroFamily(id)].name+'系');
+    appendEqText(detail,'育成はこのキャラ専用　｜　装備は'+CHARACTERS[id==='rookie'?'balance':heroFamily(id)].name+'系');
     document.getElementById('oath-hero-title').textContent=character.name;
     detail.style.setProperty('--rarity',tier.color);
     if (!dialog.open) dialog.showModal();

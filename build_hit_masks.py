@@ -42,7 +42,7 @@ def cell(name,cols,rows,idx):
  return (im.width*x/cols,im.height*y/rows,im.width*(x+1)/cols,im.height*(y+1)/rows)
 for ident,h in heroes.items():
  for k,(x,y,w,height,*_) in enumerate(h['frames']):
-  rh=80 if k//5==4 else 88
+  rh={9:86,10:80,11:85,12:85}.get(k//5,88)
   add(f'hero/{ident}/{k}',h.get('file',f'motion_{ident}.png'),w*rh/height,rh,(x,y,x+w,y+height))
 for i,ident in enumerate(('rookie','balance','power','speed','tank')):
  for col in (1,3):
@@ -63,9 +63,14 @@ for ix,b in enumerate([{}, {}, {}, {}, *stages['extra']]):
    if idx<5:name='bosses_expansion.png';box=cell(name,5,2,idx+(phase-1)*5)
    else:name=f'bosses_new_phase{phase}.png';box=cell(name,3,3,idx-5)
    add(f'boss/{ix}/{phase}',name,size,size,box)
+turns=json.loads(re.search(r'const FOE_TURNS=(\{[^\n]+\});',(p/'motion-art.js').read_text()).group(1))
+for key,(filename,row,rows) in turns.items():
+ w,h=shapes[key][:2]
+ for direction in range(8):
+  add('turn/'+key+'/'+str(direction),filename,w,h,cell(filename,8,rows,row*8+direction))
 table='const SPRITE_COLLISION_DATA = {\n'+',\n'.join('  '+json.dumps(k)+':'+json.dumps(v,separators=(',',':')) for k,v in shapes.items())+'\n};'
 f=p/'collision.js';s=f.read_text()
 start='/* BEGIN GENERATED SPRITE MASKS */';end='/* END GENERATED SPRITE MASKS */'
 a=s.index(start)+len(start);b=s.index(end)
 f.write_text(s[:a]+'\n'+table+'\n'+s[b:])
-print('Masks:',len(shapes),'hero:',len(heroes)*25,'enemies:',5+len(stages['units']),'boss phases:',(4+len(stages['extra']))*2,'projectiles:',10,'table bytes:',len(table))
+print('Masks:',len(shapes),'hero:',sum(len(h['frames']) for h in heroes.values()),'enemies:',5+len(stages['units']),'boss phases:',(4+len(stages['extra']))*2,'projectiles:',10,'table bytes:',len(table))

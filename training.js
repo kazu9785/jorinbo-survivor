@@ -1,10 +1,11 @@
 /* Character training: persistent progress, one active route per run. */
-const TRAINING_CHARACTERS = ['rookie','balance', 'power', 'speed', 'tank'];
+const TRAINING_CHARACTERS = ['rookie','balance','power','speed','tank',...Object.keys(OATH_RECRUITS)];
 const TRAINING_GATES = [
     {wave:3, uses:2, cost:100}, {wave:6, uses:5, cost:300},
     {wave:10, uses:10, cost:700}, {wave:15, uses:20, cost:1500}, {wave:20, uses:35, cost:3000}
 ];
 const TRAINING_ROUTES = {
+    ...PERSONAL_ROUTES,
     rookie:[{id:'a',name:'射撃練習',effect:l=>`通常弾の攻撃力＋${2*l}％。`},{id:'b',name:'体力づくり',effect:l=>`最大HP＋${l}。`},{id:'c',name:'足慣らし',effect:l=>`移動速度＋${2*l}％。`}],
     balance: [
         {id:'a',name:'連撃型',effect:l=>`通常弾の連続命中1回につき火力＋${2*l}％（最大10回・${20*l}％）。2秒間命中しないか被弾するとリセット。`},
@@ -30,10 +31,29 @@ const TRAINING_ROUTES = {
 function createDefaultTraining() {
     return Object.fromEntries(TRAINING_CHARACTERS.map(id=>[id,{uses:0,bestWave:0,route:'a',levels:{a:0,b:0,c:0}}]));
 }
-function repairTraining(value) {
+// Cloud rows use the immutable roster order, including heroes not yet recruited.
+function packTraining(training) {
+    return TRAINING_CHARACTERS.map(id=>{
+        const {uses,bestWave,route,levels}=training[id];
+        return [uses,bestWave,route+levels.a+levels.b+levels.c].join(',');
+    }).join(';');
+}
+function repairTraining(value,owned=[]) {
+    if (typeof value==='string') {
+        const rows=value.split(';');
+        if (rows.length!==TRAINING_CHARACTERS.length) return createDefaultTraining();
+        value=Object.fromEntries(TRAINING_CHARACTERS.map((id,i)=>{
+            const [uses,bestWave,route='']=rows[i].split(',');
+            return [id,{uses:Number(uses),bestWave:Number(bestWave),route:route[0],
+                levels:{a:Number(route[1]),b:Number(route[2]),c:Number(route[3])}}];
+        }));
+    }
+    // On the one-time upgrade, copy the old family progress to recruits already owned.
+    const familySave=value && !Object.keys(PERSONAL_ROUTES).some(id=>Object.hasOwn(value,id));
     const result=createDefaultTraining();
     for (const id of TRAINING_CHARACTERS) {
-        const src=value?.[id]; if (!src || typeof src!=='object') continue;
+        const inherited=familySave && owned.includes(id) && OATH_RECRUITS[id]?.family;
+        const src=value?.[inherited || id]; if (!src || typeof src!=='object') continue;
         const dst=result[id];
         for (const key of ['uses','bestWave']) if (Number.isFinite(src[key])) dst[key]=Math.max(0,Math.min(1000000000,Math.floor(src[key])));
         if (['a','b','c'].includes(src.route)) dst.route=src.route;
@@ -43,7 +63,7 @@ function repairTraining(value) {
 }
 function getTrainingProgress(id=gameData.character) {
     gameData.training ||= createDefaultTraining();
-    return gameData.training[heroFamily(id)];
+    return gameData.training[id];
 }
 let activeTraining = null;
 let trainingState = {};
@@ -54,16 +74,16 @@ function resetTrainingState() {
 resetTrainingState();
 function trainingStartRun(countUse=true) {
     const p=getTrainingProgress();
-    activeTraining={character:heroFamily(),route:p.route,level:p.levels[p.route]};
+    activeTraining={character:gameData.character,route:p.route,level:p.levels[p.route]};
     resetTrainingState();
     if (countUse && gameMode!=='test') { p.uses=Math.min(1000000000,p.uses+1); saveData(); }
 }
 function trainingLevel(character,route) {
-    return activeTraining?.character===character && activeTraining.route===route ? activeTraining.level : 0;
+    return (activeTraining?.legacyFamily || activeTraining?.character)===character && activeTraining.route===route ? activeTraining.level : 0;
 }
-function trainingHpBonus() { return trainingLevel('tank','c')*3+trainingLevel('rookie','b'); }
-function getSkillCooldown() { return bombCooldown*(1-.08*trainingLevel('power','b'))*equipmentStats().cooldown*(getSelectedCharacter().cooldown || 1); }
-function trainingSkillMultiplier() { return (1+.15*trainingLevel('power','a'))*equipmentSkillMultiplier()*(getSelectedCharacter().skill || 1); }
+function trainingHpBonus() { return trainingLevel('tank','c')*3+trainingLevel('rookie','b')+personalTrainingBonus('hp'); }
+function getSkillCooldown() { return bombCooldown*(1-personalTrainingBonus('cooldown')/100)*(1-.08*trainingLevel('power','b'))*equipmentStats().cooldown*(getSelectedCharacter().cooldown || 1); }
+function trainingSkillMultiplier() { return (1+personalTrainingBonus('skill')/100)*(1+.15*trainingLevel('power','a'))*equipmentSkillMultiplier()*(getSelectedCharacter().skill || 1); }
 function trainingSkillRadius() { return 1+.06*trainingLevel('power','a'); }
 function trainingOnSkill() { if (trainingLevel('power','c')) trainingState.surgeUntil=gameNow()+6000; }
 function trainingFireRateMultiplier() {
@@ -81,11 +101,11 @@ function trainingBulletDamage(enemy,damage) {
     if (trainingState.adaptation==='attack') bonus+=.08*trainingLevel('balance','b');
     if (now<trainingState.surgeUntil) bonus+=.12*trainingLevel('power','c');
     bonus+=Math.min(1,Math.hypot(enemy.x-playerX,enemy.y-playerY)/400)*.12*trainingLevel('speed','a');
-    if (enemy.type==='boss') bonus+=.15*trainingLevel('speed','c');
+    if (enemy.type==='boss') bonus+=.15*trainingLevel('speed','c')+personalTrainingBonus('boss')/100;
     return damage*(1+bonus);
 }
 function trainingCoinReward(base) {
-    trainingState.coinRemainder+=base*.05*trainingLevel('balance','c');
+    trainingState.coinRemainder+=base*(.05*trainingLevel('balance','c')+personalTrainingBonus('coins')/100);
     const extra=Math.floor(trainingState.coinRemainder+1e-9);
     trainingState.coinRemainder=Math.max(0,trainingState.coinRemainder-extra);
     return base+extra;
@@ -95,7 +115,7 @@ function trainingOnWaveStart() {
     trainingState.movingSince=null; trainingState.surgeUntil=0;
     trainingState.lastCounter=-Infinity;
     trainingState.shield=2*trainingLevel('tank','a'); trainingState.nextShield=gameNow()+12000;
-    playerCurrentHp=Math.min(playerMaxHp,playerCurrentHp+trainingLevel('tank','c')); updateHpDisplay();
+    playerCurrentHp=Math.min(playerMaxHp,playerCurrentHp+trainingLevel('tank','c')+personalTrainingBonus('waveHeal')); updateHpDisplay();
     if (gameMode!=='test') {
         const p=getTrainingProgress(activeTraining?.character || gameData.character);
         if (currentWave>p.bestWave) { p.bestWave=Math.min(1000000000,currentWave); saveData(); }
@@ -111,7 +131,7 @@ function updateTrainingCombat(oldX,oldY) {
     if (trainingLevel('tank','a') && now>=trainingState.nextShield) {
         trainingState.shield=2*trainingLevel('tank','a'); trainingState.nextShield=now+12000;
     }
-    let status=activeTraining?.level ? `${TRAINING_ROUTES[activeTraining.character].find(r=>r.id===activeTraining.route).name} Lv.${activeTraining.level}` : '専用育成：未解放';
+    let status=activeTraining?.level ? `${TRAINING_ROUTES[activeTraining.legacyFamily || activeTraining.character].find(r=>r.id===activeTraining.route).name} Lv.${activeTraining.level}` : '専用育成：未解放';
     if (trainingLevel('balance','a')) status+=` ｜連撃 ${trainingState.combo}/10`;
     if (trainingLevel('balance','b')) status+=trainingState.adaptation==='attack'?' ｜攻撃':' ｜防御';
     if (trainingLevel('power','c') && now<trainingState.surgeUntil) status+=' ｜魔力解放中';
@@ -120,6 +140,7 @@ function updateTrainingCombat(oldX,oldY) {
     if (status!==trainingState.hud) { document.getElementById('training-hud').textContent=status; trainingState.hud=status; }
 }
 function trainingIncomingDamage(damage) {
+    damage*=1-personalTrainingBonus('guard')/100;
     trainingState.combo=0;
     if (trainingState.adaptation==='defense') damage*=1-.04*trainingLevel('balance','b');
     const absorbed=Math.min(damage,trainingState.shield); trainingState.shield-=absorbed;
@@ -158,12 +179,13 @@ function canEditTraining() {
     return !homeScreen.classList.contains('hidden') && !startingRun && !preflightPending && !btnBattle.disabled && !cloudConflict;
 }
 function trainingUpgrade(id,route) {
-    if (!canEditTraining() || !ownsTrainingFamily(id) || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
+    if (!canEditTraining() || !heroOwned(id) || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
     const p=getTrainingProgress(id),level=p.levels[route],gate=TRAINING_GATES[level];
     if (!gate || (p.bestWave<gate.wave && p.uses<gate.uses) || gameData.coins<gate.cost) return false;
     gameData.coins-=gate.cost;p.levels[route]++;saveData();renderTraining();return true;
 }
 const TRAINING_VISUALS = {
+ ...Object.fromEntries(Object.entries(PERSONAL_ROUTES).map(([id,routes])=>[id,routes.map(r=>[r.icon,r.label])])),
  rookie:[['🎯','少しずつ火力アップ'],['💚','基礎体力をつける'],['👟','移動に慣れよう']],
  balance:[['⚔️','当て続けて火力アップ'],['⚖️','WAVEごとに攻守を選ぶ'],['💰','コイン集めが得意']],
  power:[['🔮','大きな魔法で一掃'],['⌛','スキルを早く使える'],['🔥','スキルの後も攻める']],
@@ -176,6 +198,7 @@ function renderTraining() {
  hero.appendChild(heroPortrait(character));
  const info=document.createElement('div');hero.appendChild(info);
  appendEqText(info,character.name,'training-hero-name');appendEqText(info,character.role,'training-tagline');
+ if(!heroOwned(id)) appendEqText(info,'🔒 星契召喚で仲間にすると育成できます','training-hint');
  appendEqText(info,'🏁 WAVE '+p.bestWave+'　🎮 '+p.uses+'回','training-record');appendEqText(info,'🪙 '+gameData.coins+' G','training-wallet');
  const cards=document.getElementById('training-cards');cards.replaceChildren();
  for(const [index,route] of TRAINING_ROUTES[id].entries()){
@@ -197,19 +220,28 @@ function renderTraining() {
    const bar=document.createElement('progress');bar.max=1;bar.value=Math.min(1,Math.max(p.bestWave/gate.wave,p.uses/gate.uses));bar.setAttribute('aria-label','WAVEまたは使用回数の達成度');progress.appendChild(bar);
    if(!satisfied)appendEqText(progress,'あとWAVE '+Math.max(0,gate.wave-p.bestWave)+' または '+Math.max(0,gate.uses-p.uses)+'回','training-hint');
    appendEqText(progress,gameData.coins>=gate.cost?'🪙 '+gate.cost+' G · 準備OK':'🪙 '+gate.cost+' G · あと'+(gate.cost-gameData.coins)+' G');card.appendChild(progress);
-   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!ownsTrainingFamily(id)||!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
+   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!heroOwned(id)||!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
   } else appendEqText(card,'🏆 育成コンプリート！','training-max');
-  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!ownsTrainingFamily(id)||!canEditTraining()||selected||!level;
-  equip.addEventListener('click',()=>{if(!canEditTraining()||!ownsTrainingFamily(id))return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
+  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!heroOwned(id)||!canEditTraining()||selected||!level;
+  equip.addEventListener('click',()=>{if(!canEditTraining()||!heroOwned(id))return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
  }
 }
 function initTrainingUI() {
     const select=document.getElementById('training-character');
-    for(const id of TRAINING_CHARACTERS){const option=document.createElement('option');option.value=id;option.textContent=CHARACTERS[id].name+(id==='rookie'?'':'系');select.appendChild(option);}
     select.addEventListener('change',()=>{trainingViewedCharacter=select.value;renderTraining();});
     document.getElementById('btn-training').addEventListener('click',()=>{
         if (!canEditTraining()) { alert('同期中や戦闘開始中は育成を変更できません。');return; }
-        trainingViewedCharacter=heroFamily();select.value=trainingViewedCharacter;renderTraining();document.getElementById('training-dialog').showModal();
+        select.replaceChildren();
+        for(const owned of [true,false]){
+            const group=document.createElement('optgroup');
+            group.label=owned?'育成できる仲間':'未加入・効果をプレビュー';
+            for(const id of TRAINING_CHARACTERS.filter(id=>heroOwned(id)===owned)){
+                const option=new Option(CHARACTERS[id].name,id);
+                group.appendChild(option);
+            }
+            if(group.children.length)select.appendChild(group);
+        }
+        trainingViewedCharacter=gameData.character;select.value=trainingViewedCharacter;renderTraining();document.getElementById('training-dialog').showModal();
     });
 }
 function trainingCheckpoint() {
@@ -217,6 +249,10 @@ function trainingCheckpoint() {
 }
 function restoreTrainingCheckpoint(c) {
     trainingStartRun(false);
-    if (c?.active && c.active.character===heroFamily() && ['a','b','c'].includes(c.active.route) && Number.isInteger(c.active.level) && c.active.level>=0 && c.active.level<=5) activeTraining={...c.active};
+    if (c?.active && (c.active.character===gameData.character || c.active.character===heroFamily()) && ['a','b','c'].includes(c.active.route) && Number.isInteger(c.active.level) && c.active.level>=0 && c.active.level<=5) {
+        activeTraining={character:gameData.character,route:c.active.route,level:c.active.level};
+        if (OATH_RECRUITS[gameData.character] && (c.active.character===heroFamily() || c.active.legacyFamily===heroFamily()))
+            activeTraining.legacyFamily=heroFamily();
+    }
     if(Number.isFinite(c?.coinRemainder)) trainingState.coinRemainder=Math.max(0,Math.min(.999999,c.coinRemainder));
 }

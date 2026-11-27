@@ -389,7 +389,7 @@ function repairGameData(saved) {
     repaired.roster = repairRoster(saved.roster);
     repaired.journey = repairJourney(saved.journey);
     repaired.forge = repairForge(saved.forge);
-    repaired.training = legacyHeroes ? createDefaultTraining() : repairTraining(saved.training);
+    repaired.training = legacyHeroes ? createDefaultTraining() : repairTraining(saved.training,repaired.roster.owned);
     if (legacyHeroes) {
         repaired.character='rookie';
         try { localStorage.removeItem(getSaveKey()+'_checkpoint'); } catch (_) {}
@@ -773,7 +773,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.2.0.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.2.1.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -782,7 +782,7 @@ async function diagnosticTask(stage, work) {
 }
 
 function cloudDocument(data, revision) {
-    return { data:{...data,roster:packRoster(repairRoster(data.roster)),forge:packForge(repairForge(data.forge))}, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    return { data:{...data,roster:packRoster(repairRoster(data.roster)),forge:packForge(repairForge(data.forge)),training:packTraining(repairTraining(data.training,repairRoster(data.roster).owned))}, revision, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 }
 async function loadCloudData(user) {
     cloudReady = false;
@@ -1888,9 +1888,9 @@ function getPlayerStats() {
     let bSize = 10 + (sizeLevel - 1) * 4;
 
     return {
-        shotInterval: Math.max(50, Math.max(100, 1000 - (rate - 1) * 60) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate / (getSelectedCharacter().cadence || 1)),
-        damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * (1+.02*trainingLevel('rookie','a')) * equipmentStats().damage,
-        moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * (1+.02*trainingLevel('rookie','c')) * equipmentStats().speed),
+        shotInterval: Math.max(50, Math.max(100, 1000 - (rate - 1) * 60) / (1 + (runUpgrades.fireRate || 0) * 0.1) / (1+personalTrainingBonus('rate')/100) / trainingFireRateMultiplier() / equipmentStats().fireRate / (getSelectedCharacter().cadence || 1)),
+        damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * (1+personalTrainingBonus('damage')/100) * (1+.02*trainingLevel('rookie','a')) * equipmentStats().damage,
+        moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * (1+personalTrainingBonus('move')/100) * (1+.02*trainingLevel('rookie','c')) * equipmentStats().speed),
         bulletCount: cnt + (runUpgrades.count || 0) + (getSelectedCharacter().extra || 0),
         bulletSize: bSize * (1 + (runUpgrades.bulletSize || 0) * 0.2)
     };
@@ -2255,7 +2255,62 @@ function moveTreasure(e) {
     positionEnemy(e);
 }
 
+// Bearing uses world movement, including retreat and orbit. A stopped enemy keeps
+// its last direction. Sprite sheets load once per group; the original art covers the first load.
+const foeArtLoads = new Map();
+function foeArtKey(enemy) {
+    return enemy.type==='boss' ? 'boss/'+enemy.bossImageIndex+'/'+enemy.bossPhase
+        : 'mob/'+(enemy.type==='treasure'?'minion':enemy.type);
+}
+function paintFoeTurn(enemy,key,entry) {
+    if (foeArtKey(enemy)!==key) return;
+    const [file,row,rows]=entry;
+    if(enemy.turnArtKey===key && enemy.renderedBearing===enemy.bearing) return;
+    enemy.turnArtKey=key;
+    enemy.renderedBearing=enemy.bearing;
+    const css=enemy.element.style;
+    css.backgroundImage=heroArtBackground(file);
+    css.backgroundSize='800% '+rows*100+'%';
+    css.backgroundRepeat='no-repeat';
+    css.backgroundPosition=(enemy.bearing*100/7)+'% '+(rows>1?row*100/(rows-1):0)+'%';
+    if (enemy.type==='boss') enemy.renderedBossPhase=enemy.bossPhase;
+    else alignEnemyHpMeter(enemy);
+    enemySpatialVersion++;
+}
+function updateFoeBearing(enemy) {
+    const initial=enemy.facingX===undefined;
+    const sign=enemy.type==='treasure'?-1:1;
+    const dx=initial?(playerX-enemy.x)*sign:enemy.x-enemy.facingX;
+    const dy=initial?(playerY-enemy.y)*sign:enemy.y-enemy.facingY;
+    enemy.facingX=enemy.x;enemy.facingY=enemy.y;
+    if (initial) enemy.bearing=heroDirection(dx,dy);
+    else if (dx*dx+dy*dy>.0025) {
+        const a=Math.atan2(dx,dy)-enemy.bearing*Math.PI/4;
+        if (Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))>Math.PI/8+.075) enemy.bearing=heroDirection(dx,dy);
+    }
+    const key=foeArtKey(enemy),entry=FOE_TURNS[key];
+    if (!entry || (enemy.turnArtKey===key && enemy.renderedBearing===enemy.bearing)) return;
+    const file=entry[0];
+    let load=foeArtLoads.get(file);
+    if (!load) {
+        const image=new Image();
+        load={image,ready:false,waiting:new Set()};foeArtLoads.set(file,load);
+        image.onload=()=>{
+            load.ready=true;
+            for (const e of load.waiting) {
+                const k=foeArtKey(e),v=FOE_TURNS[k];
+                if (enemies.includes(e) && v?.[0]===file) paintFoeTurn(e,k,v);
+            }
+            load.waiting.clear();
+        };
+        image.onerror=()=>{load.failed=true;load.waiting.clear();};
+        image.src=gameAssetUrl(file+'?v='+HERO_ART_VERSION);
+    }
+    if (load.ready) paintFoeTurn(enemy,key,entry);
+    else if (!load.failed) load.waiting.add(enemy);
+}
 function positionEnemy(enemy) {
+    updateFoeBearing(enemy);
     enemy.worldNode.style.left = enemy.x + 'px';
     enemy.worldNode.style.top = enemy.y + 'px';
 }
@@ -2599,19 +2654,21 @@ function beginBossSecondPhase(boss) {
     boss.lastAttackTime = boss.transformingUntil;
     boss.lastBossPattern = null;
     boss.speed *= getBossType(boss).phaseSpeed;
+    boss.turnArtKey=null;
     if (getBossType(boss).atlas != null) {
         stageSetSprite(boss.element, getBossType(boss).atlas, true, 2);
         boss.renderedBossPhase=2;
     } else {
         const phaseImage = new Image();
         phaseImage.onload = () => {
-            if (!isBossAlive(boss)) return;
+            if (!isBossAlive(boss) || boss.turnArtKey===foeArtKey(boss)) return;
             boss.element.style.backgroundImage = `url('boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1')`;
             boss.renderedBossPhase=2;enemySpatialVersion++;
         };
         phaseImage.src = `boss${boss.bossImageIndex + 1}_phase2.png?v=dragons-1`;
     }
     boss.element.classList.add('boss-phase2', 'boss-phase2-' + boss.phase2Type, 'boss-transforming');
+    updateFoeBearing(boss);
     if (bossHud) bossHud.classList.add('boss-hud-phase2');
     updateBossIdentity(boss);
     showBossAttackName('覚醒中…！');

@@ -96,8 +96,7 @@ service cloud.firestore {
         && joined.matches('^((0|[1-9][0-9]{0,8}|1000000000)(,(0|[1-9][0-9]{0,8}|1000000000))*)?$');
     }
     function validRecords(r) {
-      return r.keys().hasOnly(['normal','endless'])
-        && r.keys().hasAll(['normal','endless']);
+      return r.keys().toSet() == 'normal,endless'.split(',').toSet();
     }
     function validResult(r) {
       return r == null || (r.keys().hasOnly('wave,coins,kills,bosses,seconds,character,mode,reason,newBest'.split(','))
@@ -117,7 +116,7 @@ service cloud.firestore {
         && p.uses is int && p.bestWave is int && validCountValues([p.uses,p.bestWave])
         && p.route in ['a','b','c'] && validTrainingLevels(p.levels);
     }
-    function validTraining(t) {
+    function validLegacyTraining(t) {
       let b=t.balance; let p=t.power; let s=t.speed; let k=t.tank; let r=t.get('rookie',b);
       let levels=b.levels.values().concat(p.levels.values()).concat(s.levels.values()).concat(k.levels.values()).concat(r.levels.values());
       return t.keys().hasOnly('rookie,balance,power,speed,tank'.split(','))
@@ -133,22 +132,23 @@ service cloud.firestore {
       return values.join(',').matches('^([1-9][0-9]{0,8}|1000000000)(,([1-9][0-9]{0,8}|1000000000))*$');
     }
     function validUpgrades(u) {
-      let fields='damage,fireRate,count,bulletSize,speed,maxHp'.split(',');
+      let fields='damage,fireRate,count,bulletSize,speed,maxHp'.split(',').toSet();
       let values=u.values();
-      return u.keys().hasAll(fields) && u.keys().hasOnly(fields)
+      return u.keys().toSet()==fields
         && !values.hasAny([0]);
     }
     function validSkillLevels(l) {
-      let fields='sphere,bomb,energy,satellite'.split(',');
+      let fields='sphere,bomb,energy,satellite'.split(',').toSet();
       let values=l.values();
-      return l.keys().hasAll(fields) && l.keys().hasOnly(fields)
+      return l.keys().toSet()==fields
         && !values.hasAny([0]);
     }
     function validSkills(sk) {
+      let owned=sk.owned;
       return sk.keys().hasOnly(['owned','equipped','levels'])
-        && sk.owned is list && sk.owned.size() >= 1 && sk.owned.size() <= 4
-        && sk.owned.hasOnly('sphere,bomb,energy,satellite'.split(','))
-        && sk.equipped in sk.owned && validSkillLevels(sk.levels);
+        && owned is list && owned.size() <= 4
+        && owned.hasOnly('sphere,bomb,energy,satellite'.split(','))
+        && sk.equipped in owned && validSkillLevels(sk.levels);
     }
     function validEquipment(e) {
       let items=e.items; let equipped=e.equipped; let crystals=e.crystals; let nextId=e.nextId;
@@ -180,9 +180,16 @@ service cloud.firestore {
         && claimed.hasOnly('boss,wave_balance,wave_power,wave_speed,wave_tank,codex10,codex25'.split(','))
         && tutorial is int && tutorial in [0,1,2];
     }
+    // 22 rows in roster order. Each contains uses, best wave, route and three levels.
+    function validTraining(t) {
+      return t is string
+        ? t.size() <= 616 && t.matches('^((0|[1-9][0-9]{0,8}|1000000000),(0|[1-9][0-9]{0,8}|1000000000),[abc][0-5]{3};){21}(0|[1-9][0-9]{0,8}|1000000000),(0|[1-9][0-9]{0,8}|1000000000),[abc][0-5]{3}$')
+        : t is map && validLegacyTraining(t);
+    }
     function validCoreCounts(d) {
       let base=d.upgrade.values().concat(d.skills.levels.values());
-      let t=d.get('training',null);
+      let training=d.get('training',null);
+      let t=training is map ? training : null;
       let rookie=t==null?null:t.get('rookie',t.balance);
       let counts=t==null ? base : base.concat([t.balance.uses,t.balance.bestWave,t.power.uses,t.power.bestWave,t.speed.uses,t.speed.bestWave,t.tank.uses,t.tank.bestWave,rookie.uses,rookie.bestWave]);
       let locks=d.get('journey',{'locks':[]}).locks;
@@ -222,22 +229,24 @@ service cloud.firestore {
     function developer(userId) {
       return get(/databases/$(database)/documents/players/$(userId)).data.get('isDeveloper', false) == true;
     }
+    function validRevision(next,prior) {
+      let before=prior.data;
+      let after=next.data;
+      return next.revision==prior.revision+1 && validSaveDocument(next)
+        && (!(before.get('training',null) is string) || after.training is string)
+        && (before.get('roster',1)<=31 || after.get('roster',1)>4194304)
+        && after.keys().toSet().hasAll(before.keys().toSet().intersection('forge,journey,equipment,training,roster'.split(',').toSet()));
+    }
     match /gameSaves/{userId} {
       allow read, delete: if signedInAs(userId);
       allow create: if signedInAs(userId) && request.resource.data.revision == 1 && validSaveDocument(request.resource.data);
-      allow update: if signedInAs(userId) && request.resource.data.revision == resource.data.revision + 1
-        && validSaveDocument(request.resource.data)
-        && (resource.data.data.get('roster',1) <= 31 || request.resource.data.data.get('roster',1) > 4194304)
-        && request.resource.data.data.keys().toSet().hasAll(resource.data.data.keys().toSet().intersection(['forge','journey','equipment','training','roster'].toSet()));
+      allow update: if signedInAs(userId) && validRevision(request.resource.data,resource.data);
     }
     match /developerSaves/{userId} {
       allow read: if signedInAs(userId) && developer(userId);
       allow delete: if signedInAs(userId);
       allow create: if signedInAs(userId) && request.resource.data.revision == 1 && developer(userId) && validSaveDocument(request.resource.data);
-      allow update: if signedInAs(userId) && request.resource.data.revision == resource.data.revision + 1
-        && developer(userId) && validSaveDocument(request.resource.data)
-        && (resource.data.data.get('roster',1) <= 31 || request.resource.data.data.get('roster',1) > 4194304)
-        && request.resource.data.data.keys().toSet().hasAll(resource.data.data.keys().toSet().intersection(['forge','journey','equipment','training','roster'].toSet()));
+      allow update: if signedInAs(userId) && developer(userId) && validRevision(request.resource.data,resource.data);
     }
 
     // その他のデータはすべて拒否

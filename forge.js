@@ -42,11 +42,14 @@ function applySeriesStats(s,items){
 function seriesSummary(items){return seriesCounts(items).map((n,id)=>n?`${SERIES_NAMES[id]} ${n}/4部位${n>=2?' 発動中':'（2部位から）'}：${SERIES_HELP[id]}`:'').filter(Boolean).join('\n')||'シリーズ装備なし';}
 function presetReservedIds(){return (gameData.forge?.presets||[]).flatMap(w=>unpackPreset(w)?.ids||[]).filter(Boolean);}
 function forgeMessage(text){document.getElementById('forge-status').textContent=text;}
+function loadoutTrainingHero() {
+ return heroEquipmentCharacter()===equipmentViewedCharacter ? gameData.character : equipmentViewedCharacter;
+}
 function saveLoadout(index,name){
  if(!canEditTraining()||!Number.isInteger(index)||index<0||index>=12||Math.floor(index/3)!==EQ_CHARS.indexOf(equipmentViewedCharacter))return false;
  if(gameData.forge.presets[index]&&!confirm('この装備セットを上書きしますか？'))return false;
  const id=equipmentViewedCharacter,start=EQ_CHARS.indexOf(id)*4,ids=gameData.equipment.equipped.slice(start,start+4).map(w=>decodeEquipment(w)?.uid||0);
- gameData.forge.presets[index]=encodeURIComponent((name.trim()||'セット'+(index%3+1)).slice(0,24).replace(/[\uD800-\uDBFF]$/,''))+'|'+ids.join(':')+':'+gameData.training[id].route;
+ gameData.forge.presets[index]=encodeURIComponent((name.trim()||'セット'+(index%3+1)).slice(0,24).replace(/[\uD800-\uDBFF]$/,''))+'|'+ids.join(':')+':'+gameData.training[loadoutTrainingHero()].route;
  saveData();renderEquipment();forgeMessage('装備と育成ルートを保存しました。セット内の装備は売却・分解・合成素材から保護されます。');return true;
 }
 function applyLoadout(index){
@@ -55,7 +58,9 @@ function applyLoadout(index){
  const start=Math.floor(index/3)*4,items=p.ids.map(id=>id?equipmentFind(id):null);
  if(items.some((item,s)=>p.ids[s]&&(!item||item.slot!==start+s||item.durability===0))){forgeMessage('装備が見つからないか破損しています。修理してから適用してください。');return false;}
  if(!confirm(p.name+' の装備と育成ルートを適用しますか？'))return false;
- items.forEach((i,s)=>gameData.equipment.equipped[start+s]=i?encodeEquipment(i):'none');gameData.training[equipmentViewedCharacter].route=p.route;
+ items.forEach((i,s)=>gameData.equipment.equipped[start+s]=i?encodeEquipment(i):'none');
+ const hero=loadoutTrainingHero(),progress=gameData.training[hero];
+ if(heroOwned(hero) && progress.levels[p.route]>0) progress.route=p.route;
  saveData();renderEquipment();forgeMessage('セットを適用しました。新しい挑戦から有効です。');return true;
 }
 function renderForge(){

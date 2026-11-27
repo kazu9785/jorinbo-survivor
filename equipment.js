@@ -150,16 +150,20 @@ function equipmentRoll(count=1){
  if(gachaBusy||!canEditTraining()||![1,10].includes(count))return [];
  const d=gameData.equipment,cost=count*10;
  if(d.crystals<cost){equipmentMessage('召喚結晶が不足しています。');return [];}
- if(d.items.length+count>EQ_BOX_LIMIT){equipmentMessage(`ボックスがいっぱいです（最大${EQ_BOX_LIMIT}個）。先に売却か合成をしてください。結晶は消費していません。`);return [];}
+ if(d.items.length+count>EQ_BOX_LIMIT){equipmentMessage(`この召喚にはボックスの空きが${count}枠必要です（最大${EQ_BOX_LIMIT}枠）。`);return [];}
  if(d.nextId+count-1>999999999){equipmentMessage('装備IDの上限に達しました。');return [];}
  d.crystals-=cost;const results=[];
  for(let n=0;n<count;n++){
+  const hero=rollOathHero();
+  if(hero){results.push(hero);continue;}
   const grade=equipmentWeightedIndex(EQ_GRADE_WEIGHTS)+1,slot=Math.floor(Math.random()*16);
   const i={uid:d.nextId++,slot,grade,durability:EQ_MAX_DURABILITY[grade],skills:rollEquipmentAffixes(grade)};d.items.push(encodeEquipment(i));gameData.forge.series.push(i.uid+':'+Math.floor(Math.random()*(grade===5?8:4)));results.push(i);
  }
- saveData();equipmentPage=0;renderEquipment();equipmentMessage(`${count}個をボックスに追加しました。重複した装備も個別に保管します。`);
+ saveData();equipmentPage=0;renderEquipment();
+ const characters=results.filter(item=>item.kind==='hero').length;
+ equipmentMessage('召喚結果　装備 '+(count-characters)+'個 ／ 仲間 '+characters+'体');
  const area=document.getElementById('equipment-results');area.replaceChildren();
- results.forEach(i=>{const card=document.createElement('article');card.className='equipment-result';card.appendChild(equipmentIcon(i.slot,i.grade,i));appendEqText(card,equipmentName(i));appendEqText(card,equipmentAffixText(i),'equipment-affixes');area.appendChild(card);});
+ results.forEach(i=>{const card=document.createElement('article');card.className='equipment-result';card.appendChild(oathResultIcon(i));appendEqText(card,oathResultName(i));appendEqText(card,oathResultNote(i),'equipment-affixes');area.appendChild(card);});
  playSound('confirm');return results;
 }
 function equipmentReservedIds(){
@@ -246,20 +250,20 @@ function renderEquipment(){
 }
 function equipmentPercent(x){
  if(x<=0)return '0.0％';
- if(x<0.05)return '0.1％未満（約'+Math.round(100/x).toLocaleString('ja-JP')+'分の1）';
+ if(x<0.1)return '0.1％未満（約'+Math.round(100/x).toLocaleString('ja-JP')+'分の1）';
  return x.toFixed(1)+'％';
 }
 function renderEquipmentProbabilities(){
- const root=document.getElementById('equipment-probability-content');root.replaceChildren();
+ const root=document.getElementById('equipment-probability-content');root.replaceChildren();renderOathOdds(root);
  const cards=document.createElement('div');cards.className='odds-grade-grid';
  EQ_GRADES.forEach((name,index)=>{
   const card=document.createElement('article');card.className='odds-grade-card';card.style.setProperty('--rarity',EQ_COLORS[index]);
   const chest=document.createElement('div');chest.className='odds-chest';chest.setAttribute('aria-hidden','true');gachaChest(chest,index+1);card.appendChild(chest);
   const title=document.createElement('h3');title.textContent=name;card.appendChild(title);
-  appendEqText(card,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),'odds-value');
+  appendEqText(card,equipmentPercent(OATH_EQUIPMENT_SHARE*EQ_GRADE_WEIGHTS[index]/100),'odds-value');
   appendEqText(card,'特殊スキル '+EQ_SKILL_SLOTS[index+1]+'枠');cards.appendChild(card);
  });root.appendChild(cards);
- appendEqText(root,'💎 1回10個 ／ 10連100個　🎲 全キャラ・全部位が対象','pop-note');
+ appendEqText(root,'💎 1回10個 ／ 10連100個　🎲 各枠を独立抽選','pop-note');
  appendEqText(root,'1回も10連も同じ確率。確定枠・天井はありません。','pop-note');
  eqButton(root,'📖 抽選のしくみ',false,()=>openGameHelp('help-gacha'));
  renderPromotionProbabilities(root);
@@ -267,11 +271,11 @@ function renderEquipmentProbabilities(){
  const table=document.createElement('table');table.className='equipment-odds-table';
  const head=document.createElement('tr');['グレード','排出率','特定キャラ・部位1種','スキル枠','通常 / 希少 / 神話（1枠）','神話が1枠以上'].forEach(t=>{const th=document.createElement('th');th.textContent=t;head.appendChild(th);});table.appendChild(head);
  EQ_GRADES.forEach((name,index)=>{const g=index+1,w=EQ_AFFIX_WEIGHTS[g],p=w[2]/10000,row=document.createElement('tr');
-  [name,equipmentPercent(EQ_GRADE_WEIGHTS[index]/100),equipmentPercent(EQ_GRADE_WEIGHTS[index]/1600),EQ_SKILL_SLOTS[g]+'枠',w.map(x=>equipmentPercent(x/100)).join(' / '),equipmentPercent((1-(1-p)**EQ_SKILL_SLOTS[g])*100)].forEach(t=>{const td=document.createElement('td');td.textContent=t;row.appendChild(td);});table.appendChild(row);});const gradeScroll=document.createElement('div');gradeScroll.className='odds-scroll';gradeScroll.appendChild(table);area.appendChild(gradeScroll);
+  [name,equipmentPercent(OATH_EQUIPMENT_SHARE*EQ_GRADE_WEIGHTS[index]/100),equipmentPercent(OATH_EQUIPMENT_SHARE*EQ_GRADE_WEIGHTS[index]/1600),EQ_SKILL_SLOTS[g]+'枠',w.map(x=>equipmentPercent(x/100)).join(' / '),equipmentPercent((1-(1-p)**EQ_SKILL_SLOTS[g])*100)].forEach(t=>{const td=document.createElement('td');td.textContent=t;row.appendChild(td);});table.appendChild(row);});const gradeScroll=document.createElement('div');gradeScroll.className='odds-scroll';gradeScroll.appendChild(table);area.appendChild(gradeScroll);
  appendEqText(area,'特殊スキルは各枠で独立抽選。同じスキルが重複することもあり、効果は加算されます。グレード別に枠数と効果量が増えます。下の確率は「そのグレードの装備に付く、1枠あたりの個別スキル確率」です。');
  const effects=document.createElement('table');effects.className='equipment-odds-table';const h=document.createElement('tr');['スキル','分類','N','R','SR','SSR','UR','N装備の効果'].forEach(t=>{const th=document.createElement('th');th.textContent=t;h.appendChild(th);});effects.appendChild(h);
  Object.entries(EQ_AFFIXES).forEach(([id,a])=>{const tr=document.createElement('tr');[a.name,EQ_AFFIX_TIERS[a.tier],...[1,2,3,4,5].map(g=>equipmentPercent(EQ_AFFIX_WEIGHTS[g][a.tier]/100/EQ_AFFIX_POOLS[a.tier].length)),a.description(1)+'（N装備）'].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.appendChild(td);});effects.appendChild(tr);});const effectScroll=document.createElement('div');effectScroll.className='odds-scroll';effectScroll.appendChild(effects);area.appendChild(effectScroll);
- appendEqText(area,'例：特定のUR装備1種に、指定した1枠の「覇王」が付く確率は19億2000万分の1。小数になる確率は約○分の1で表示しています。抽選確率自体は変更していません。');
+ appendEqText(area,'装備の同グレード内では4系統×4部位を均等に抽選。シリーズも各候補から均等に選ばれます。');
  appendEqText(area,'合計効果の上限：被ダメージ軽減75％、回避50％、会心80％、装備によるスキル待ち時間短縮80％。移動・連射は従来のゲーム上限も適用。会心は通常弾のみ。');
 }
 function initEquipmentUI(){

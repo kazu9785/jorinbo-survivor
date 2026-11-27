@@ -1186,3 +1186,29 @@ body.lite-mode .skill-cast-ring,body.lite-mode .skill-laser-column {display:none
 @keyframes skillLongLaser{0%{transform:scaleY(.2);opacity:0}12%{transform:scaleY(1);opacity:.65}65%{transform:scaleY(1);opacity:.35}100%{transform:scaleY(1);opacity:0}}
 .skill-cast-quiet .skill-cast-art,body.lite-mode .skill-cast-art{animation:none;opacity:.4;}
 @media(prefers-reduced-motion:reduce){.skill-cast-art{animation:none!important;opacity:.4}}
+
+/* Character reliquaries use their own six-cell sheet until the reward is revealed. */
+.summon-chest.oath-chest,.odds-chest.oath-chest {
+    background-image:url('oath_chests.webp?v=2.0.0'); background-size:300% 200%;
+    background-repeat:no-repeat;
+}
+.odds-chest.oath-chest {display:block; margin-inline:auto;}
+.oath-odds summary {cursor:pointer; list-style:none;}
+.oath-odds summary::-webkit-details-marker {display:none;}
+.oath-odds summary:focus-visible {outline:2px solid var(--rarity);}
+.oath-odds details[open] {background-color:#222944;}
+.oath-odds p {overflow-wrap:anywhere;}
+.summon-chest.summon-item-revealed {position:relative;}
+.summon-item-revealed > .hero-portrait {position:absolute;inset:5%;width:90%;height:90%;}
+.gacha-reveal-card .hero-portrait,.equipment-result .hero-portrait {--portrait-height:74px;margin:auto;}
+.oath-detail {max-width:min(440px,94vw);}
+#oath-hero-detail {text-align:center;line-height:1.55;}
+#oath-hero-detail .hero-portrait {--portrait-height:180px;margin:0 auto;}
+.oath-rank,.oath-card-rank {color:var(--rarity);font-weight:bold;}
+.character-card .oath-card-rank {align-self:flex-start;font-size:.8em;border-bottom:2px solid var(--rarity);}
+.character-card:disabled {opacity:1;cursor:default;background:#1a2536;color:#c5ccda;}
+.character-card:disabled .hero-portrait {opacity:.78;}
+.character-card:disabled b {color:#c3cdde;}
+
+.oath-filter {display:flex;gap:.7rem;align-items:center;width:fit-content;margin:0 auto;color:#c5d7e9;}
+.oath-filter select {background:#1a2d44;border:1px solid #7695b3;border-radius:.55rem;color:#f4f7fc;padding:.45rem .75rem;font:inherit;}

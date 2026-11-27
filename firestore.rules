@@ -66,6 +66,7 @@ service cloud.firestore {
       allow update: if signedInAs(userId)
         && hasValidPlayerFields()
         && request.resource.data.get('isDeveloper', false) == resource.data.get('isDeveloper', false)
+        && (resource.data.get('boards',[]).size() < 204 || request.resource.data.get('boards',[]).size() == 204)
         && request.resource.data.username == resource.data.username
         && request.resource.data.usernameKey == resource.data.usernameKey
         && request.resource.data.createdAt == resource.data.createdAt
@@ -102,7 +103,7 @@ service cloud.firestore {
       return r == null || (r.keys().hasOnly('wave,coins,kills,bosses,seconds,character,mode,reason,newBest'.split(','))
         
         && r.coins is int && r.coins >= 0 && r.coins <= 9007199254740991
-        && r.character in 'balance,power,speed,tank'.split(',')
+        && r.character in 'rookie,balance,power,speed,tank,scout,medic,duelist,tide,falcon,bastion,spark,frost,storm,thorn,echo,solar,lunar,tempest,phoenix,void,astral'.split(',')
         && r.mode in ['normal','endless','test']
         && r.reason is string && r.reason.size() <= 100 && r.newBest is bool);
     }
@@ -117,13 +118,13 @@ service cloud.firestore {
         && p.route in ['a','b','c'] && validTrainingLevels(p.levels);
     }
     function validTraining(t) {
-      let b=t.balance; let p=t.power; let s=t.speed; let k=t.tank;
-      let levels=b.levels.values().concat(p.levels.values()).concat(s.levels.values()).concat(k.levels.values());
-      return t.keys().hasOnly('balance,power,speed,tank'.split(','))
-        && b.keys().concat(p.keys()).concat(s.keys()).concat(k.keys()).hasOnly('uses,bestWave,route,levels'.split(','))
-        && [b.route,p.route,s.route,k.route].hasOnly(['a','b','c'])
-        && b.levels.keys().concat(p.levels.keys()).concat(s.levels.keys()).concat(k.levels.keys()).hasOnly(['a','b','c'])
-        && levels.size()==12 && levels.hasOnly([0,1,2,3,4,5]);
+      let b=t.balance; let p=t.power; let s=t.speed; let k=t.tank; let r=t.get('rookie',b);
+      let levels=b.levels.values().concat(p.levels.values()).concat(s.levels.values()).concat(k.levels.values()).concat(r.levels.values());
+      return t.keys().hasOnly('rookie,balance,power,speed,tank'.split(','))
+        && b.keys().concat(p.keys()).concat(s.keys()).concat(k.keys()).concat(r.keys()).hasOnly('uses,bestWave,route,levels'.split(','))
+        && [b.route,p.route,s.route,k.route,r.route].hasOnly(['a','b','c'])
+        && b.levels.keys().concat(p.levels.keys()).concat(s.levels.keys()).concat(k.levels.keys()).concat(r.levels.keys()).hasOnly(['a','b','c'])
+        && levels.size()==15 && levels.hasOnly([0,1,2,3,4,5]);
     }
     // 検証対象を引数で渡し、深いフィールド参照の反復評価を避ける。
     // 型を個別に確認したうえで、数値範囲はネイティブの文字列照合で一括検証。
@@ -168,7 +169,7 @@ service cloud.firestore {
       return f is string && f.size()<=20000 && f.matches("^(0|[1-9][0-9]{0,8}|1000000000)#([1-9][0-9]{0,8}(,[1-9][0-9]{0,8}){0,499})?#([1-9][0-9]{0,8}:[0-7](,[1-9][0-9]{0,8}:[0-7]){0,499})?#([A-Za-z0-9%_.!~*'()-]{0,216}[|](0|[1-9][0-9]{0,8})(:(0|[1-9][0-9]{0,8})){3}:[abc]|)(;([A-Za-z0-9%_.!~*'()-]{0,216}[|](0|[1-9][0-9]{0,8})(:(0|[1-9][0-9]{0,8})){3}:[abc]|)){11}$");
     }
     function validBoards(b) {
-      return b is list && b.size() == 42 && validCodexCounts(b);
+      return b is list && b.size() in [42,51,204] && validCodexCounts(b);
     }
     function validJourney(j) {
       let locks=j.locks; let claimed=j.claimed; let tutorial=j.tutorial;
@@ -182,19 +183,26 @@ service cloud.firestore {
     function validCoreCounts(d) {
       let base=d.upgrade.values().concat(d.skills.levels.values());
       let t=d.get('training',null);
-      let counts=t==null ? base : base.concat([t.balance.uses,t.balance.bestWave,t.power.uses,t.power.bestWave,t.speed.uses,t.speed.bestWave,t.tank.uses,t.tank.bestWave]);
+      let rookie=t==null?null:t.get('rookie',t.balance);
+      let counts=t==null ? base : base.concat([t.balance.uses,t.balance.bestWave,t.power.uses,t.power.bestWave,t.speed.uses,t.speed.bestWave,t.tank.uses,t.tank.bestWave,rookie.uses,rookie.bestWave]);
       let locks=d.get('journey',{'locks':[]}).locks;
       let records=d.get('records',{'normal':0,'endless':0});
       let result=d.get('lastResult',null);
       let resultCounts=result==null?[]:[result.wave,result.kills,result.bosses,result.seconds];
       return validCodexCounts(counts.concat(locks).concat(d.get('codex',{}).values()).concat([records.normal,records.endless]).concat(resultCounts));
     }
+    // The low bit is the rookie. Bit 22 marks a save written by the expanded roster.
+    function validRoster(r) {
+      return r is int && r % 2 == 1 && ((r >= 1 && r <= 31) || (r > 4194304 && r < 8388608));
+    }
     function validSaveData(d) {
-      return d.keys().hasOnly('coins,endlessUnlocked,name,character,upgrade,skills,codex,records,lastResult,training,equipment,journey,forge'.split(','))
-        && d.coins is int && d.coins >= 0 && d.coins <= 9007199254740991
-        && d.endlessUnlocked is bool && d.name is string && d.name.size() <= 64
-        && d.character in 'balance,power,speed,tank'.split(',')
+      let coins=d.coins; let name=d.name;
+      return d.keys().hasOnly('coins,endlessUnlocked,name,character,upgrade,skills,codex,records,lastResult,training,equipment,journey,forge,roster'.split(','))
+        && coins is int && coins >= 0 && coins <= 9007199254740991
+        && d.endlessUnlocked is bool && name is string && name.size() <= 64
+        && d.character in 'rookie,balance,power,speed,tank,scout,medic,duelist,tide,falcon,bastion,spark,frost,storm,thorn,echo,solar,lunar,tempest,phoenix,void,astral'.split(',')
         && validCoreCounts(d) && validUpgrades(d.upgrade) && validSkills(d.skills)
+        && (!('roster' in d) || validRoster(d.roster))
         && (!('forge' in d) || validForge(d.forge))
         && (!('journey' in d) || validJourney(d.journey))
         && (!('equipment' in d) || validEquipment(d.equipment))
@@ -216,18 +224,20 @@ service cloud.firestore {
     }
     match /gameSaves/{userId} {
       allow read, delete: if signedInAs(userId);
-      allow create: if signedInAs(userId) && request.resource.data.revision == 1 && validSave();
+      allow create: if signedInAs(userId) && request.resource.data.revision == 1 && validSaveDocument(request.resource.data);
       allow update: if signedInAs(userId) && request.resource.data.revision == resource.data.revision + 1
-        && validSave()
-        && request.resource.data.data.keys().toSet().hasAll(resource.data.data.keys().toSet().intersection(['forge','journey','equipment','training'].toSet()));
+        && validSaveDocument(request.resource.data)
+        && (resource.data.data.get('roster',1) <= 31 || request.resource.data.data.get('roster',1) > 4194304)
+        && request.resource.data.data.keys().toSet().hasAll(resource.data.data.keys().toSet().intersection(['forge','journey','equipment','training','roster'].toSet()));
     }
     match /developerSaves/{userId} {
       allow read: if signedInAs(userId) && developer(userId);
       allow delete: if signedInAs(userId);
-      allow create: if signedInAs(userId) && request.resource.data.revision == 1 && developer(userId) && validSave();
+      allow create: if signedInAs(userId) && request.resource.data.revision == 1 && developer(userId) && validSaveDocument(request.resource.data);
       allow update: if signedInAs(userId) && request.resource.data.revision == resource.data.revision + 1
-        && developer(userId) && validSave()
-        && request.resource.data.data.keys().toSet().hasAll(resource.data.data.keys().toSet().intersection(['forge','journey','equipment','training'].toSet()));
+        && developer(userId) && validSaveDocument(request.resource.data)
+        && (resource.data.data.get('roster',1) <= 31 || request.resource.data.data.get('roster',1) > 4194304)
+        && request.resource.data.data.keys().toSet().hasAll(resource.data.data.keys().toSet().intersection(['forge','journey','equipment','training','roster'].toSet()));
     }
 
     // その他のデータはすべて拒否

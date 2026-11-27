@@ -5,15 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <title>常林暴サバイバー</title>
-<meta content="1.9.7" name="app-version"/>
-<link href="manifest.webmanifest?v=1.9.7" rel="manifest"/>
+<meta content="2.0.0" name="app-version"/>
+<link href="manifest.webmanifest?v=2.0.0" rel="manifest"/>
 <meta content="#101827" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
 <meta content="常林暴" name="apple-mobile-web-app-title"/>
-<link href="apple-touch-icon.png?v=1.9.7" rel="apple-touch-icon"/>
-<link href="icon-192.png?v=1.9.7" rel="icon" type="image/png"/>
-<link href="style.css?v=1.9.7" rel="stylesheet"/>
+<link href="apple-touch-icon.png?v=2.0.0" rel="apple-touch-icon"/>
+<link href="icon-192.png?v=2.0.0" rel="icon" type="image/png"/>
+<link href="style.css?v=2.0.0" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;family=Roboto:wght@700&amp;display=swap" rel="stylesheet"/>
 <script>
 // An update token is shared by HTML, CSS and local JavaScript, including unchanged filenames.
@@ -50,7 +50,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p class="update-inline-status" data-update-status="" role="status"></p>
 <button data-info-dialog="overview-guide" type="button">ゲーム概要</button>
 <button data-info-dialog="play-guide" type="button">遊び方・用語ガイド</button>
-<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.7</span> · 更新履歴</button>
+<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.2.0.0</span> · 更新履歴</button>
 </div>
 <p aria-live="polite" class="status-message" id="auth-status"></p>
 <button class="install-game-button" type="button">ホーム画面に追加</button>
@@ -70,7 +70,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <section aria-label="選択中のキャラクター" class="home-character-panel">
 <p class="home-section-label">選択中のキャラクター</p>
 <div class="selected-character"><span class="hero-portrait" id="selected-character-image" aria-hidden="true" style="--hero-sheet:url('hero_rookie.png?v=1.9.5')"></span><span id="selected-character-name">見習い（基礎型）</span></div>
-<p class="pop-note" id="home-next-goal"></p><button class="menu-btn" id="btn-equipment">装備ボックス</button><button class="menu-btn" id="btn-summon">召喚ガチャ（結晶 <span class="crystal-balance">0</span>）</button><button class="menu-btn" id="btn-training">キャラクター育成</button><button class="menu-btn shop-btn" id="btn-character">キャラクター選択</button>
+<p class="pop-note" id="home-next-goal"></p><button class="menu-btn" id="btn-equipment">装備ボックス</button><button class="menu-btn" id="btn-summon">星契召喚（結晶 <span class="crystal-balance">0</span>）</button><button class="menu-btn" id="btn-training">キャラクター育成</button><button class="menu-btn shop-btn" id="btn-character">キャラクター選択</button>
 </section>
 <section aria-label="モード選択とメニュー" class="home-play-panel">
 <h2 class="home-section-label">⚔ 冒険</h2>
@@ -93,7 +93,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p class="update-inline-status" data-update-status="" role="status"></p>
 <button data-info-dialog="overview-guide" type="button">ゲーム概要</button>
 <button data-info-dialog="play-guide" type="button">遊び方・用語ガイド</button>
-<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.1.9.7</span> · 更新履歴</button>
+<button data-info-dialog="release-guide" hidden="" type="button"><span class="app-version">Ver.2.0.0</span> · 更新履歴</button>
 </div>
 <details class="home-settings"><summary>⚙ 設定・アカウント</summary><div class="settings-grid"><details class="control-settings"><summary>スマホ操作設定</summary>
 <label>スキルボタンの位置 <select id="control-side"><option value="right">右</option><option value="left">左</option></select></label>
@@ -128,7 +128,8 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <div aria-labelledby="character-title" aria-modal="true" class="account-modal hidden" id="character-modal" role="dialog">
 <div class="character-panel persistent-panel"><header class="persistent-panel-header"><h2 id="character-title">キャラクター選択</h2><button aria-label="キャラクター選択を閉じる" class="back-btn persistent-close" id="btn-close-character">決定して戻る</button></header><div class="persistent-panel-content">
 
-<p>好きなキャラを選ぼう！ 強化とスキルは共通です。</p>
+<p>仲間 <strong id="oath-owned-count"></strong>　<span>星契召喚で新しい仲間を迎えよう。</span></p>
+<label class="oath-filter">表示 <select id="oath-filter"><option value="all">全キャラ</option><option value="owned">所持中</option></select></label>
 <div id="character-cards"></div>
 
 </div></div>
@@ -318,25 +319,26 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
-<script data-game-src="firebase-config.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="audio.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="presentation.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="stages.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="equipment.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="training.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="adventure.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="forge.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="collision.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="heroes.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="skill-effects.js?v=1.9.7" type="application/json"></script>
-<script data-game-src="script.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="firebase-config.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="audio.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="oath.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="presentation.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="stages.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="equipment.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="training.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="adventure.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="forge.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="collision.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="heroes.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="skill-effects.js?v=2.0.0" type="application/json"></script>
+<script data-game-src="script.js?v=2.0.0" type="application/json"></script>
 <dialog aria-labelledby="install-guide-title" class="persistent-panel" id="install-guide"><header class="persistent-panel-header"><h2 id="install-guide-title">ホーム画面に追加</h2><form method="dialog"><button aria-label="ホーム画面に追加を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
 <p id="install-guide-text"></p>
 <p>追加後はアイコンから起動できます。ログイン・ランキングにはインターネット接続が必要です。初回は再ログインを求められる場合があります。</p>
 
 </div></dialog>
-<script data-game-src="install.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="install.js?v=2.0.0" type="application/json"></script>
 <dialog aria-labelledby="play-guide-title" class="game-info-dialog persistent-panel" id="play-guide"><header class="persistent-panel-header"><h2 id="play-guide-title">遊び方・用語ガイド</h2><form method="dialog"><button aria-label="遊び方・用語ガイドを閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
 <p class="guide-lead">迫ってくる敵を避け、ボスを倒してWAVE100クリアを目指そう！</p>
@@ -345,15 +347,15 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <article class="pop-card"><span class="pop-icon">🖱️</span><h3>PCで遊ぶ</h3><p>マウスで移動<br/>右クリックでスキル</p></article>
 <article class="pop-card"><span class="pop-icon">📱</span><h3>スマホで遊ぶ</h3><p>ドラッグで移動<br/>スキルボタンをタップ</p></article>
 <article class="pop-card"><span class="pop-icon">✨</span><h3>クリアしたら強化</h3><p>3択から1つ選ぶ！<br/>ショップで次の準備</p></article>
-<article class="pop-card"><span class="pop-icon">💎</span><h3>結晶で装備召喚</h3><p>1回10個・10連100個<br/>装備でさらに強く！</p></article>
+<article class="pop-card"><span class="pop-icon">💎</span><h3>結晶で星契召喚</h3><p>1回10個・10連100個<br/>装備と仲間が登場！</p></article>
 <article class="pop-card"><span class="pop-icon">🏆</span><h3>目指せ100WAVE</h3><p>クリアでエンドレス解放<br/>101WAVEから挑戦！</p></article>
 </div><p class="pop-note">❤️ HPゼロ・時間切れに注意！　⏸ 一時停止でひと休み</p>
 <h3>📖 気になるところをタップ</h3><details id="help-equipment"><summary>🛡 装備・修理・保護のルール</summary><p>☆ロックでお気に入りを保護。売却と合成素材から除外されます。詳細画面で売却対象に選択した品はまとめて売却でき、ページ外の選択も対象です。「比較・詳細」で装備の能力差を確認できます。</p><p>ゴールド修理は不足耐久1につきN1G・R2G・SR4G・SSR8G・UR16Gで全回復。ロック中も修理可能です。合成修理は従来どおり素材だけで行えます。</p><p>WAVE開始時に装備の耐久を1消費。そのWAVE中は効果が続き、耐久0の装備は次のWAVEから効果がなくなります。最大耐久はN60・R90・SR130・SSR180・UR250。破損しても装備は消えません。</p><p>合成は同じキャラ・部位・グレード・シリーズの装備が対象。残す装備の耐久＋素材の残り耐久を、最大耐久まで回復します。超過分は切り捨て。特殊スキルは残す装備のものを維持し、素材は消えます。</p><p>装備中・中断データで使用中の品は、売却や合成素材にできません。売却はゴールドへ換金（耐久が少ないと価格も下がります）。装備変更は新しい挑戦から適用。中断再開は保存時の装備を使用します。</p><p>同じ特殊スキルも重複して付き、効果は加算。全体上限は確率画面を確認してください。ボックス上限は500個で、空きが足りないと召喚できません。</p><p>保護の対象は、装備中・ロック中・保存セットに登録中・中断データで使用中の装備です。売却・分解・合成素材・特殊スキル再抽選をするには、その登録を外してください。</p><p>能力比較は装備とセット効果、装備側の上限を反映します。キャラ育成やゲーム側の速度上限は含みません。ptは％補正の差です。数値は小数部分を表示しませんが、内部では端数も計算します。「表示上の差なし」でも小さな変化がある場合があります。</p></details>
 <details><summary>🧩 装備セット・おまかせ装備</summary><p>キャラごとに装備4部位と育成ルートを3セット保存できます。保存中の装備は保護されます。セットを適用するには、登録した装備がそろい、耐久が残っている必要があります。</p><p>同シリーズは2・3・4部位で効果が強くなります。グレードが違っても有効ですが、破損品は数えません。表示される数値は各段階の合計です。</p><p>おまかせ装備は特殊スキルとセット効果を含めた簡易評価です。最強の組み合わせを保証するものではありません。結晶集めは星詠セットを優先し、候補がなければ移動速度と火力を評価します。</p></details>
 <details id="help-gacha"><summary>🎲 ガチャ・特殊スキルの抽選</summary>
 <p>1回は結晶10個、10連は100個。すべて独立した抽選で、10連の確定枠や天井はありません。宝箱の昇格演出が出ても、装備の排出率は変わりません。</p>
-<p>確率は小数点第1位で四捨五入します。小さすぎて0と表示される確率は「0.1％未満」と目安の分数を表示します。URは1万分の1です。1万回引けば必ず出る意味ではありません。表示の丸めにより合計が100％にならない場合があります。</p>
-<p>キャラ4種と部位4種は均等に抽選。シリーズはN〜SSRが4種、URが8種で均等です。特定のUR装備1種は128万分の1。その指定した1枠に「覇王」が付く確率は19億2000万分の1です。</p>
+<p>確率は小数点第1位で四捨五入します。0.1％を下回る確率は「0.1％未満」と目安の分数を表示します。神話の仲間が出る確率は1回につき2万分の1です。表示の丸めにより合計が100％にならない場合があります。</p>
+<p>各枠は装備95％・仲間5％。装備なら4系統と4部位を、仲間なら当選ランクの中から1体を均等に抽選します。装備シリーズはN〜SSRが4種、URが8種です。</p>
 <p>特殊スキルは各枠で抽選し、重複した効果は加算します。確率画面のスキル表は「そのグレードの1枠に付く確率」です。再抽選も同じ確率で、選んだ1枠だけを変更します。弱くなる・同じ結果になる場合もあります。</p>
 <p>分解で得る錬成素材はNから順に1・3・8・25・80個。再抽選の費用は1枠あたり10・20・30・40・50個です。分解した装備は戻せません。</p>
 <p>装備効果の上限はダメージ軽減75％・回避50％・会心80％・スキル待ち時間短縮80％。会心は通常弾だけに発生します。移動・連射にはゲーム側の上限もあります。</p></details>
@@ -371,8 +373,8 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <details><summary>コイン・強化・スキルの違い</summary>
 <dl><dt>コイン（G）</dt><dd>敵を倒すと獲得。武器・能力・スキル・キャラ育成に使います。</dd><dt>武器・能力・スキルの強化</dt><dd>通常セーブに残る強化です。次の挑戦でも使えます。</dd><dt>WAVEクリア時の3択強化</dt><dd>今回の挑戦だけ有効。新しい挑戦ではリセットされ、中断再開では引き継ぎます。</dd><dt>スキルの待ち時間</dt><dd>通常は発動後30秒。魔導士の速詠型で短縮できます。ゲージやボタンの残り秒数が目安です。</dd></dl>
 </details>
-<details><summary>キャラ別育成：解放条件と切り替え</summary>
-<p>ホームの「キャラクター育成」から育成します。各キャラ3ルート、各ルート最大Lv.5。同時に発動するのは選択した1ルートです。</p>
+<details><summary>系統別育成・解放条件と切り替え</summary>
+<p>ホームの「キャラクター育成」から育成します。各系統3ルート、各ルート最大Lv.5。同時に発動するのは選択した1ルートです。</p>
 <p><strong>そのキャラの最高到達WAVE、または使用回数</strong>のどちらかを満たし、コインを支払うとレベルアップできます。自動では上がらないので育成ボタンを押してください。</p>
 <div class="guide-table-scroll"><table><caption>各レベルの購入条件</caption><thead><tr><th>Lv.</th><th>到達WAVE</th><th>または使用</th><th>コイン</th></tr></thead><tbody>
 <tr><td>1</td><td>3以上</td><td>2回以上</td><td>100G</td></tr><tr><td>2</td><td>6以上</td><td>5回以上</td><td>300G</td></tr><tr><td>3</td><td>10以上</td><td>10回以上</td><td>700G</td></tr><tr><td>4</td><td>15以上</td><td>20回以上</td><td>1,500G</td></tr><tr><td>5</td><td>20以上</td><td>35回以上</td><td>3,000G</td></tr>
@@ -397,17 +399,19 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <p>表示が古いときは「最新版に更新」を押してください。</p>
 </details>
 
-<details class="hero-guide"><summary>キャラ解放・専用攻撃について</summary><p>初めは見習い1体。キャラクター選択からコインで4体を解放できます。解放は買い切りで、ホームで自由に切り替えられます。</p><p>冒険者800G：5回ごとに強撃。魔導士1200G：小範囲攻撃。レンジャー1200G：2体貫通。重装騎士1500G：押し戻しと被ダメージ10％減。</p><p>専用育成はコインに加え、表示された到達WAVEまたは使用回数の条件が必要。選択したルートが次の挑戦から有効になります。見習いは攻撃・体力・移動を少しずつ伸ばせます。</p><p>見習いは冒険者の装備を共用します。旧バージョンの4体の専用育成・解放状態は今回一度リセットします。コイン・装備・記録は引き継ぎます。</p></details></div></dialog>
+<details class="hero-guide"><summary>星契召喚・仲間の育成</summary><p>最初の1体は見習い。星契召喚で6ランク・21体の仲間が加わります。ホームのキャラクター選択で交代できます。以前に購入した仲間も使用できます。</p><p>同じ仲間に再会すると、銅章から順に100・250・600・1,500・4,000・10,000 Gを獲得。額はゴールドの所持上限までです。</p><p>仲間は同じ系統で装備と専用育成を共有します。見習いの育成は独立し、装備は冒険者系と共用。仲間ごとの特性は選択画面、確率は星契召喚の「排出率」から確認できます。</p></details></div></dialog>
 <dialog aria-labelledby="overview-guide-title" class="game-info-dialog overview-dialog persistent-panel" id="overview-guide"><header class="persistent-panel-header"><h2 id="overview-guide-title">ゲーム概要</h2><form method="dialog"><button aria-label="ゲーム概要を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
 <p>最初は画像全体を表示します。「拡大」で細部を確認できます。</p>
 <p class="overview-tools"><button aria-pressed="false" id="overview-zoom" type="button">拡大する</button> <a href="game-overview.png" rel="noopener" target="_blank">画像を別タブで開く・拡大する</a></p>
+<p class="pop-note">仲間は全22体。見習いから始めて、星契召喚で仲間と装備を集めよう。</p>
 <div aria-label="ゲーム概要の説明画像。拡大中は縦横にスクロールできます。" class="overview-image-scroll" role="region" tabindex="0"><img alt="常林暴サバイバー はじめての冒険ガイド。操作、4キャラ、育成、イベント、装備ガチャ、合成、ランキングを紹介。文章の説明は遊び方・用語ガイドをご覧ください。" decoding="async" loading="lazy" src="game-overview.png"/></div>
 
 </div></dialog>
 <dialog aria-labelledby="release-guide-title" class="game-info-dialog persistent-panel" id="release-guide"><header class="persistent-panel-header"><h2 id="release-guide-title">更新履歴</h2><form method="dialog"><button aria-label="更新履歴を閉じる" class="persistent-close" type="submit">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 
-<p class="guide-lead">いま開いている版：<strong class="app-version">Ver.1.9.7</strong></p>
+<p class="guide-lead">いま開いている版：<strong class="app-version">Ver.2.0.0</strong></p>
+<article><h3>Ver.2.0.0</h3><p>装備と仲間を引ける「星契召喚」が登場。見習いと6ランクの仲間21体で遊べます。</p></article>
 <article><h3>Ver.1.9.7</h3><p>自分と敵の残りHPをバーと数値で表示。通常敵のバーは頭上を追いかけ、ボスのバーは画面上部に固定されます。</p></article>
 <article><h3>Ver.1.9.6</h3><p>ボスの四角い下地を取り除き、輪郭に沿うオーラに変更。弾と接触の当たり判定をキャラクター・敵・ボスの実際の姿に合わせました。</p></article>
 <article><h3>Ver.1.9.5</h3><p>操作キャラ5人の衣装を刷新。ホーム・キャラクター選択・育成の立ち絵と、戦闘中の歩行・攻撃が同じ装いになりました。</p></article>
@@ -472,7 +476,8 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <div class="equipment-actions"><button id="equipment-prev" type="button">前へ</button><span id="equipment-page-label"></span><button id="equipment-next" type="button">次へ</button></div>
 <div class="bulk-sale-toolbar"><button aria-pressed="false" id="toggle-sale-mode" type="button">アイコンから選んで売却</button><small id="sale-mode-help"></small><button id="select-sale-filter" type="button">絞り込み中の全件を選択</button><button id="clear-sale-selection" type="button">選択解除</button><span id="sale-summary"></span><button id="sell-selected" type="button">選択品を売却</button><small>ページ外の選択も含みます。ロック・装備中・中断使用中は除外。</small></div><div class="equipment-cards equipment-icon-grid" id="equipment-cards"></div>
 </div></dialog>
-<dialog aria-labelledby="summon-menu-title" class="game-info-dialog equipment-dialog persistent-panel" id="summon-menu-dialog"><header class="persistent-panel-header"><h2 id="summon-menu-title">召喚ガチャ</h2><form method="dialog"><button aria-label="召喚ガチャを閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content"><p>召喚結晶 <strong class="crystal-balance">0</strong> 個</p><p>全キャラの装備が登場！ 入手した装備はボックスへ。</p>
+<dialog aria-labelledby="oath-hero-title" class="game-info-dialog persistent-panel oath-detail" id="oath-hero-dialog"><header class="persistent-panel-header"><h2 id="oath-hero-title">仲間の詳細</h2><form method="dialog"><button class="persistent-close" type="submit">✕ 閉じる</button></form></header><div id="oath-hero-detail" class="persistent-panel-content"></div></dialog>
+<dialog aria-labelledby="summon-menu-title" class="game-info-dialog equipment-dialog persistent-panel" id="summon-menu-dialog"><header class="persistent-panel-header"><h2 id="summon-menu-title">星契召喚</h2><form method="dialog"><button aria-label="星契召喚を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content"><p>召喚結晶 <strong class="crystal-balance">0</strong> 個</p><p>装備95％・仲間5％。人の紋章が付いた宝箱は仲間の合図！</p>
 <div class="equipment-actions"><button id="equipment-roll" type="button">1回召喚：結晶10個</button><button id="equipment-roll10" type="button">10回召喚：結晶100個</button><button id="equipment-probabilities" type="button">排出率・特殊スキル確率を見る</button></div>
 <p aria-live="polite" id="equipment-status" role="status"></p>
 <button hidden="" id="dev-rare-summon" type="button">開発者：レア演出確定10連（保存なし）</button><div aria-live="polite" class="equipment-results" id="equipment-results"></div>
@@ -482,7 +487,7 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <dialog aria-labelledby="gacha-heading" class="game-info-dialog gacha-dialog" id="gacha-dialog">
 <div class="gacha-scene" id="gacha-scene">
 <div aria-hidden="true" class="gacha-rays"></div><div aria-hidden="true" class="gacha-rune"></div>
-<p class="gacha-kicker">SUMMON · 装備召喚</p><h2 id="gacha-heading">宝箱が現れた！</h2>
+<h2 id="gacha-heading">宝箱が現れた！</h2>
 <div class="gacha-chest-grid" id="gacha-chest-grid"></div>
 <div aria-label="召喚の宝箱" class="gacha-chest" hidden="" id="gacha-chest" role="img"></div>
 <p id="gacha-description" role="status"></p><p hidden="" id="gacha-mythic">✦ 神話スキル付き装備を獲得 ✦</p>
@@ -496,14 +501,14 @@ document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
 <dialog aria-labelledby="equipment-probability-title" class="game-info-dialog equipment-dialog persistent-panel" id="equipment-probability-dialog"><header class="persistent-panel-header"><h2 id="equipment-probability-title">排出率・特殊スキルの付与確率</h2><form method="dialog"><button aria-label="排出率・特殊スキルの付与確率を閉じる" class="persistent-close">✕ 閉じる</button></form></header><div class="persistent-panel-content">
 <div class="equipment-probability-scroll" id="equipment-probability-content"></div>
 </div></dialog>
-<script data-game-src="guide.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="guide.js?v=2.0.0" type="application/json"></script>
 <dialog aria-labelledby="update-game-title" class="game-info-dialog persistent-panel" id="update-game-dialog"><header class="persistent-panel-header"><h2 id="update-game-title">最新版に更新</h2><button aria-label="最新版に更新を閉じる" class="persistent-close" id="update-game-close" type="button">✕ 閉じる</button></header><div class="persistent-panel-content">
 
 <p aria-live="polite" id="update-game-status" role="status"></p>
 <p>ログイン情報・コイン・育成データは残ります。公開直後は、反映まで少し待ってから再度お試しください。</p>
 
 </div></dialog>
-<script data-game-src="update.js?v=1.9.7" type="application/json"></script>
+<script data-game-src="update.js?v=2.0.0" type="application/json"></script>
 <script>
 (async () => {
     for (const source of document.querySelectorAll('script[data-game-src]')) {

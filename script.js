@@ -136,7 +136,8 @@ const CHARACTERS = {
     balance: { name: '冒険者', role: 'バランス型', image: 'hero_balance.png', hp: 12, damage: 1.15, speed: 1.05, detail: '青い斬撃。5回の射撃ごとに強撃。' },
     power: { name: '魔導士', role: '攻撃型', image: 'hero_power.png', hp: 8, damage: 1.4, speed: 0.9, detail: '紫の魔法弾。命中時に周囲にも小ダメージ。' },
     speed: { name: 'レンジャー', role: 'スピード型', image: 'hero_speed.png', hp: 8, damage: 0.9, speed: 1.3, detail: '緑の高速弾。敵を2体まで貫通。移動が得意。' },
-    tank: { name: '重装騎士', role: '耐久型', image: 'hero_tank.png', hp: 16, damage: 1, speed: 0.8, detail: '金の衝撃波。敵を押し戻す。被ダメージ10％減。' }
+    tank: { name: '重装騎士', role: '耐久型', image: 'hero_tank.png', hp: 16, damage: 1, speed: 0.8, detail: '金の衝撃波。敵を押し戻す。被ダメージ10％減。' },
+    ...OATH_RECRUITS
 };
 function getSelectedCharacter() {
     return Object.hasOwn(CHARACTERS, gameData.character) ? CHARACTERS[gameData.character] : CHARACTERS.rookie;
@@ -153,7 +154,7 @@ function updateCharacterDisplay() {
 }
 function selectCharacter(id) {
     if (!Object.hasOwn(CHARACTERS, id) || homeScreen.classList.contains('hidden') || btnBattle.disabled) return;
-    if (!heroOwned(id) && !heroPurchase(id)) return;
+    if (!heroOwned(id) || !canEditTraining()) return;
     gameData.character = id;
     saveData();
     updateCharacterDisplay();
@@ -162,20 +163,34 @@ function selectCharacter(id) {
 function renderCharacterCards() {
     const container = document.getElementById('character-cards');
     container.replaceChildren();
-    for (const [id, character] of Object.entries(CHARACTERS)) {
+    const ids = ['rookie',...OATH_TIERS.flatMap(tier=>tier.members)];
+    document.getElementById('oath-owned-count').textContent = gameData.roster.owned.length+' / '+ids.length+'体';
+    const view=document.getElementById('oath-filter').value;
+    for (const id of ids) {
+        if (view==='owned' && !heroOwned(id) || Number(view)>0 && OATH_RARITY.get(id)!==Number(view)) continue;
+        const character = CHARACTERS[id], grade=OATH_RARITY.get(id), tier=OATH_TIERS[grade-1];
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'character-card';
         const selected = gameData.character === id;
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', String(selected));
-        button.innerHTML = `<strong>${character.name}</strong><span>${character.role}</span><small>${character.detail}</small><b>${!heroOwned(id) ? '🔓 解放 '+HERO_COSTS[id]+' G' : selected ? '選択中' : 'このキャラを選択'}</b>`;
-        button.prepend(heroPortrait(character));
-        button.disabled = !heroOwned(id) && gameData.coins < HERO_COSTS[id];
+        const rank=document.createElement('span');rank.className='oath-card-rank';
+        rank.textContent=tier?.name || '初期キャラ';
+        button.style.setProperty('--rarity',tier?.color || '#b5cfdf');
+        const name=document.createElement('strong');name.textContent=character.name;
+        const trait=document.createElement('small');trait.textContent=character.detail;
+        const state=document.createElement('b');
+        state.textContent=!heroOwned(id)?'星契召喚で加入':selected?'✓ 選択中':'選択する';
+        button.append(rank,heroPortrait(character),name,trait,state);
+        button.disabled=!heroOwned(id);
         button.addEventListener('click', () => selectCharacter(id));
         container.appendChild(button);
     }
 }
+const oathFilter=document.getElementById('oath-filter');
+OATH_TIERS.forEach((tier,index)=>oathFilter.add(new Option(tier.name,index+1)));
+oathFilter.addEventListener('change',renderCharacterCards);
 document.getElementById('btn-character').addEventListener('click', () => {
     if (homeScreen.classList.contains('hidden') || btnBattle.disabled) return;
     renderCharacterCards();
@@ -371,7 +386,7 @@ function repairGameData(saved) {
 
     const legacyHeroes = !saved.roster;
     const repaired = saved;
-    repaired.roster = repairRoster(saved.roster, true);
+    repaired.roster = repairRoster(saved.roster);
     repaired.journey = repairJourney(saved.journey);
     repaired.forge = repairForge(saved.forge);
     repaired.training = legacyHeroes ? createDefaultTraining() : repairTraining(saved.training);
@@ -730,7 +745,7 @@ function saveDiagnosticFields(d) {
         check(Array.isArray(d.skills.owned) && d.skills.owned.length >= 1 && d.skills.owned.length <= 4 && d.skills.owned.every(k => skills.includes(k)) && d.skills.owned.includes(d.skills.equipped), 'data.skills.owned/equipped');
         if (keys(d.skills.levels, skills, skills, 'data.skills.levels')) skills.forEach(k => check(count(d.skills.levels[k]) && d.skills.levels[k] >= 1, 'data.skills.levels.'+k));
     }
-    if ('training' in d && keys(d.training, chars, chars, 'data.training')) chars.forEach(k => {
+    if ('training' in d && keys(d.training, TRAINING_CHARACTERS, TRAINING_CHARACTERS, 'data.training')) TRAINING_CHARACTERS.forEach(k => {
         const t=d.training[k], path='data.training.'+k;
         if (!keys(t,['uses','bestWave','route','levels'],['uses','bestWave','route','levels'],path)) return;
         check(count(t.uses),path+'.uses'); check(count(t.bestWave),path+'.bestWave');
@@ -758,7 +773,7 @@ function diagnosticError(error, stage, data) {
     const fields = data ? saveDiagnosticFields(data) : [];
     const result = new Error(error.message);
     result.code = error.code;
-    result.diagnostic = 'Ver.1.9.7 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
+    result.diagnostic = 'Ver.2.0.0 / ' + stage + '\nプロジェクト: ' + (typeof firebaseConfig !== 'undefined' ? firebaseConfig.projectId : '不明') + '\nエラー: ' + (error.code || 'unknown') + '\n' + error.message + (data ? '\n保存形式: ' + (fields.length ? fields.slice(0,12).join(', ') : '基本項目の不一致なし（サーバー側判定の確認が必要）') : '');
     result.message = result.diagnostic;
     return result;
 }
@@ -1873,10 +1888,10 @@ function getPlayerStats() {
     let bSize = 10 + (sizeLevel - 1) * 4;
 
     return {
-        shotInterval: Math.max(50, Math.max(100, 1000 - (rate - 1) * 60) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate),
+        shotInterval: Math.max(50, Math.max(100, 1000 - (rate - 1) * 60) / (1 + (runUpgrades.fireRate || 0) * 0.1) / trainingFireRateMultiplier() / equipmentStats().fireRate / (getSelectedCharacter().cadence || 1)),
         damage: dmg * (1 + (runUpgrades.damage || 0) * 0.2) * getSelectedCharacter().damage * (1+.02*trainingLevel('rookie','a')) * equipmentStats().damage,
         moveSpeed: Math.min(1, (0.08 + (spd - 1) * 0.01) * (1 + (runUpgrades.speed || 0) * 0.1) * getSelectedCharacter().speed * (1+.02*trainingLevel('rookie','c')) * equipmentStats().speed),
-        bulletCount: cnt + (runUpgrades.count || 0),
+        bulletCount: cnt + (runUpgrades.count || 0) + (getSelectedCharacter().extra || 0),
         bulletSize: bSize * (1 + (runUpgrades.bulletSize || 0) * 0.2)
     };
 }
@@ -2866,7 +2881,7 @@ function applyEnemyContacts(oldPlayerX=playerX,oldPlayerY=playerY){
 function takePlayerDamage(dmg) {
     if (isGameOver || !waveEventActive) return;
     if (currentWaveEvent === 'rage') dmg = Math.ceil(dmg * 1.5);
-    if (gameData.character==='tank') dmg*=.9;
+    dmg*=1-(getSelectedCharacter().guard || (heroFamily()==='tank' ? .1 : 0));
     dmg = equipmentIncomingDamage(dmg);
     if (dmg <= 0) { playSound("guard", .3); updateHpDisplay(); return; }
     dmg = trainingIncomingDamage(dmg);

@@ -43,7 +43,7 @@ function repairTraining(value) {
 }
 function getTrainingProgress(id=gameData.character) {
     gameData.training ||= createDefaultTraining();
-    return gameData.training[id];
+    return gameData.training[heroFamily(id)];
 }
 let activeTraining = null;
 let trainingState = {};
@@ -54,7 +54,7 @@ function resetTrainingState() {
 resetTrainingState();
 function trainingStartRun(countUse=true) {
     const p=getTrainingProgress();
-    activeTraining={character:gameData.character,route:p.route,level:p.levels[p.route]};
+    activeTraining={character:heroFamily(),route:p.route,level:p.levels[p.route]};
     resetTrainingState();
     if (countUse && gameMode!=='test') { p.uses=Math.min(1000000000,p.uses+1); saveData(); }
 }
@@ -62,8 +62,8 @@ function trainingLevel(character,route) {
     return activeTraining?.character===character && activeTraining.route===route ? activeTraining.level : 0;
 }
 function trainingHpBonus() { return trainingLevel('tank','c')*3+trainingLevel('rookie','b'); }
-function getSkillCooldown() { return bombCooldown*(1-.08*trainingLevel('power','b'))*equipmentStats().cooldown; }
-function trainingSkillMultiplier() { return (1+.15*trainingLevel('power','a'))*equipmentSkillMultiplier(); }
+function getSkillCooldown() { return bombCooldown*(1-.08*trainingLevel('power','b'))*equipmentStats().cooldown*(getSelectedCharacter().cooldown || 1); }
+function trainingSkillMultiplier() { return (1+.15*trainingLevel('power','a'))*equipmentSkillMultiplier()*(getSelectedCharacter().skill || 1); }
 function trainingSkillRadius() { return 1+.06*trainingLevel('power','a'); }
 function trainingOnSkill() { if (trainingLevel('power','c')) trainingState.surgeUntil=gameNow()+6000; }
 function trainingFireRateMultiplier() {
@@ -158,7 +158,7 @@ function canEditTraining() {
     return !homeScreen.classList.contains('hidden') && !startingRun && !preflightPending && !btnBattle.disabled && !cloudConflict;
 }
 function trainingUpgrade(id,route) {
-    if (!canEditTraining() || !heroOwned(id) || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
+    if (!canEditTraining() || !ownsTrainingFamily(id) || !TRAINING_CHARACTERS.includes(id) || !['a','b','c'].includes(route)) return false;
     const p=getTrainingProgress(id),level=p.levels[route],gate=TRAINING_GATES[level];
     if (!gate || (p.bestWave<gate.wave && p.uses<gate.uses) || gameData.coins<gate.cost) return false;
     gameData.coins-=gate.cost;p.levels[route]++;saveData();renderTraining();return true;
@@ -197,19 +197,19 @@ function renderTraining() {
    const bar=document.createElement('progress');bar.max=1;bar.value=Math.min(1,Math.max(p.bestWave/gate.wave,p.uses/gate.uses));bar.setAttribute('aria-label','WAVEまたは使用回数の達成度');progress.appendChild(bar);
    if(!satisfied)appendEqText(progress,'あとWAVE '+Math.max(0,gate.wave-p.bestWave)+' または '+Math.max(0,gate.uses-p.uses)+'回','training-hint');
    appendEqText(progress,gameData.coins>=gate.cost?'🪙 '+gate.cost+' G · 準備OK':'🪙 '+gate.cost+' G · あと'+(gate.cost-gameData.coins)+' G');card.appendChild(progress);
-   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!heroOwned(id)||!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
+   const buy=document.createElement('button');buy.type='button';buy.className='training-buy';buy.textContent='✦ Lv.'+(level+1)+'に育成 · '+gate.cost+' G';buy.disabled=!ownsTrainingFamily(id)||!canEditTraining()||!satisfied||gameData.coins<gate.cost;buy.addEventListener('click',()=>trainingUpgrade(id,route.id));card.appendChild(buy);
   } else appendEqText(card,'🏆 育成コンプリート！','training-max');
-  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!heroOwned(id)||!canEditTraining()||selected||!level;
-  equip.addEventListener('click',()=>{if(!canEditTraining()||!heroOwned(id))return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
+  const equip=document.createElement('button');equip.type='button';equip.className='training-equip';equip.textContent=selected?'✓ このルートを選択中':'このルートにする';equip.disabled=!ownsTrainingFamily(id)||!canEditTraining()||selected||!level;
+  equip.addEventListener('click',()=>{if(!canEditTraining()||!ownsTrainingFamily(id))return;p.route=route.id;saveData();renderTraining();});card.appendChild(equip);cards.appendChild(card);
  }
 }
 function initTrainingUI() {
     const select=document.getElementById('training-character');
-    for(const id of TRAINING_CHARACTERS){const option=document.createElement('option');option.value=id;option.textContent=CHARACTERS[id].name;select.appendChild(option);}
+    for(const id of TRAINING_CHARACTERS){const option=document.createElement('option');option.value=id;option.textContent=CHARACTERS[id].name+(id==='rookie'?'':'系');select.appendChild(option);}
     select.addEventListener('change',()=>{trainingViewedCharacter=select.value;renderTraining();});
     document.getElementById('btn-training').addEventListener('click',()=>{
         if (!canEditTraining()) { alert('同期中や戦闘開始中は育成を変更できません。');return; }
-        trainingViewedCharacter=gameData.character;select.value=trainingViewedCharacter;renderTraining();document.getElementById('training-dialog').showModal();
+        trainingViewedCharacter=heroFamily();select.value=trainingViewedCharacter;renderTraining();document.getElementById('training-dialog').showModal();
     });
 }
 function trainingCheckpoint() {
@@ -217,6 +217,6 @@ function trainingCheckpoint() {
 }
 function restoreTrainingCheckpoint(c) {
     trainingStartRun(false);
-    if (c?.active && c.active.character===gameData.character && ['a','b','c'].includes(c.active.route) && Number.isInteger(c.active.level) && c.active.level>=0 && c.active.level<=5) activeTraining={...c.active};
+    if (c?.active && c.active.character===heroFamily() && ['a','b','c'].includes(c.active.route) && Number.isInteger(c.active.level) && c.active.level>=0 && c.active.level<=5) activeTraining={...c.active};
     if(Number.isFinite(c?.coinRemainder)) trainingState.coinRemainder=Math.max(0,Math.min(.999999,c.coinRemainder));
 }

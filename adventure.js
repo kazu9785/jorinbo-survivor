@@ -115,12 +115,12 @@ function trainingNextGoal(id,route){
  const play=p.bestWave>=gate.wave||p.uses>=gate.uses;
  return (play?'プレイ条件達成':`あと${Math.max(0,gate.uses-p.uses)}回使用 または WAVE${gate.wave}到達（現在${p.bestWave}）`)+' ／ '+(gameData.coins>=gate.cost?'コイン準備OK':`あと${gate.cost-gameData.coins}G`);
 }
-function canTrainAny(){return TRAINING_CHARACTERS.some(id=>heroOwned(id)&&['a','b','c'].some(r=>{const p=gameData.training[id],g=TRAINING_GATES[p.levels[r]];return g&&(p.bestWave>=g.wave||p.uses>=g.uses)&&gameData.coins>=g.cost;}));}
+function canTrainAny(){return TRAINING_CHARACTERS.some(id=>ownsTrainingFamily(id)&&['a','b','c'].some(r=>{const p=gameData.training[id],g=TRAINING_GATES[p.levels[r]];return g&&(p.bestWave>=g.wave||p.uses>=g.uses)&&gameData.coins>=g.cost;}));}
 function refreshAdventureHome(){
  document.getElementById('btn-training').textContent='キャラクター育成'+(canTrainAny()?' ● 強化可能':'');
  const count=ACHIEVEMENTS.filter(a=>!isDeveloper&&!gameData.journey.claimed.includes(a.id)&&a.progress()>=a.goal).length;
  document.getElementById('btn-achievements').textContent='🏅 実績'+(count?' ● '+count+'件受取可能':'');
- const p=gameData.training[gameData.character];document.getElementById('home-next-goal').textContent=TRAINING_ROUTES[gameData.character].find(r=>r.id===p.route).name+'：'+trainingNextGoal(gameData.character,p.route);
+ const family=heroFamily(),p=gameData.training[family];document.getElementById('home-next-goal').textContent=TRAINING_ROUTES[family].find(r=>r.id===p.route).name+'：'+trainingNextGoal(family,p.route);
 }
 function claimAchievement(id){
  if(isDeveloper||!canEditTraining())return false;const a=ACHIEVEMENTS.find(a=>a.id===id);
@@ -153,9 +153,9 @@ function tutorialTick(){
 }
 function completeTutorial(){gameData.journey.tutorial=2;document.getElementById('tutorial-hint').hidden=true;saveData();}
 let rankingRequest=0;
-const BOARD_KEYS=['normal','endless',...['balance','power','speed','tank'],...['normal','endless'].flatMap(m=>['balance','power','speed','tank'].map(c=>m+'_'+c)),'rookie','normal_rookie','endless_rookie'];
-function defaultBoards(){return Array(51).fill(0);}
-function repairedBoards(v){return Array.isArray(v)&&[42,51].includes(v.length)&&v.every(n=>Number.isInteger(n)&&n>=0&&n<=1000000000)?v.concat(Array(51-v.length).fill(0)):defaultBoards();}
+const BOARD_KEYS=['normal','endless',...['balance','power','speed','tank'],...['normal','endless'].flatMap(m=>['balance','power','speed','tank'].map(c=>m+'_'+c)),'rookie','normal_rookie','endless_rookie',...Object.keys(OATH_RECRUITS).flatMap(id=>[id,'normal_'+id,'endless_'+id])];
+function defaultBoards(){return Array(BOARD_KEYS.length*3).fill(0);}
+function repairedBoards(v){return Array.isArray(v)&&[42,51,BOARD_KEYS.length*3].includes(v.length)&&v.every(n=>Number.isInteger(n)&&n>=0&&n<=1000000000)?v.concat(Array(BOARD_KEYS.length*3-v.length).fill(0)):defaultBoards();}
 function updateBoards(v,mode,character,wave=null){
  const b=repairedBoards(v);if(!['normal','endless'].includes(mode))return b;
  for(const k of [mode,character,mode+'_'+character]){const i=BOARD_KEYS.indexOf(k)*3;if(i<0)continue;if(wave===null)b[i+2]=Math.min(1000000000,b[i+2]+1);else{b[i]=Math.max(b[i],wave);b[i+1]=wave;}}
@@ -169,6 +169,8 @@ function previewRareSummon(){
  startGachaPresentation(results,{preview:true});
 }
 function initAdventureUI(){
+ const rankingCharacters=document.getElementById('ranking-character-filter');
+ for(const [id,hero] of Object.entries(OATH_RECRUITS))rankingCharacters.add(new Option(hero.name,id));
  document.getElementById('btn-achievements').addEventListener('click',()=>{renderAchievements();document.getElementById('achievements-dialog').showModal();});
  document.getElementById('toggle-sale-mode').addEventListener('click',()=>{if(!canEditTraining())return;saleSelectionMode=!saleSelectionMode;renderEquipment();});
  document.getElementById('equipment-dialog').addEventListener('close',()=>{saleSelectionMode=false;saleSelection.clear();});
